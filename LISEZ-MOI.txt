@@ -18,11 +18,3 @@ v24 : miniatures de pochette ajoutées à gauche des morceaux dans la rubrique G
 
 
 Version v25 : page Réglages séparée via la roue dentée + centrage des chiffres Gardés/Passés.
-
-
-VERSION v34
-- Couleur du haut de la page Réglages / Gardés harmonisée avec la couleur d’accent de l’interface principale.
-- La meta theme-color Android est resynchronisée à l’ouverture et à la fermeture des réglages.
-- Cache PWA incrémenté en v34 pour forcer la mise à jour.
-
-Remarque : la barre supérieure d’un site externe comme youtube.com est contrôlée par YouTube/Chrome et ne peut pas être imposée par la PWA Radio intelligente.
