@@ -1,0 +1,17 @@
+RADIO INTELLIGENTE — PAQUET VERCEL PWA
+
+Contenu prêt à déployer : index.html, manifest.webmanifest, sw.js, vercel.json et icônes.
+
+Déploiement :
+1. Décompresser ce ZIP.
+2. Mettre tous les fichiers à la racine du dépôt Vercel/GitHub.
+3. Déployer sur Vercel sans commande de compilation particulière.
+4. Ouvrir l'adresse HTTPS dans Chrome Android.
+5. Appuyer sur « Installer / ajouter à l’accueil ».
+
+Important : après une mise à jour, fermer puis rouvrir l'application si l'ancienne version reste affichée.
+
+
+Pochette/icônes : image abstraite colorée type « explosion expressive » utilisée comme image par défaut et icône de l’application.
+
+Correction v4 : premier appui sur Lecture charge un extrait neuf ; URLs temporaires expirées ignorées ; icône non maskable sans encadrement ; image exacte du panneau supérieur droit.
