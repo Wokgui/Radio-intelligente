@@ -1,24 +1,17 @@
-RADIO INTELLIGENTE — PAQUET GITHUB / VERCEL v22
+Radio intelligente v23 — GitHub / Vercel
 
-Fichiers à placer à la racine du dépôt GitHub :
-- index.html
-- manifest.webmanifest
-- sw.js
-- vercel.json
-- cover-default.png
-- silence.wav
-- icon-192.png
-- icon-512.png
-- icon-maskable-512.png
-- apple-touch-icon.png
-- favicon-32.png
+Contenu complet prêt à déposer à la racine du dépôt.
 
-Cette version inclut :
-- roue dentée à la place des trois points ;
-- première page seule affichée par défaut ;
-- réglages et sections secondaires affichés uniquement après appui sur la roue dentée ;
-- icône de volume retirée ;
-- icônes Gardés / Passés agrandies ;
-- réglages d’interface sauvegardés avec les sauvegardes complètes.
+Nouveautés v23 :
+- vraie interface en deux pages ;
+- page principale seule au démarrage ;
+- roue dentée ouvre la page Réglages ;
+- bouton retour ramène à la radio ;
+- bouton « Régler l’interface » opérationnel ;
+- icône muet supprimée ;
+- Gardés / Passés réalignés : icône à gauche, chiffre et libellé centrés l’un sous l’autre.
 
-Vercel redéploie automatiquement si le projet est relié à la branche GitHub utilisée.
+Vercel redéploie automatiquement après remplacement des fichiers sur la branche main.
+
+
+v24 : miniatures de pochette ajoutées à gauche des morceaux dans la rubrique Gardés.
