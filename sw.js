@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v24';
+const CACHE = 'radio-intelligente-pwa-v25';
 const APP_SHELL = [
   '/',
   '/index.html',

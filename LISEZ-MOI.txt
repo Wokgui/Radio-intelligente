@@ -15,3 +15,6 @@ Vercel redéploie automatiquement après remplacement des fichiers sur la branch
 
 
 v24 : miniatures de pochette ajoutées à gauche des morceaux dans la rubrique Gardés.
+
+
+Version v25 : page Réglages séparée via la roue dentée + centrage des chiffres Gardés/Passés.
