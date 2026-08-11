@@ -646,18 +646,35 @@ $('play').onclick=async()=>{const a=$('audio');if(busy)return;if(!cur||!a.getAtt
 </script>
 
 <script src="/vendor/supabase/supabase.js?v=1"></script>
-<script src="/cloud-backup.js?v=2"></script>
+<script src="/cloud-backup.js?v=3"></script>
 <script>
 const radioBackupCard=document.createElement('section');
 radioBackupCard.className='card';
-radioBackupCard.innerHTML=`<button id="cloudBackupTile" type="button" aria-label="Ouvrir les sauvegardes automatiques" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;border:1px solid color-mix(in srgb,var(--accent,#635bff) 34%,transparent);border-radius:16px;padding:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent,#635bff) 12%,white),white);color:inherit"><span aria-hidden="true" style="font-size:26px">☁</span><span style="display:grid;gap:3px"><strong>Sauvegardes automatiques</strong><small id="cloudBackupTileStatus" style="opacity:.72">Même compte que les deux autres applications · 20 versions</small></span></button>`;
+radioBackupCard.innerHTML=`<button id="cloudBackupTile" type="button" aria-label="Ouvrir les sauvegardes automatiques" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;border:1px solid color-mix(in srgb,var(--accent,#635bff) 34%,transparent);border-radius:16px;padding:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent,#635bff) 12%,white),white);color:inherit"><span aria-hidden="true" style="font-size:26px">☁</span><span style="display:grid;gap:3px"><strong>Sauvegardes automatiques</strong><small id="cloudBackupTileStatus" style="opacity:.72">Données + ZIP exact du site · 20 versions</small></span></button>`;
 const radioSettingsPage=document.getElementById('settingsPage');
-const radioToolsCard=radioSettingsPage?.querySelector(':scope > .tools');
-if(radioSettingsPage)radioSettingsPage.insertBefore(radioBackupCard,radioToolsCard||null);
+const radioToolsCard=document.getElementById('export')?.closest('.tools');
+if(radioSettingsPage)radioSettingsPage.appendChild(radioBackupCard);
+const radioResetButton=document.getElementById('reset');
+if(radioSettingsPage&&radioResetButton){
+  const radioResetCard=document.createElement('section');
+  radioResetCard.className='card';
+  radioResetButton.className='tool';
+  radioResetButton.style.cssText='width:100%;min-height:58px;border-color:#efb8b8;background:#fff2f2;color:#a63131';
+  radioResetCard.appendChild(radioResetButton);
+  radioBackupCard.insertAdjacentElement('afterend',radioResetCard);
+}
+if(radioToolsCard)radioToolsCard.remove();
+['uiToolsFont','uiToolsHeight'].forEach(id=>{const control=document.getElementById(id)?.closest('.ui-control');if(control)control.hidden=true});
 AutoBackupCloud.create({
   appId:'radio-intelligente',
   eventName:'radio-backup-change',
   triggerSelector:'#cloudBackupTile',
+  release:{
+    version:'radio-v41',
+    gitTag:'radio-v41-paired-backups',
+    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v41-paired-backups.zip',
+    deploymentUrl:'https://radio-intelligente.vercel.app/'
+  },
   localExisted:window.__RADIO_LOCAL_EXISTED,
   getPayload:()=>backupPayload(),
   applyPayload:async payload=>{restorePayload(payload);sessionRejected=[];save('Sauvegarde cloud restaurée.');saveUI();loadUI();render()},
