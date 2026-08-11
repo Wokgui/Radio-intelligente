@@ -646,7 +646,7 @@ $('play').onclick=async()=>{const a=$('audio');if(busy)return;if(!cur||!a.getAtt
 </script>
 
 <script src="/vendor/supabase/supabase.js?v=1"></script>
-<script src="/cloud-backup.js?v=3"></script>
+<script src="/cloud-backup.js?v=4"></script>
 <script>
 const radioBackupCard=document.createElement('section');
 radioBackupCard.className='card';
@@ -670,9 +670,9 @@ AutoBackupCloud.create({
   eventName:'radio-backup-change',
   triggerSelector:'#cloudBackupTile',
   release:{
-    version:'radio-v41',
-    gitTag:'radio-v41-paired-backups',
-    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v41-paired-backups.zip',
+    version:'radio-v42',
+    gitTag:'radio-v42-direct-backups',
+    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v42-direct-backups.zip',
     deploymentUrl:'https://radio-intelligente.vercel.app/'
   },
   localExisted:window.__RADIO_LOCAL_EXISTED,
