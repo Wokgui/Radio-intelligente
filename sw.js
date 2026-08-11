@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v38';
+const CACHE = 'radio-intelligente-pwa-v39';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -9,6 +9,8 @@ const APP_SHELL = [
   '/apple-touch-icon.png',
   '/cover-default.png',
   '/silence.wav'
+  ,'/cloud-backup.js?v=1'
+  ,'/vendor/supabase/supabase.js?v=1'
 ];
 
 self.addEventListener('install', event => {
