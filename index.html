@@ -347,6 +347,10 @@ body.settings-open #settingsPage{
 #settingsPage .radio-action-grid>button>span:last-child{min-width:0!important}
 #settingsPage .radio-action-grid>#cloudBackupTile{background:color-mix(in srgb,var(--accent,#8542ea) 8%,white)!important}
 #settingsPage .radio-action-grid>#reset{border-color:#efc9c9!important;background:#fff7f7!important;color:#9a3d3d!important}
+#settingsPage>.radio-history-card{box-sizing:border-box!important;width:min(calc(100% - 28px),520px)!important;margin:12px auto!important;padding:11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 16%,#d9d5df)!important;border-radius:17px!important;background:rgba(255,255,255,.82)!important;box-shadow:0 6px 18px rgba(41,30,60,.06)!important}
+#settingsPage>.radio-history-card .tabs{gap:6px!important;padding:4px!important;border-radius:13px!important;background:color-mix(in srgb,var(--accent,#8542ea) 7%,#f3f0f6)!important}
+#settingsPage>.radio-history-card .tab{min-height:40px!important;border:0!important;border-radius:10px!important;box-shadow:none!important}
+#settingsPage>.radio-history-card .hist{margin-top:10px!important}
 #settingsPage>.ui-card{box-sizing:border-box!important;width:min(calc(100% - 28px),520px)!important;margin:0 auto 12px!important;padding:0!important}
 #settingsPage>.ui-card:has(.ui-panel.hide){display:none!important}
 #settingsPage>.ui-card .ui-panel{padding:12px!important;border:1px solid #ddd4e8!important;border-radius:16px!important;background:rgba(255,255,255,.72)!important}
@@ -688,6 +692,7 @@ const radioUiCard=document.querySelector('#settingsPage>.ui-card');
 const radioUiToggle=document.getElementById('uiToggle');
 const radioInstallButton=document.getElementById('install');
 const radioCloudButton=document.getElementById('cloudBackupTile');
+const radioHistoryCard=document.getElementById('hist')?.closest('.card');
 const radioResetHost=radioResetButton?.parentElement;
 const radioInstallHost=radioInstallButton?.parentElement;
 const radioActionGrid=document.createElement('section');
@@ -714,15 +719,27 @@ if(radioInstallButton){
   radioInstallButton.innerHTML='<span aria-hidden="true">⌂</span><span>Installer / accueil</span>';
   radioActionGrid.appendChild(radioInstallButton);
 }
+if(radioHistoryCard){
+  radioHistoryCard.classList.add('radio-history-card');
+  radioActionGrid.insertAdjacentElement('afterend',radioHistoryCard);
+}
 [radioBackupCard,radioResetHost,radioInstallHost].forEach(card=>{if(card&&card!==radioActionGrid&&!card.children.length)card.remove()});
+const radioBaseRender=render;
+render=function(){
+  const currentSessionRejected=sessionRejected;
+  sessionRejected=S.rejected;
+  try{return radioBaseRender()}
+  finally{sessionRejected=currentSessionRejected}
+};
+render();
 AutoBackupCloud.create({
   appId:'radio-intelligente',
   eventName:'radio-backup-change',
   triggerSelector:'#cloudBackupTile',
   release:{
-    version:'radio-v43',
-    gitTag:'radio-v43-compact-settings',
-    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v43-compact-settings.zip',
+    version:'radio-v44',
+    gitTag:'radio-v44-compact-settings-history',
+    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v44-compact-settings-history.zip',
     deploymentUrl:'https://radio-intelligente.vercel.app/'
   },
   localExisted:window.__RADIO_LOCAL_EXISTED,
