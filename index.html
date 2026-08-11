@@ -334,6 +334,24 @@ body.settings-open #settingsPage{
 #settingsPage .tools,
 #settingsPage .history,
 #settingsPage .install-card,
+/* v43 — réglages compacts, cohérents et adaptés au téléphone */
+#settingsPage{padding:10px 0 28px!important}
+#settingsPage>.settings{box-sizing:border-box!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:min(calc(100% - 28px),520px)!important;margin:12px auto!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#settingsPage>.settings>div{box-sizing:border-box!important;min-width:0!important;min-height:78px!important;margin:0!important;padding:11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 18%,#d9d5df)!important;border-radius:15px!important;background:color-mix(in srgb,var(--accent,#8542ea) 5%,white)!important;box-shadow:0 5px 15px rgba(41,30,60,.055)!important}
+#settingsPage>.settings>.wide{grid-column:1/-1!important;justify-self:center!important;width:calc(50% - 5px)!important}
+#settingsPage>.settings label{margin-bottom:7px!important;font-size:.8rem!important;font-weight:800!important;color:#51475d!important}
+#settingsPage>.settings select,#settingsPage>.settings input{width:100%!important;min-width:0!important}
+#settingsPage .radio-action-grid{box-sizing:border-box!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:min(calc(100% - 28px),520px)!important;margin:14px auto 10px!important}
+#settingsPage .radio-action-grid>button{box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;width:100%!important;min-width:0!important;min-height:66px!important;margin:0!important;padding:10px 11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 22%,#d9d5df)!important;border-radius:15px!important;background:white!important;color:#4c4256!important;box-shadow:0 5px 15px rgba(41,30,60,.06)!important;font-size:.76rem!important;font-weight:850!important;line-height:1.18!important;text-align:left!important}
+#settingsPage .radio-action-grid>button>span:first-child{flex:0 0 auto!important;font-size:1.2rem!important}
+#settingsPage .radio-action-grid>button>span:last-child{min-width:0!important}
+#settingsPage .radio-action-grid>#cloudBackupTile{background:color-mix(in srgb,var(--accent,#8542ea) 8%,white)!important}
+#settingsPage .radio-action-grid>#reset{border-color:#efc9c9!important;background:#fff7f7!important;color:#9a3d3d!important}
+#settingsPage>.ui-card{box-sizing:border-box!important;width:min(calc(100% - 28px),520px)!important;margin:0 auto 12px!important;padding:0!important}
+#settingsPage>.ui-card:has(.ui-panel.hide){display:none!important}
+#settingsPage>.ui-card .ui-panel{padding:12px!important;border:1px solid #ddd4e8!important;border-radius:16px!important;background:rgba(255,255,255,.72)!important}
+@media(max-width:360px){#settingsPage>.settings,#settingsPage .radio-action-grid{gap:8px!important;width:calc(100% - 20px)!important}#settingsPage>.settings>div{padding:9px!important}#settingsPage .radio-action-grid>button{padding:9px!important;font-size:.71rem!important}}
+
 #settingsPage .status{
   background:transparent!important;
   box-shadow:none!important;
@@ -665,14 +683,46 @@ if(radioSettingsPage&&radioResetButton){
 }
 if(radioToolsCard)radioToolsCard.remove();
 ['uiToolsFont','uiToolsHeight'].forEach(id=>{const control=document.getElementById(id)?.closest('.ui-control');if(control)control.hidden=true});
+
+const radioUiCard=document.querySelector('#settingsPage>.ui-card');
+const radioUiToggle=document.getElementById('uiToggle');
+const radioInstallButton=document.getElementById('install');
+const radioCloudButton=document.getElementById('cloudBackupTile');
+const radioResetHost=radioResetButton?.parentElement;
+const radioInstallHost=radioInstallButton?.parentElement;
+const radioActionGrid=document.createElement('section');
+radioActionGrid.className='radio-action-grid';
+radioActionGrid.setAttribute('aria-label','Actions et sauvegardes');
+if(radioSettingsPage){
+  if(radioUiCard)radioUiCard.insertAdjacentElement('beforebegin',radioActionGrid);
+  else radioSettingsPage.appendChild(radioActionGrid);
+}
+if(radioUiToggle){
+  radioUiToggle.innerHTML='<span aria-hidden="true">🎛</span><span>Régler l’interface</span>';
+  radioActionGrid.appendChild(radioUiToggle);
+}
+if(radioCloudButton){
+  radioCloudButton.innerHTML='<span aria-hidden="true">☁</span><span>Sauvegardes automatiques</span>';
+  radioActionGrid.appendChild(radioCloudButton);
+}
+if(radioResetButton){
+  radioResetButton.removeAttribute('style');
+  radioResetButton.innerHTML='<span aria-hidden="true">↺</span><span>Tout réinitialiser</span>';
+  radioActionGrid.appendChild(radioResetButton);
+}
+if(radioInstallButton){
+  radioInstallButton.innerHTML='<span aria-hidden="true">⌂</span><span>Installer / accueil</span>';
+  radioActionGrid.appendChild(radioInstallButton);
+}
+[radioBackupCard,radioResetHost,radioInstallHost].forEach(card=>{if(card&&card!==radioActionGrid&&!card.children.length)card.remove()});
 AutoBackupCloud.create({
   appId:'radio-intelligente',
   eventName:'radio-backup-change',
   triggerSelector:'#cloudBackupTile',
   release:{
-    version:'radio-v42',
-    gitTag:'radio-v42-direct-backups',
-    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v42-direct-backups.zip',
+    version:'radio-v43',
+    gitTag:'radio-v43-compact-settings',
+    sourceZipUrl:'https://github.com/Wokgui/Radio-intelligente/archive/refs/tags/radio-v43-compact-settings.zip',
     deploymentUrl:'https://radio-intelligente.vercel.app/'
   },
   localExisted:window.__RADIO_LOCAL_EXISTED,
