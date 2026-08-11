@@ -18,15 +18,24 @@
     style.textContent = '.cloud-backup-button{position:fixed;right:14px;bottom:calc(56px + env(safe-area-inset-bottom));z-index:9998;border:0;border-radius:999px;padding:11px 16px;background:#173b32;color:#fff;font:700 14px system-ui;box-shadow:0 6px 22px #0004}.cloud-backup-panel{position:fixed;inset:0;z-index:9999;background:#0008;display:grid;place-items:center;padding:16px}.cloud-backup-card{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;color:#17221f;border-radius:18px;padding:20px;font:15px/1.4 system-ui;box-shadow:0 20px 60px #0008}.cloud-backup-card h2{margin:0 0 8px}.cloud-backup-card input,.cloud-backup-card button,.cloud-backup-card select{box-sizing:border-box;width:100%;margin-top:9px;padding:11px;border:1px solid #bcc9c5;border-radius:10px;font:inherit}.cloud-backup-card button{background:#173b32;color:#fff;font-weight:700}.cloud-backup-card button.secondary{background:#eef3f1;color:#173b32}.cloud-backup-close{float:right;width:auto!important;margin:0!important;padding:5px 9px!important}.cloud-backup-status{padding:9px 0;color:#36544b}.cloud-backup-note{font-size:13px;color:#52655f}.cloud-backup-history{margin:10px 0 0;padding:0;list-style:none}.cloud-backup-history li{display:flex;gap:8px;align-items:center;border-top:1px solid #e2e8e6;padding:8px 0}.cloud-backup-history button{width:auto;margin:0;padding:7px 9px}.cloud-backup-hidden{display:none!important}';
     document.head.appendChild(style);
 
-    const button = document.createElement('button');
-    button.className = 'cloud-backup-button';
-    button.textContent = '☁ Sauvegarde';
-    button.type = 'button';
-    document.body.appendChild(button);
+    let button = options.triggerElement || (options.triggerSelector && document.querySelector(options.triggerSelector));
+    if (button && options.replaceTrigger) {
+      const replacement = button.cloneNode(true);
+      button.replaceWith(replacement);
+      button = replacement;
+    }
+    if (!button) {
+      button = document.createElement('button');
+      button.className = 'cloud-backup-button';
+      button.textContent = '☁ Sauvegarde';
+      button.type = 'button';
+      document.body.appendChild(button);
+    }
+    if (options.triggerAriaLabel) button.setAttribute('aria-label', options.triggerAriaLabel);
 
     const panel = document.createElement('div');
     panel.className = 'cloud-backup-panel cloud-backup-hidden';
-    panel.innerHTML = '<div class="cloud-backup-card"><button class="cloud-backup-close secondary" type="button" aria-label="Fermer">✕</button><h2>Sauvegarde automatique</h2><div class="cloud-backup-status">Vérification…</div><div class="cloud-backup-auth"><p>Utilisez la même adresse et le même mot de passe dans les deux applications. Cette connexion n’est à faire qu’une fois par appareil.</p><input class="cloud-backup-email" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.fr"><input class="cloud-backup-password" type="password" autocomplete="current-password" minlength="6" placeholder="Mot de passe (6 caractères minimum)"><button class="cloud-backup-login" type="button">Se connecter</button><button class="cloud-backup-signup secondary" type="button">Créer mon accès de sauvegarde</button></div><div class="cloud-backup-tools cloud-backup-hidden"><button class="cloud-backup-now" type="button">Sauvegarder maintenant</button><button class="cloud-backup-download secondary" type="button">Télécharger la version actuelle sur ce PC</button><h3>Anciennes versions</h3><ul class="cloud-backup-history"></ul><button class="cloud-backup-logout secondary" type="button">Déconnecter cet appareil</button></div><p class="cloud-backup-note">La restauration crée elle-même une nouvelle version : rien n’est écrasé définitivement.</p></div>';
+    panel.innerHTML = '<div class="cloud-backup-card"><button class="cloud-backup-close secondary" type="button" aria-label="Fermer">✕</button><h2>Sauvegarde automatique</h2><div class="cloud-backup-status">Vérification…</div><div class="cloud-backup-auth"><p>Utilisez la même adresse et le même mot de passe dans les trois applications. Cette connexion n’est à faire qu’une fois par appareil.</p><input class="cloud-backup-email" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.fr"><input class="cloud-backup-password" type="password" autocomplete="current-password" minlength="6" placeholder="Mot de passe (6 caractères minimum)"><button class="cloud-backup-login" type="button">Se connecter</button><button class="cloud-backup-signup secondary" type="button">Créer mon accès de sauvegarde</button></div><div class="cloud-backup-tools cloud-backup-hidden"><button class="cloud-backup-now" type="button">Sauvegarder maintenant</button><button class="cloud-backup-download secondary" type="button">Télécharger la version actuelle sur ce PC</button><button class="cloud-backup-download-all secondary" type="button">Télécharger les 20 dernières versions</button><h3>Anciennes versions (20 maximum)</h3><ul class="cloud-backup-history"></ul><button class="cloud-backup-logout secondary" type="button">Déconnecter cet appareil</button></div><p class="cloud-backup-note">Les 20 dernières versions sont conservées. Une restauration crée une nouvelle version : rien n’est écrasé sans laisser de trace.</p></div>';
     document.body.appendChild(panel);
 
     const $ = (selector) => panel.querySelector(selector);
@@ -161,6 +170,23 @@
       link.download = `${options.appId}-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+    $('.cloud-backup-download-all').addEventListener('click', async () => {
+      if (!user) return;
+      status('Préparation des 20 versions…');
+      const [currentResult, historyResult] = await Promise.all([
+        client.from('user_app_backup_current').select('payload,revision,updated_at,source').eq('user_id', user.id).eq('app_id', options.appId).maybeSingle(),
+        client.from('user_app_backup_history').select('payload,revision,created_at,source').eq('user_id', user.id).eq('app_id', options.appId).order('revision', { ascending: false }).limit(20)
+      ]);
+      const error = currentResult.error || historyResult.error;
+      if (error) return status(`Téléchargement impossible : ${error.message}`);
+      const blob = new Blob([JSON.stringify({ app: options.appId, exportedAt: new Date().toISOString(), current: currentResult.data, history: historyResult.data || [] }, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${options.appId}-20-versions-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      status('Les versions ont été téléchargées sur cet appareil.');
     });
     $('.cloud-backup-logout').addEventListener('click', () => client.auth.signOut());
     $('.cloud-backup-history').addEventListener('click', (event) => { const revision = event.target.dataset.revision; if (revision) restoreRevision(Number(revision)); });
