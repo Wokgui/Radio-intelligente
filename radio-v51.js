@@ -60,6 +60,14 @@
     setError('');
   }
 
+  function updateAddAction(){
+    const input=document.getElementById('youtubeAddInput');
+    const confirm=document.getElementById('youtubeAddConfirm');
+    if(!input||!confirm||confirm.disabled)return;
+    const value=input.value.trim();
+    confirm.textContent=value&&!videoId(value)?'Rechercher sur YouTube':'Ajouter';
+  }
+
   function openSheet(){
     const sheet=document.getElementById('youtubeAddSheet');
     const title=document.getElementById('youtubeAddTitle');
@@ -69,13 +77,14 @@
     const search=document.getElementById('youtubeSearchLink');
     if(!sheet||!title||!note||!input||!confirm||!search)return;
     title.textContent='Ajouter un morceau';
-    note.textContent='Colle le lien YouTube : le titre, l’artiste et la pochette seront ajoutés automatiquement.';
+    note.textContent='Colle un lien YouTube pour ajouter le morceau, ou écris des mots-clés pour afficher les résultats YouTube.';
     confirm.textContent='Ajouter';
     search.classList.remove('visible');
     search.href='#';
     input.value='';
-    input.placeholder='https://www.youtube.com/watch?v=…';
+    input.placeholder='Lien YouTube ou artiste + titre';
     setError('');
+    updateAddAction();
     sheet.classList.add('open');
     sheet.setAttribute('aria-hidden','false');
     setTimeout(()=>input.focus(),30);
@@ -84,9 +93,17 @@
   async function submitSheet(){
     const input=document.getElementById('youtubeAddInput');
     const confirm=document.getElementById('youtubeAddConfirm');
-    const url=canonicalUrl(input?.value);
+    const raw=String(input?.value||'').trim();
+    if(!raw){setError('Colle un lien YouTube ou écris des termes de recherche.');return}
+    const url=canonicalUrl(raw);
     const id=videoId(url);
-    if(!id){setError('Colle un lien de vidéo YouTube valide.');return}
+    if(!id){
+      const search=document.getElementById('youtubeSearchLink');
+      search.href='https://www.youtube.com/results?search_query='+encodeURIComponent(raw);
+      search.click();
+      setError('Résultats ouverts : choisis une vidéo, puis colle son lien ici pour l’ajouter.');
+      return;
+    }
 
     if(S.kept.some(track=>videoId(track.youtubeUrl||track.externalUrl)===id)){
       setError('Ce morceau est déjà dans Gardés.');
@@ -171,11 +188,12 @@
       sheet.id='youtubeAddSheet';
       sheet.className='youtube-add-sheet';
       sheet.setAttribute('aria-hidden','true');
-      sheet.innerHTML='<div class="youtube-add-dialog" role="dialog" aria-modal="true" aria-labelledby="youtubeAddTitle"><h3 id="youtubeAddTitle">Ajouter un morceau</h3><p id="youtubeAddNote"></p><a id="youtubeSearchLink" class="youtube-search-link" target="_blank" rel="noopener">Rechercher sur YouTube</a><input id="youtubeAddInput" type="url" inputmode="url" autocomplete="off" aria-label="Lien YouTube"><div id="youtubeAddError" class="youtube-add-error" aria-live="polite"></div><div class="youtube-add-actions"><button id="youtubeAddCancel" type="button">Annuler</button><button id="youtubeAddConfirm" class="youtube-add-confirm" type="button">Ajouter</button></div></div>';
+      sheet.innerHTML='<div class="youtube-add-dialog" role="dialog" aria-modal="true" aria-labelledby="youtubeAddTitle"><h3 id="youtubeAddTitle">Ajouter un morceau</h3><p id="youtubeAddNote"></p><a id="youtubeSearchLink" class="youtube-search-link" target="_blank" rel="noopener">Rechercher sur YouTube</a><input id="youtubeAddInput" type="search" inputmode="search" autocomplete="off" aria-label="Lien ou recherche YouTube"><div id="youtubeAddError" class="youtube-add-error" aria-live="polite"></div><div class="youtube-add-actions"><button id="youtubeAddCancel" type="button">Annuler</button><button id="youtubeAddConfirm" class="youtube-add-confirm" type="button">Ajouter</button></div></div>';
       document.body.appendChild(sheet);
       sheet.addEventListener('click',event=>{if(event.target===sheet)closeSheet()});
       document.getElementById('youtubeAddCancel').onclick=closeSheet;
       document.getElementById('youtubeAddConfirm').onclick=submitSheet;
+      document.getElementById('youtubeAddInput').addEventListener('input',()=>{setError('');updateAddAction()});
       document.getElementById('youtubeAddInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();submitSheet()}});
       document.addEventListener('keydown',event=>{if(event.key==='Escape'&&sheet.classList.contains('open'))closeSheet()});
     }
