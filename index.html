@@ -450,7 +450,7 @@ body.settings-open #settingsPage{
 }
 </style>
 
-<style id="radioV48CompactSettings">
+<style id="radioV49CompactSettings">
 /* Réglages compacts — proposition A */
 #settingsPage{padding-bottom:34px!important}
 #settingsPage>.card.settings{
@@ -676,6 +676,138 @@ body.settings-open #settingsPage{
 }
 #settingsPage.history-only>.radio-history-card{
   margin-top:18px!important;
+}
+
+/* Échelle lisible et harmonieuse pour Réglages, Gardés et Passés */
+#settingsPage .settings-head h2{
+  font-size:1.32rem!important;
+  line-height:1.15!important;
+}
+#settingsPage .settings-back{
+  font-size:1.75rem!important;
+}
+#settingsPage.settings-only>.card.settings>div{
+  height:76px!important;
+}
+#settingsPage.settings-only>.card.settings label{
+  font-size:.98rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.settings-only>.card.settings select{
+  height:42px!important;
+  font-size:1rem!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button{
+  height:60px!important;
+  min-height:60px!important;
+  gap:9px!important;
+  font-size:.88rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+  font-size:1.4rem!important;
+  line-height:1!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+  font-size:.88rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.history-only>.radio-history-card .tab{
+  min-height:46px!important;
+  font-size:1.08rem!important;
+  line-height:1.15!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row{
+  min-height:100px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+  grid-template-columns:64px minmax(0,1fr)!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-cover{
+  width:62px!important;
+  height:62px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-info b,
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>b{
+  font-size:1.1rem!important;
+  line-height:1.18!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-info span,
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>span{
+  font-size:.9rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-actions>a,
+#settingsPage.history-only>.radio-history-card #hist .row-actions>button{
+  height:34px!important;
+  font-size:.8rem!important;
+  line-height:1!important;
+}
+#mainPage #miniMore{
+  font-size:1.75rem!important;
+}
+#mainPage .stats .stat{
+  min-height:46px!important;
+}
+#mainPage .stats .stat .sico{
+  font-size:1.85rem!important;
+}
+#mainPage .stats .stat .meta b{
+  font-size:1.26rem!important;
+  line-height:1!important;
+}
+#mainPage .stats .stat .meta span{
+  font-size:.86rem!important;
+  line-height:1.1!important;
+}
+@media(max-width:420px){
+  #settingsPage.settings-only>.card.settings>div{
+    height:72px!important;
+  }
+  #settingsPage.settings-only>.card.settings label{
+    font-size:.95rem!important;
+  }
+  #settingsPage.settings-only>.card.settings select{
+    font-size:.98rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button{
+    height:60px!important;
+    min-height:60px!important;
+    font-size:.84rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+    font-size:1.35rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+    font-size:.84rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card .tab{
+    min-height:44px!important;
+    font-size:1.05rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row{
+    min-height:96px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+    grid-template-columns:58px minmax(0,1fr)!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-cover{
+    width:56px!important;
+    height:56px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-info b,
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>b{
+    font-size:1.08rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-info span,
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>span{
+    font-size:.88rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-actions>a,
+  #settingsPage.history-only>.radio-history-card #hist .row-actions>button{
+    height:32px!important;
+    font-size:.76rem!important;
+  }
 }
 
 </style>
