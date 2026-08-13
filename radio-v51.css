@@ -1,0 +1,154 @@
+/* Gardés : proposition 3, cartes symétriques avec bandeau issu de la pochette. */
+#settingsPage.history-only>.radio-history-card .tabs{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr)!important;
+  align-items:stretch!important;
+  gap:7px!important;
+  padding:7px!important;
+}
+#settingsPage.history-only>.radio-history-card .history-add-tab{
+  min-width:0!important;
+  min-height:46px!important;
+  padding:4px 6px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  border:1px solid color-mix(in srgb,var(--a) 24%,transparent)!important;
+  border-radius:11px!important;
+  background:color-mix(in srgb,var(--a) 8%,var(--p))!important;
+  color:#7035ca!important;
+  box-shadow:none!important;
+  font-weight:900!important;
+}
+#settingsPage.history-only>.radio-history-card .history-add-tab>span{font-size:1.15rem;line-height:.85}
+#settingsPage.history-only>.radio-history-card .history-add-tab>small{font-size:.62rem;line-height:1}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-template-rows:56px 30px auto auto!important;
+  column-gap:8px!important;
+  row-gap:0!important;
+  min-height:168px!important;
+  padding:0 10px 10px!important;
+  border-radius:16px!important;
+  background:#fff!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::before{
+  content:"";
+  position:absolute;
+  z-index:-2;
+  inset:0 0 auto;
+  height:70px;
+  background-image:var(--row-cover);
+  background-size:cover;
+  background-position:center;
+  filter:blur(10px) saturate(.88);
+  transform:scale(1.08);
+  opacity:.68;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0 0 auto;
+  height:72px;
+  background:linear-gradient(180deg,rgba(23,19,41,.08),rgba(255,255,255,.12));
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-main{display:contents!important}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-cover{
+  grid-column:2!important;
+  grid-row:1 / span 2!important;
+  align-self:end!important;
+  justify-self:center!important;
+  width:60px!important;
+  height:60px!important;
+  border-radius:12px!important;
+  z-index:1!important;
+  border:1px solid rgba(255,255,255,.92)!important;
+  box-shadow:0 5px 14px rgba(37,22,56,.22)!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-info{
+  grid-column:1 / -1!important;
+  grid-row:3!important;
+  align-items:center!important;
+  justify-content:start!important;
+  text-align:center!important;
+  z-index:1!important;
+  padding-top:7px!important;
+  gap:3px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions{display:contents!important}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions>*{
+  grid-row:4!important;
+  min-width:0!important;
+  width:100%!important;
+  height:34px!important;
+  margin-top:9px!important;
+  padding:6px 4px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions>*:nth-child(1){grid-column:1!important}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions>*:nth-child(2){grid-column:2!important}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions>*:nth-child(3){grid-column:3!important}
+.youtube-add-sheet{
+  position:fixed;
+  inset:0;
+  z-index:20000;
+  display:none;
+  place-items:center;
+  padding:18px;
+  background:rgba(23,19,41,.48);
+  -webkit-backdrop-filter:blur(5px);
+  backdrop-filter:blur(5px);
+}
+.youtube-add-sheet.open{display:grid}
+.youtube-add-dialog{
+  width:min(430px,100%);
+  padding:20px;
+  border:1px solid color-mix(in srgb,var(--a) 18%,transparent);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(30,17,48,.28);
+  text-align:center;
+}
+.youtube-add-dialog h3{margin:0 0 7px;font-size:1.14rem}
+.youtube-add-dialog p{margin:0 0 14px;color:var(--m);font-size:.78rem;line-height:1.35}
+.youtube-add-dialog input{
+  width:100%;
+  min-height:48px;
+  padding:11px 13px;
+  border:1px solid var(--l);
+  border-radius:13px;
+  background:#fbf9fd;
+  color:var(--t);
+  font-size:.82rem;
+}
+.youtube-add-error{min-height:19px;padding-top:5px;color:#bd3859;font-size:.7rem}
+.youtube-add-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:5px}
+.youtube-add-actions button,.youtube-search-link{
+  min-height:44px;
+  border:1px solid var(--l);
+  border-radius:13px;
+  background:#f8f4fb;
+  color:#6735af;
+  font-weight:900;
+}
+.youtube-add-actions .youtube-add-confirm{border:0;background:linear-gradient(135deg,var(--a),var(--a2));color:#fff}
+.youtube-search-link{display:none;align-items:center;justify-content:center;margin:0 0 10px;text-decoration:none}
+.youtube-search-link.visible{display:flex}
+@media(max-width:420px){
+  #settingsPage.history-only>.radio-history-card .tabs{grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr)!important;gap:5px!important;padding:6px!important}
+  #settingsPage.history-only>.radio-history-card .history-add-tab{min-height:44px!important}
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){grid-template-rows:52px 28px auto auto!important;column-gap:6px!important;min-height:160px!important;padding:0 8px 9px!important}
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::before,
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::after{height:66px!important}
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-cover{width:56px!important;height:56px!important}
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-actions>*{font-size:.68rem!important;padding:5px 2px!important}
+}
