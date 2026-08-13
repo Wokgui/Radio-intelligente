@@ -450,7 +450,7 @@ body.settings-open #settingsPage{
 }
 </style>
 
-<style id="radioV49CompactSettings">
+<style id="radioV50CompactSettings">
 /* Réglages compacts — proposition A */
 #settingsPage{padding-bottom:34px!important}
 #settingsPage>.card.settings{
@@ -807,6 +807,56 @@ body.settings-open #settingsPage{
   #settingsPage.history-only>.radio-history-card #hist .row-actions>button{
     height:32px!important;
     font-size:.76rem!important;
+  }
+}
+
+/* Rythme vertical affiné dans Gardés, Passés et les actions Réglages */
+#settingsPage.settings-only>.radio-action-grid>button{
+  height:66px!important;
+  min-height:66px!important;
+  padding:10px 14px!important;
+  border-radius:15px!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+  font-size:1.5rem!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+  font-size:.9rem!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+  min-height:108px!important;
+  row-gap:9px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-info{
+  gap:4px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main)){
+  min-height:82px!important;
+  gap:5px!important;
+  padding-top:7px!important;
+  padding-bottom:7px!important;
+}
+@media(max-width:420px){
+  #settingsPage.settings-only>.radio-action-grid>button{
+    height:66px!important;
+    min-height:66px!important;
+    padding:10px!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+    font-size:1.45rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+    font-size:.87rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+    min-height:104px!important;
+    row-gap:8px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main)){
+    min-height:78px!important;
+    gap:5px!important;
+    padding-top:6px!important;
+    padding-bottom:6px!important;
   }
 }
 
