@@ -147,7 +147,793 @@ body:not(.settings-open) #mainPage{
 body:not(.settings-open) #mainPage .player{
   height:100svh!important;
   min-height:100svh!important;
-  max-height…25986 tokens truncated…extContent=cur.title;$('artist').textContent=cur.artist+(cur.album?' — '+cur.album:'');$('cat').textContent=L[cur.category]||cur.category;a.src=cur.preview;a.load();$('cover').src=cur.cover||DEF;sync()}
+  max-height:100svh!important;
+  overflow:hidden!important;
+}
+
+/* Gardés / Passés doit toujours rester dans la première page. */
+body:not(.settings-open) #mainPage .quick,
+body:not(.settings-open) #mainPage .stats{
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+body:not(.settings-open) #mainPage .stats{
+  flex-shrink:0!important;
+}
+
+/* Espace plus net entre "Régler l'interface" et le bloc des 4 actions. */
+#settingsPage .ui-card > .tools{
+  margin-top:26px!important;
+}
+#settingsPage .ui-card{
+  padding-bottom:12px!important;
+}
+</style>
+
+
+<style id="radioV28Fixes">
+/* v28 : centrage vertical exact du bloc chiffre + libellé Gardés / Passés */
+.stats .stat{
+  display:grid!important;
+  grid-template-columns:auto auto!important;
+  align-items:center!important;
+  justify-content:center!important;
+  column-gap:12px!important;
+}
+.stats .stat .sico{
+  grid-row:1!important;
+  grid-column:1!important;
+  align-self:center!important;
+  justify-self:center!important;
+}
+.stats .stat .meta{
+  grid-row:1!important;
+  grid-column:2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  height:100%!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:1!important;
+}
+.stats .stat .meta b,
+.stats .stat .meta span{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  width:100%!important;
+  text-align:center!important;
+}
+.stats .stat .meta span{
+  margin-top:2px!important;
+}
+</style>
+
+
+<style id="radioV29BackgroundColor">
+:root{--ui-main-bg:#f4f1f8}
+html,body{
+  background:linear-gradient(
+    color-mix(in srgb,var(--ui-main-bg) 72%,#fff),
+    var(--ui-main-bg)
+  )!important;
+}
+.track{
+  background:linear-gradient(
+    color-mix(in srgb,var(--ui-main-bg) 68%,#fff),
+    var(--ui-main-bg)
+  )!important;
+}
+body.settings-open #settingsPage{
+  background:linear-gradient(
+    color-mix(in srgb,var(--ui-main-bg) 72%,#fff),
+    var(--ui-main-bg)
+  )!important;
+}
+.settings-head{
+  /* Même couleur en haut que l'interface principale, sans modifier le fonctionnement des boutons. */
+  background:var(--ui-accent,#8542ea)!important;
+  color:#fff!important;
+  border-bottom-color:color-mix(in srgb,var(--ui-accent,#8542ea) 82%,#000)!important;
+}
+.settings-head h2{color:#fff!important}
+.settings-head .settings-back{
+  color:#fff!important;
+  background:#ffffff1f!important;
+  border-color:#ffffff55!important;
+  box-shadow:none!important;
+}
+.ui-color-control input[type=color]{
+  width:100%!important;
+  height:46px!important;
+  padding:3px!important;
+  border:1px solid var(--l)!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  cursor:pointer;
+}
+.ui-color-control input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+.ui-color-control input[type=color]::-webkit-color-swatch{border:0;border-radius:8px}
+</style>
+
+
+<style id="radioV32Theme">
+:root{
+  --ui-accent:#8542ea;
+  --ui-stats-bg:#ffffff;
+}
+
+/* Couleur secondaire commune, sans modifier disabled/pointer-events/handlers */
+.icon-btn,.mini-icon-btn,.settings-back,.stat .sico{
+  color:var(--ui-accent)!important;
+}
+.seek,input[type=range]{accent-color:var(--ui-accent)!important}
+.ui-open{
+  color:color-mix(in srgb,var(--ui-accent) 82%,#241b31)!important;
+  border-color:color-mix(in srgb,var(--ui-accent) 20%,#e8e1f1)!important;
+  background:color-mix(in srgb,var(--ui-accent) 10%,#fff)!important;
+}
+.ui-control output{
+  color:color-mix(in srgb,var(--ui-accent) 82%,#241b31)!important;
+}
+
+/* La grande tuile Gardés / Passés fait maintenant partie du thème */
+.stats{
+  background:var(--ui-stats-bg)!important;
+  border-color:color-mix(in srgb,var(--ui-accent) 16%,#e8e4ec)!important;
+}
+.stats .divider{
+  background:color-mix(in srgb,var(--ui-accent) 15%,#e8e4ec)!important;
+}
+
+/* Sélecteurs couleur */
+.ui-color-control input[type=color]{
+  width:100%!important;height:46px!important;padding:3px!important;
+  border:1px solid var(--l)!important;border-radius:12px!important;background:#fff!important;
+}
+.ui-color-control input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+.ui-color-control input[type=color]::-webkit-color-swatch{border:0;border-radius:8px}
+
+/* Skins */
+.ui-skins-control>label span{font-size:.65rem;color:var(--m);font-weight:800}
+.skin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.skin-btn{
+  min-height:50px;border:1px solid var(--l);border-radius:13px;background:#fff;
+  color:var(--t);display:flex;align-items:center;gap:8px;padding:7px 9px;
+  font-size:.72rem;font-weight:900;text-align:left;
+}
+.skin-btn i{
+  width:34px;height:34px;border-radius:10px;flex:0 0 34px;
+  background:
+    linear-gradient(135deg,var(--skin-bg) 0 48%,var(--skin-stats) 48% 70%,var(--skin-accent) 70% 100%);
+  border:1px solid #00000010;box-shadow:0 2px 5px #00000010;
+}
+.skin-btn.active{
+  border-color:var(--ui-accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--ui-accent) 14%,transparent);
+}
+.skin-note{margin-top:7px;text-align:center;color:var(--m);font-size:.64rem;font-weight:700}
+</style>
+
+
+<style id="radioV33SettingsFlow">
+/* v33 : Réglages en un seul ensemble continu, avec catégories lisibles */
+
+#settingsPage{
+  padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+}
+
+/* On enlève l'effet "grandes tuiles" */
+#settingsPage .card,
+#settingsPage .ui-card,
+#settingsPage .tools,
+#settingsPage .history,
+#settingsPage .install-card,
+/* v43 — réglages compacts, cohérents et adaptés au téléphone */
+#settingsPage{padding:10px 0 28px!important}
+#settingsPage>.settings{box-sizing:border-box!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:min(calc(100% - 28px),520px)!important;margin:12px auto!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#settingsPage>.settings>div{box-sizing:border-box!important;min-width:0!important;min-height:78px!important;margin:0!important;padding:11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 18%,#d9d5df)!important;border-radius:15px!important;background:color-mix(in srgb,var(--accent,#8542ea) 5%,white)!important;box-shadow:0 5px 15px rgba(41,30,60,.055)!important}
+#settingsPage>.settings>.wide{grid-column:1/-1!important;justify-self:center!important;width:calc(50% - 5px)!important}
+#settingsPage>.settings label{margin-bottom:7px!important;font-size:.8rem!important;font-weight:800!important;color:#51475d!important}
+#settingsPage>.settings select,#settingsPage>.settings input{width:100%!important;min-width:0!important}
+#settingsPage .radio-action-grid{box-sizing:border-box!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;width:min(calc(100% - 28px),520px)!important;margin:14px auto 10px!important}
+#settingsPage .radio-action-grid>button{box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;width:100%!important;min-width:0!important;min-height:66px!important;margin:0!important;padding:10px 11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 22%,#d9d5df)!important;border-radius:15px!important;background:white!important;color:#4c4256!important;box-shadow:0 5px 15px rgba(41,30,60,.06)!important;font-size:.76rem!important;font-weight:850!important;line-height:1.18!important;text-align:left!important}
+#settingsPage .radio-action-grid>button>span:first-child{flex:0 0 auto!important;font-size:1.2rem!important}
+#settingsPage .radio-action-grid>button>span:last-child{min-width:0!important}
+#settingsPage .radio-action-grid>#cloudBackupTile{background:color-mix(in srgb,var(--accent,#8542ea) 8%,white)!important}
+#settingsPage .radio-action-grid>#reset{border-color:#efc9c9!important;background:#fff7f7!important;color:#9a3d3d!important}
+#settingsPage>.radio-history-card{box-sizing:border-box!important;width:min(calc(100% - 28px),520px)!important;margin:12px auto!important;padding:11px!important;border:1px solid color-mix(in srgb,var(--accent,#8542ea) 16%,#d9d5df)!important;border-radius:17px!important;background:rgba(255,255,255,.82)!important;box-shadow:0 6px 18px rgba(41,30,60,.06)!important}
+#settingsPage>.radio-history-card .tabs{gap:6px!important;padding:4px!important;border-radius:13px!important;background:color-mix(in srgb,var(--accent,#8542ea) 7%,#f3f0f6)!important}
+#settingsPage>.radio-history-card .tab{min-height:40px!important;border:0!important;border-radius:10px!important;box-shadow:none!important}
+#settingsPage>.radio-history-card .hist{margin-top:10px!important}
+#settingsPage>.ui-card{box-sizing:border-box!important;width:min(calc(100% - 28px),520px)!important;margin:0 auto 12px!important;padding:0!important}
+#settingsPage>.ui-card:has(.ui-panel.hide){display:none!important}
+#settingsPage>.ui-card .ui-panel{padding:12px!important;border:1px solid #ddd4e8!important;border-radius:16px!important;background:rgba(255,255,255,.72)!important}
+@media(max-width:360px){#settingsPage>.settings,#settingsPage .radio-action-grid{gap:8px!important;width:calc(100% - 20px)!important}#settingsPage>.settings>div{padding:9px!important}#settingsPage .radio-action-grid>button{padding:9px!important;font-size:.71rem!important}}
+
+#settingsPage .status{
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  border-radius:0!important;
+}
+
+/* Largeur/paddings cohérents pour tout le flux */
+#settingsPage > .card,
+#settingsPage > .ui-card,
+#settingsPage > .tools,
+#settingsPage > .history,
+#settingsPage > .install-card,
+#settingsPage > .status{
+  margin:0 16px!important;
+  padding:0!important;
+}
+
+/* Les catégories restent clairement séparées */
+#settingsPage > .card + .card,
+#settingsPage > .card + .ui-card,
+#settingsPage > .ui-card + .tools,
+#settingsPage > .tools + .history,
+#settingsPage > .history + .install-card,
+#settingsPage > .install-card + .status,
+#settingsPage > .status + *{
+  margin-top:24px!important;
+  padding-top:22px!important;
+  border-top:1px solid color-mix(in srgb,var(--ui-accent) 12%,#ddd)!important;
+}
+
+/* La première catégorie ne prend pas de séparateur supérieur */
+#settingsPage > .card.settings{
+  margin-top:18px!important;
+  padding-top:0!important;
+  border-top:0!important;
+}
+
+/* Les blocs internes gardent une vraie respiration */
+#settingsPage .settings{
+  gap:14px!important;
+}
+#settingsPage .settings > div,
+#settingsPage .ui-panel,
+#settingsPage .tools .tool,
+#settingsPage .history,
+#settingsPage .install-card{
+  margin-bottom:0!important;
+}
+
+/* "Régler l'interface" reste visuellement identifiable sans devenir une grosse carte */
+#settingsPage .ui-open{
+  width:100%!important;
+  margin:0!important;
+  min-height:50px!important;
+}
+
+/* Le panneau d'interface reste continu */
+#settingsPage .ui-panel{
+  margin-top:14px!important;
+  padding:0!important;
+}
+
+/* Les sous-catégories de l'interface sont espacées */
+#settingsPage .ui-grid{
+  gap:14px!important;
+}
+#settingsPage .ui-control{
+  margin:0!important;
+}
+
+/* Bloc sauvegarde/restauration : distinct par espace, pas par grande tuile */
+#settingsPage .tools{
+  gap:10px!important;
+}
+#settingsPage .tools .tool{
+  border-radius:12px!important;
+}
+
+/* Historique / installation : séparation lisible */
+#settingsPage .history h3,
+#settingsPage .install-card h3,
+#settingsPage .ui-panel h3{
+  margin-top:0!important;
+  margin-bottom:12px!important;
+}
+
+/* Évite un effet de fond parasite sur le status */
+#settingsPage .status{
+  text-align:center!important;
+  padding-bottom:6px!important;
+}
+</style>
+
+<style id="radioV50CompactSettings">
+/* Réglages compacts — proposition A */
+#settingsPage{padding-bottom:34px!important}
+#settingsPage>.card.settings{
+  box-sizing:border-box!important;
+  width:min(1120px,calc(100% - 32px))!important;
+  margin:18px auto 10px!important;
+  padding:10px!important;
+  display:grid!important;
+  grid-template-columns:1.15fr 1.35fr .9fr!important;
+  gap:0!important;
+  border:1px solid color-mix(in srgb,var(--a) 16%,transparent)!important;
+  border-radius:18px!important;
+  background:color-mix(in srgb,var(--p) 88%,transparent)!important;
+  box-shadow:0 7px 22px rgba(50,35,82,.07)!important;
+}
+#settingsPage>.card.settings>div{
+  box-sizing:border-box!important;
+  width:auto!important;
+  height:70px!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:8px 14px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#settingsPage>.card.settings>div+div{
+  border-left:1px solid color-mix(in srgb,var(--a) 13%,transparent)!important;
+}
+#settingsPage>.card.settings>.wide{grid-column:auto!important;justify-self:stretch!important;width:100%!important}
+#settingsPage>.card.settings select{height:38px!important}
+#settingsPage>.radio-action-grid{
+  box-sizing:border-box!important;
+  width:min(1120px,calc(100% - 32px))!important;
+  height:auto!important;
+  margin:0 auto 12px!important;
+  padding:0!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+#settingsPage>.radio-action-grid>button{
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:52px!important;
+  min-height:52px!important;
+  margin:0!important;
+  padding:8px 12px!important;
+  border-radius:14px!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+#settingsPage>.radio-history-card{
+  box-sizing:border-box!important;
+  width:min(1120px,calc(100% - 32px))!important;
+  margin:0 auto 30px!important;
+  padding:0!important;
+  border:1px solid color-mix(in srgb,var(--a) 14%,transparent)!important;
+  border-radius:18px!important;
+  overflow:hidden!important;
+  background:color-mix(in srgb,var(--p) 90%,transparent)!important;
+  box-shadow:0 7px 22px rgba(50,35,82,.07)!important;
+}
+#settingsPage>.radio-history-card .tabs{
+  box-sizing:border-box!important;
+  width:100%!important;
+  margin:0!important;
+}
+#settingsPage>.radio-history-card #hist{
+  box-sizing:border-box!important;
+  width:100%!important;
+  padding:8px!important;
+  gap:8px!important;
+}
+#settingsPage>.radio-history-card #hist .row{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:60px minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  column-gap:12px!important;
+  row-gap:5px!important;
+  min-height:88px!important;
+  padding:10px 12px!important;
+  border:1px solid color-mix(in srgb,var(--a) 10%,transparent)!important;
+  border-radius:13px!important;
+  background:color-mix(in srgb,var(--p) 93%,transparent)!important;
+}
+#settingsPage>.radio-history-card #hist .row-main{display:contents!important}
+#settingsPage>.radio-history-card #hist .row-cover{
+  grid-column:1!important;
+  grid-row:1 / span 2!important;
+  align-self:center!important;
+  width:58px!important;
+  height:58px!important;
+  border-radius:11px!important;
+}
+#settingsPage>.radio-history-card #hist .row-info{
+  grid-column:2!important;
+  grid-row:1!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  width:100%!important;
+  min-width:0!important;
+  text-align:center!important;
+}
+#settingsPage>.radio-history-card #hist .row-info b,
+#settingsPage>.radio-history-card #hist .row-info span{
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+}
+#settingsPage>.radio-history-card #hist .row-actions{
+  grid-column:2!important;
+  grid-row:2!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  gap:8px!important;
+  width:100%!important;
+  margin:0!important;
+}
+#settingsPage>.radio-history-card #hist .row-actions>a,
+#settingsPage>.radio-history-card #hist .row-actions>button{
+  box-sizing:border-box!important;
+  min-width:104px!important;
+  height:29px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+@media(max-width:620px){
+  #settingsPage>.card.settings{
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+  }
+  #settingsPage>.card.settings>div{
+    height:64px!important;
+    padding:7px 10px!important;
+    border:0!important;
+    border-radius:12px!important;
+    background:color-mix(in srgb,var(--a) 5%,transparent)!important;
+  }
+  #settingsPage>.card.settings>div:first-child{grid-column:1 / -1!important}
+  #settingsPage>.card.settings>div+div{border-left:0!important}
+  #settingsPage>.radio-action-grid{grid-template-columns:1fr 1fr!important}
+  #settingsPage>.radio-history-card #hist .row-actions>a,
+  #settingsPage>.radio-history-card #hist .row-actions>button{
+    min-width:0!important;
+    flex:1 1 0!important;
+  }
+}
+@media(max-width:420px){
+  #settingsPage>.card.settings{grid-template-columns:1fr!important}
+  #settingsPage>.card.settings>div:first-child{grid-column:auto!important}
+  #settingsPage>.radio-action-grid>button{
+    padding:7px!important;
+    font-size:.72rem!important;
+  }
+  #settingsPage>.radio-history-card #hist .row{
+    grid-template-columns:52px minmax(0,1fr)!important;
+    column-gap:8px!important;
+    padding:8px!important;
+  }
+  #settingsPage>.radio-history-card #hist .row-cover{
+    width:50px!important;
+    height:50px!important;
+  }
+  #settingsPage>.radio-history-card #hist .row-actions{gap:5px!important}
+  #settingsPage>.radio-history-card #hist .row-actions>a,
+  #settingsPage>.radio-history-card #hist .row-actions>button{
+    padding:4px!important;
+    font-size:.68rem!important;
+  }
+}
+/* Onglets d'historique toujours visibles et lignes Passés centrées */
+#settingsPage>.radio-history-card{
+  overflow:visible!important;
+}
+#settingsPage>.radio-history-card .tabs{
+  position:sticky!important;
+  top:58px!important;
+  z-index:10000!important;
+  margin:0!important;
+  background:color-mix(in srgb,var(--p) 94%,var(--a) 6%)!important;
+  box-shadow:0 8px 18px rgba(50,35,82,.12)!important;
+}
+#settingsPage>.radio-history-card #hist .row:not(:has(.row-main)){
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  min-height:88px!important;
+  text-align:center!important;
+}
+#settingsPage>.radio-history-card #hist .row:not(:has(.row-main))>b,
+#settingsPage>.radio-history-card #hist .row:not(:has(.row-main))>span{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+  text-align:center!important;
+}
+#settingsPage>.radio-history-card #hist .row:not(:has(.row-main))>br{
+  display:none!important;
+}
+
+/* Pages secondaires séparées : réglages ou historique */
+#settingsPage.settings-only>.radio-history-card{
+  display:none!important;
+}
+#settingsPage.history-only>.card.settings,
+#settingsPage.history-only>.radio-action-grid,
+#settingsPage.history-only>.ui-card,
+#settingsPage.history-only>.undo,
+#settingsPage.history-only>.status{
+  display:none!important;
+}
+#settingsPage.history-only>.radio-history-card{
+  margin-top:18px!important;
+}
+
+/* Échelle lisible et harmonieuse pour Réglages, Gardés et Passés */
+#settingsPage .settings-head h2{
+  font-size:1.32rem!important;
+  line-height:1.15!important;
+}
+#settingsPage .settings-back{
+  font-size:1.75rem!important;
+}
+#settingsPage.settings-only>.card.settings>div{
+  height:76px!important;
+}
+#settingsPage.settings-only>.card.settings label{
+  font-size:.98rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.settings-only>.card.settings select{
+  height:42px!important;
+  font-size:1rem!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button{
+  height:60px!important;
+  min-height:60px!important;
+  gap:9px!important;
+  font-size:.88rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+  font-size:1.4rem!important;
+  line-height:1!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+  font-size:.88rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.history-only>.radio-history-card .tab{
+  min-height:46px!important;
+  font-size:1.08rem!important;
+  line-height:1.15!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row{
+  min-height:100px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+  grid-template-columns:64px minmax(0,1fr)!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-cover{
+  width:62px!important;
+  height:62px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-info b,
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>b{
+  font-size:1.1rem!important;
+  line-height:1.18!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-info span,
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>span{
+  font-size:.9rem!important;
+  line-height:1.2!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row-actions>a,
+#settingsPage.history-only>.radio-history-card #hist .row-actions>button{
+  height:34px!important;
+  font-size:.8rem!important;
+  line-height:1!important;
+}
+#mainPage #miniMore{
+  font-size:1.75rem!important;
+}
+#mainPage .stats .stat{
+  min-height:46px!important;
+}
+#mainPage .stats .stat .sico{
+  font-size:1.85rem!important;
+}
+#mainPage .stats .stat .meta b{
+  font-size:1.26rem!important;
+  line-height:1!important;
+}
+#mainPage .stats .stat .meta span{
+  font-size:.86rem!important;
+  line-height:1.1!important;
+}
+@media(max-width:420px){
+  #settingsPage.settings-only>.card.settings>div{
+    height:72px!important;
+  }
+  #settingsPage.settings-only>.card.settings label{
+    font-size:.95rem!important;
+  }
+  #settingsPage.settings-only>.card.settings select{
+    font-size:.98rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button{
+    height:60px!important;
+    min-height:60px!important;
+    font-size:.84rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+    font-size:1.35rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+    font-size:.84rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card .tab{
+    min-height:44px!important;
+    font-size:1.05rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row{
+    min-height:96px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+    grid-template-columns:58px minmax(0,1fr)!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-cover{
+    width:56px!important;
+    height:56px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-info b,
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>b{
+    font-size:1.08rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-info span,
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main))>span{
+    font-size:.88rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row-actions>a,
+  #settingsPage.history-only>.radio-history-card #hist .row-actions>button{
+    height:32px!important;
+    font-size:.76rem!important;
+  }
+}
+
+/* Rythme vertical affiné dans Gardés, Passés et les actions Réglages */
+#settingsPage.settings-only>.radio-action-grid>button{
+  height:66px!important;
+  min-height:66px!important;
+  padding:10px 14px!important;
+  border-radius:15px!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+  font-size:1.5rem!important;
+}
+#settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+  font-size:.9rem!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+  min-height:108px!important;
+  row-gap:9px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main) .row-info{
+  gap:4px!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main)){
+  min-height:82px!important;
+  gap:5px!important;
+  padding-top:7px!important;
+  padding-bottom:7px!important;
+}
+@media(max-width:420px){
+  #settingsPage.settings-only>.radio-action-grid>button{
+    height:66px!important;
+    min-height:66px!important;
+    padding:10px!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:first-child{
+    font-size:1.45rem!important;
+  }
+  #settingsPage.settings-only>.radio-action-grid>button>span:last-child{
+    font-size:.87rem!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:has(.row-main){
+    min-height:104px!important;
+    row-gap:8px!important;
+  }
+  #settingsPage.history-only>.radio-history-card #hist .row:not(:has(.row-main)){
+    min-height:78px!important;
+    gap:5px!important;
+    padding-top:6px!important;
+    padding-bottom:6px!important;
+  }
+}
+
+</style>
+</head><body><script id="embeddedState">localStorage.setItem("radio_hugo_master_v1",JSON.stringify({"kept":[{"id":139907813,"artist":"Fabrizio Paterlini","title":"My Piano, The Clouds","album":"The Art of the Piano","cover":"https://cdn-images.dzcdn.net/images/cover/e410aa4af97f7a07e3fa93e955f51066/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/b/3/7/0/b37c54bac8f039f35b1ef1ae197e0c65.mp3?hdnea=exp=1786024029~acl=/api/1/1/b/3/7/0/b37c54bac8f039f35b1ef1ae197e0c65.mp3*~data=user_id=0,application_id=42~hmac=f0a7fadcad16f5999ac1d46af8b7b611c600d886c3a53b7333282c36112f4c31","category":"piano","date":"2026-08-06T13:32:14.716Z","signal":"keep"},{"id":2989813501,"artist":"Justice","title":"Neverender","album":"Neverender (Remixes)","cover":"https://cdn-images.dzcdn.net/images/cover/85bcee37bdd35cb4054e05e846853e5a/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/d/5/7/0/d578acdae0ca8e19860bac08e89388a1.mp3?hdnea=exp=1786107172~acl=/api/1/1/d/5/7/0/d578acdae0ca8e19860bac08e89388a1.mp3*~data=user_id=0,application_id=42~hmac=fe3701130372416c9182ce1235d39ece898cf2c05d9a1d469c3579e3c96d3254","category":"altpop","rank":22,"sourceWeight":10.55962775531303,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/2989813501","date":"2026-08-07T12:38:33.791Z","signal":"keep"},{"id":4029695931,"artist":"Kiasmos","title":"Grown","album":"II Reworked","cover":"https://cdn-images.dzcdn.net/images/cover/0189e7f1d646863e0cb5d28a7509b0dc/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/3/1/0/631fd3d9c95bedc5e262442dc0ce6f77.mp3?hdnea=exp=1786108235~acl=/api/1/1/6/3/1/0/631fd3d9c95bedc5e262442dc0ce6f77.mp3*~data=user_id=0,application_id=42~hmac=03da19ab2b88106bb7b2de04bbc816c50b18b36742a85a42d5b6c63a48788769","category":"piano","rank":20,"sourceWeight":11.22869365482701,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4029695931","date":"2026-08-07T12:57:54.437Z","signal":"keep"},{"id":78812046,"artist":"Helios","title":"Your Zenith","album":"Moiety","cover":"https://cdn-images.dzcdn.net/images/cover/68121c467ccbd9600d52922cf723316a/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/a/6/0/7a67ccd48909b6414e7bca328c80e082.mp3?hdnea=exp=1786108396~acl=/api/1/1/7/a/6/0/7a67ccd48909b6414e7bca328c80e082.mp3*~data=user_id=0,application_id=42~hmac=23114a3dc0953ed2aabe0409beebd0c134524358e5d6196920d3bc1f583efc6c","category":"electro","rank":34,"sourceWeight":17.48211068943473,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/78812046","date":"2026-08-07T12:58:54.576Z","signal":"keep"}],"likedMemory":[],"rejected":[{"id":6574473,"artist":"Claudio Arrau","title":"Chopin: Waltz No. 19 in A Minor, KK IVb/11","album":"Chopin: Piano Music/Piano Concertos","cover":"https://cdn-images.dzcdn.net/images/cover/69ab908ca7e8ed5040f95169c717ed36/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/b/d/4/0/bd427503af51fe07b8a30315b20b694e.mp3?hdnea=exp=1786021596~acl=/api/1/1/b/d/4/0/bd427503af51fe07b8a30315b20b694e.mp3*~data=user_id=0,application_id=42~hmac=2149c046d3f64b1c8c73ae41afc6bf2e93acc2b327a123d86ff2abeb652843a3","category":"classic","date":"2026-08-06T12:51:48.524Z","signal":"track"},{"id":493075322,"artist":"Christian Löffler","title":"Nil","album":"Mare","cover":"https://cdn-images.dzcdn.net/images/cover/391df187be77390025ca4eff64fbfb1c/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/5/2/0/852b420518b6422967b9c354f095ff17.mp3?hdnea=exp=1786022871~acl=/api/1/1/8/5/2/0/852b420518b6422967b9c354f095ff17.mp3*~data=user_id=0,application_id=42~hmac=cfe0bfdbda62138f7cb03f3a06fada3fa79bccdfc8832470f53ff25fec5b42a7","category":"electro","date":"2026-08-06T13:12:54.462Z","signal":"track"},{"id":7350384,"artist":"Roberto Cacciapaglia","title":"Wild Side","album":"Canone degli Spazi","cover":"https://cdn-images.dzcdn.net/images/cover/13f6bee53f767df4a498422de4989a9d/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/2/7/6/0/276aa0ce02d04f2fe4354340cda10b1e.mp3?hdnea=exp=1786022875~acl=/api/1/1/2/7/6/0/276aa0ce02d04f2fe4354340cda10b1e.mp3*~data=user_id=0,application_id=42~hmac=18abf0090095a3dc6f817ec9b66537a651ab0ca4c319ce806606e1c4b77252f6","category":"piano","date":"2026-08-06T13:12:59.247Z","signal":"track"},{"id":2043656967,"artist":"London Music Works","title":"Driving with the Top Down","album":"Music from the Iron Man Trilogy","cover":"https://cdn-images.dzcdn.net/images/cover/029531c8806c15144c64e540fa328b39/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/6/7/0/867ef3a3a90f1e167fc10b16a6d018ca.mp3?hdnea=exp=1786022879~acl=/api/1/1/8/6/7/0/867ef3a3a90f1e167fc10b16a6d018ca.mp3*~data=user_id=0,application_id=42~hmac=97d4a62d41035c87d9143f35e7042a22e96be93783fd456d249635c44cf0d6a4","category":"cinema","date":"2026-08-06T13:13:08.338Z","signal":"track"},{"id":74090304,"artist":"Doctor Flake","title":"Rock On","album":"Acchordance","cover":"https://cdn-images.dzcdn.net/images/cover/6ba48a20f8a9d5eed8ea60b0796a0df7/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/d/6/4/0/d6445c992d409485a4d16d2a8a312857.mp3?hdnea=exp=1786023429~acl=/api/1/1/d/6/4/0/d6445c992d409485a4d16d2a8a312857.mp3*~data=user_id=0,application_id=42~hmac=d25a9bb2d3ff2b80b232c4d4e4e64cbd883032beb0953b149715c9527ed1cb2a","category":"electro","date":"2026-08-06T13:22:19.064Z","signal":"track"},{"id":79034867,"artist":"Frédéric Chopin","title":"Raindrop Prélude","album":"Chopin - The Essential Collection","cover":"https://cdn-images.dzcdn.net/images/cover/3c178cfc3b4f03ba659636ab6eb4e805/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/6/2/0/7624b55328ce60d9b5b4837448d871b4.mp3?hdnea=exp=1786023439~acl=/api/1/1/7/6/2/0/7624b55328ce60d9b5b4837448d871b4.mp3*~data=user_id=0,application_id=42~hmac=d6e59bd89ee64f25f16c5bc37cb4974c7a9259a25f4c3919898bea2c766c2e4f","category":"classic","date":"2026-08-06T13:22:23.197Z","signal":"track"},{"id":1637422792,"artist":"Jean-Michel Blais","title":"if you build it, they will come","album":"aubades","cover":"https://cdn-images.dzcdn.net/images/cover/e0a4c40695d97d67a25010918f7f0caf/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/3/1/0/6316a78444e42febc26120f101ac17a7.mp3?hdnea=exp=1786023443~acl=/api/1/1/6/3/1/0/6316a78444e42febc26120f101ac17a7.mp3*~data=user_id=0,application_id=42~hmac=33b1fcd941a9cee76d7bdd88cb8f24bf1e2b036f08c63164282ef23811cc99a2","category":"piano","date":"2026-08-06T13:22:28.622Z","signal":"track"},{"id":1892440847,"artist":"Placebo","title":"The Bitter End","album":"Sleeping With Ghosts","cover":"https://cdn-images.dzcdn.net/images/cover/2eed7f87482c120dafa45ddc78b91a36/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/6/8/0/76801bc3c3558b5286effbc0c218af18.mp3?hdnea=exp=1786023790~acl=/api/1/1/7/6/8/0/76801bc3c3558b5286effbc0c218af18.mp3*~data=user_id=0,application_id=42~hmac=64d0739eea53cf1255f8af237e1331e0cdca57e45bea022cf9e266713e00e18b","category":"rock","date":"2026-08-06T13:28:31.084Z","signal":"track"},{"id":3803448682,"artist":"Pixies","title":"Que Sera Sera","album":"You're So Impatient","cover":"https://cdn-images.dzcdn.net/images/cover/965c54eb3247d0a1eef393ef877c8469/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/3/a/0/c3ad68a539df630d0551e6b17d5f4916.mp3?hdnea=exp=1786023811~acl=/api/1/1/c/3/a/0/c3ad68a539df630d0551e6b17d5f4916.mp3*~data=user_id=0,application_id=42~hmac=b71c785043a40d67adfcb725cef9133238724de7b0ac2e5b5f1f1719ce2de436","category":"altpop","date":"2026-08-06T13:28:41.278Z","signal":"track"},{"id":1054866642,"artist":"HVOB","title":"Dogs","album":"HVOB","cover":"https://cdn-images.dzcdn.net/images/cover/d76364ba40b628979343606beb2e2337/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/b/a/4/0/ba48922a5091c1c99556a2f616efc135.mp3?hdnea=exp=1786023821~acl=/api/1/1/b/a/4/0/ba48922a5091c1c99556a2f616efc135.mp3*~data=user_id=0,application_id=42~hmac=28f1833492221a625d911ee5cd5fb8027b96e3a4541e22286978467edb5804e0","category":"electro","date":"2026-08-06T13:32:09.381Z","signal":"track"},{"id":568382572,"artist":"James Heather","title":"Empire Sounds","album":"Reworks","cover":"https://cdn-images.dzcdn.net/images/cover/8a8c8a8a50a829706150e1fbd73697bb/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/a/a/4/0/aa48253f174d1ae88027372f3de44e5c.mp3?hdnea=exp=1786099932~acl=/api/1/1/a/a/4/0/aa48253f174d1ae88027372f3de44e5c.mp3*~data=user_id=0,application_id=42~hmac=8b0e139017d63b577e71cf162e49bfc25c965451794dd67d1c141f003b926493","category":"piano","rank":26,"sourceWeight":9.540514547429293,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/568382572","date":"2026-08-07T10:37:29.760Z","signal":"track"},{"id":9773845,"artist":"Philip Wesley","title":"Dark Night of the Soul","album":"Dark Night of the Soul","cover":"https://cdn-images.dzcdn.net/images/cover/05d15508c9d673b4eda1210bd6a475b1/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/5/b/0/65b69e49b004fe80061d62b6bd99f3ee.mp3?hdnea=exp=1786100283~acl=/api/1/1/6/5/b/0/65b69e49b004fe80061d62b6bd99f3ee.mp3*~data=user_id=0,application_id=42~hmac=e0394ab96e35922ae5a331cc895e3089c6bdd91a9c557702be097b31f557e66a","category":"piano","rank":4,"sourceWeight":8.734906153936382,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/9773845","date":"2026-08-07T10:43:11.268Z","signal":"track"},{"id":65999963,"artist":"Yuja Wang","title":"Rhapsody on a Theme of Paganini, Op. 43 : Rachmaninoff: Rhapsody on a Theme of Paganini, Op. 43: Var. 16","album":"Rachmaninov","cover":"https://cdn-images.dzcdn.net/images/cover/d5d8da586fdbcd4d6c8b6910e015120b/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/5/f/0/0/5f00c824bc8308f8fea9bac55c8044a9.mp3?hdnea=exp=1786100292~acl=/api/1/1/5/f/0/0/5f00c824bc8308f8fea9bac55c8044a9.mp3*~data=user_id=0,application_id=42~hmac=9db97655bb1f9123fa6ef3da8e918a71b6fe92a5df42859880468f796b0a9e8d","category":"classic","rank":19,"sourceWeight":2.3333333333333335,"source":"deezer-related","externalUrl":"https://www.deezer.com/track/65999963","date":"2026-08-07T10:43:21.999Z","signal":"track"},{"id":1992816487,"artist":"P!nk","title":"Never Gonna Not Dance Again","album":"Never Gonna Not Dance Again","cover":"https://cdn-images.dzcdn.net/images/cover/26078644ab9a4929d114dc8918b679b3/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/2/e/3/0/2e3a8e522167ee2b446edb455c663ea9.mp3?hdnea=exp=1786100303~acl=/api/1/1/2/e/3/0/2e3a8e522167ee2b446edb455c663ea9.mp3*~data=user_id=0,application_id=42~hmac=093870ecc56d76bcceff1039eb864a7ca9da8d1776a7c392a56d40933bc25bb6","category":"altpop","rank":22,"sourceWeight":14.849490900470027,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/1992816487","date":"2026-08-07T10:44:31.094Z","signal":"track"},{"id":92069512,"artist":"Wim Mertens","title":"Often a Bird","album":"Jardin clos","cover":"https://cdn-images.dzcdn.net/images/cover/cc3b3aa66537737544274c02c1f898a7/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/a/a/0/7aa2b33e4e1a5af38fe3789f5a57ba83.mp3?hdnea=exp=1786100371~acl=/api/1/1/7/a/a/0/7aa2b33e4e1a5af38fe3789f5a57ba83.mp3*~data=user_id=0,application_id=42~hmac=5acc68a9714874b219a370ca44cd60326f94a9a2d82532ee8b841014586f8367","category":"piano","rank":2,"sourceWeight":8.822262229961225,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/92069512","date":"2026-08-07T10:44:44.913Z","signal":"track"},{"id":111976552,"artist":"Telephone","title":"Ça (c'est vraiment toi)","album":"Le Live (Remasterisé en 2015)","cover":"https://cdn-images.dzcdn.net/images/cover/c8ee1ccf564560668da46f691e205d12/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/b/2/4/0/b2434edbddaed7491cf184ee6f911f9d.mp3?hdnea=exp=1786100385~acl=/api/1/1/b/2/4/0/b2434edbddaed7491cf184ee6f911f9d.mp3*~data=user_id=0,application_id=42~hmac=3669d0687cbf6e2580bced4752eb332e762ab910d6129f04dcc97898c02a8aa5","category":"french","rank":33,"sourceWeight":8.359639303822537,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/111976552","date":"2026-08-07T10:44:49.754Z","signal":"track"},{"id":64802298,"artist":"Rhye","title":"Last Dance","album":"Woman","cover":"https://cdn-images.dzcdn.net/images/cover/c57291ee9dd69ed117d0420bc053727a/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/8/6/0/8863a530bb0b32314899fdaf1aa97551.mp3?hdnea=exp=1786100390~acl=/api/1/1/8/8/6/0/8863a530bb0b32314899fdaf1aa97551.mp3*~data=user_id=0,application_id=42~hmac=6edbb87e88b24639c9407310107331d02d9b4cb6443c377b01b7cca73596c3a6","category":"electro","rank":23,"sourceWeight":12.113828518957977,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/64802298","date":"2026-08-07T10:44:56.173Z","signal":"track"},{"id":1108606052,"artist":"Interpol","title":"The New","album":"Turn On The Bright Lights","cover":"https://cdn-images.dzcdn.net/images/cover/2c4b691fd7ae41ef532dc848745826b5/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/5/6/f/0/56f3135fbc88a3127d573a54e20e3d1f.mp3?hdnea=exp=1786100833~acl=/api/1/1/5/6/f/0/56f3135fbc88a3127d573a54e20e3d1f.mp3*~data=user_id=0,application_id=42~hmac=9257b23bff3e7801ad210029c74337ffaeac4946c91b30802072e5499d370f6a","category":"funk","rank":25,"sourceWeight":13.356107787930208,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/1108606052","date":"2026-08-07T10:52:15.571Z","signal":"track"},{"id":74056759,"artist":"David Nevue","title":"Winter Walk","album":"Awakenings: The Best of David Nevue (2001-2010)","cover":"https://cdn-images.dzcdn.net/images/cover/44fbe8bc18d978e884b11f66e4bc4696/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/2/6/7/0/267aec25083637a744ae1ea0a673bfec.mp3?hdnea=exp=1786107110~acl=/api/1/1/2/6/7/0/267aec25083637a744ae1ea0a673bfec.mp3*~data=user_id=0,application_id=42~hmac=dd0c8a2b614863215de61aeb3c3195f70f5babd3d0115870e4f3baecb5eed634","category":"piano","rank":2,"sourceWeight":12.387858618633494,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/74056759","date":"2026-08-07T12:36:59.299Z","signal":"track"},{"id":780597752,"artist":"Jean-Michel Blais","title":"L'amitié","album":"Matthias & Maxime (Original Motion Picture Soundtrack)","cover":"https://cdn-images.dzcdn.net/images/cover/08233a541e26e20a0c9c4ed9c0dd878d/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/b/4/0/4b4d97574053f737154ef8ea82d271cf.mp3?hdnea=exp=1786107120~acl=/api/1/1/4/b/4/0/4b4d97574053f737154ef8ea82d271cf.mp3*~data=user_id=0,application_id=42~hmac=83620c927c9c02321ce700dfaa7112f01c0fa117d2b63db1c2698d3802c45143","category":"piano","rank":34,"sourceWeight":9.826647337351645,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/780597752","date":"2026-08-07T12:37:05.608Z","signal":"track"},{"id":58194661,"artist":"Helen Jane Long","title":"Renewed","album":"Intervention","cover":"https://cdn-images.dzcdn.net/images/cover/5e297b228063015c4ba0180e5d0a7109/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/9/2/b/0/92bf677de32d7e84a64363a41fee68d9.mp3?hdnea=exp=1786107125~acl=/api/1/1/9/2/b/0/92bf677de32d7e84a64363a41fee68d9.mp3*~data=user_id=0,application_id=42~hmac=a3769a998b8c6bc2cdb45266887290ba03ff6378810ac9649d91551bed3ee1f3","category":"piano","rank":18,"sourceWeight":11.31251715027605,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/58194661","date":"2026-08-07T12:37:47.014Z","signal":"track"},{"id":1763425747,"artist":"Roméo Elvis","title":"QUAND JE MARCHE (COMME BEN MAZUÉ)","album":"TOUT PEUT ARRIVER","cover":"https://cdn-images.dzcdn.net/images/cover/f2e1a6ff21b81c3efac61ff8f6220828/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/a/6/0/ca6f8adba8465c9602e07bd6d2b5ec00.mp3?hdnea=exp=1786107214~acl=/api/1/1/c/a/6/0/ca6f8adba8465c9602e07bd6d2b5ec00.mp3*~data=user_id=0,application_id=42~hmac=4f250d0bd4f7748d77dfd5bc5d6bfa626873034d77052b0d65d90ada4c14056d","category":"french","rank":22,"sourceWeight":9.066673758428312,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/1763425747","date":"2026-08-07T12:41:05.184Z","signal":"track"},{"id":639574572,"artist":"Johannes Bornlof","title":"The Rose And The Thorn","album":"The Rose And The Thorn","cover":"https://cdn-images.dzcdn.net/images/cover/ae54a6e37f75d759affa142f2ff64040/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/9/9/0/899ba216800869e96fb0cca664217948.mp3?hdnea=exp=1786107365~acl=/api/1/1/8/9/9/0/899ba216800869e96fb0cca664217948.mp3*~data=user_id=0,application_id=42~hmac=2c8d53d3af7013e3eefd934b5e3192e546b2ac9854d51c5b2efee258b8cbd627","category":"piano","rank":20,"sourceWeight":6.951337518795918,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/639574572","date":"2026-08-07T12:41:18.588Z","signal":"track"},{"id":374205461,"artist":"Arcade Fire","title":"Une Annee Sans Lumiere","album":"Funeral","cover":"https://cdn-images.dzcdn.net/images/cover/d73ebc04554b4ab4a334fa9acaa5f9af/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/1/0/a/0/10ab1cb69ca77704f91ba45e660224d4.mp3?hdnea=exp=1786107379~acl=/api/1/1/1/0/a/0/10ab1cb69ca77704f91ba45e660224d4.mp3*~data=user_id=0,application_id=42~hmac=0629c3f287cffba532120a30e09f8455d833aea588673a2327385219a74d2db2","category":"rock","rank":25,"sourceWeight":5.493067498377228,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/374205461","date":"2026-08-07T12:41:35.031Z","signal":"track"},{"id":104574544,"artist":"Helios","title":"Again","album":"Yume","cover":"https://cdn-images.dzcdn.net/images/cover/1085872a45868a9875d13b6fe62e990d/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/e/1/e/0/e1e2e6cc396b040f3bc325755ca66c4f.mp3?hdnea=exp=1786108063~acl=/api/1/1/e/1/e/0/e1e2e6cc396b040f3bc325755ca66c4f.mp3*~data=user_id=0,application_id=42~hmac=09ce333ac612fef963402250ea35eeb1372a8046a4bfc5b2b59d137e63edc863","category":"piano","rank":20,"sourceWeight":13.127408149183438,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/104574544","date":"2026-08-07T12:53:13.788Z","signal":"track"},{"id":4195078812,"artist":"Jon Hopkins","title":"Open Eye Signal (under the fabric)","album":"9 months & 50 hours","cover":"https://cdn-images.dzcdn.net/images/cover/b945dcfb50bf0dea43fddbb196c5bd12/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/5/4/0/654b1265154c83158a546f635df71376.mp3?hdnea=exp=1786108096~acl=/api/1/1/6/5/4/0/654b1265154c83158a546f635df71376.mp3*~data=user_id=0,application_id=42~hmac=ee2e338413c33e64ca1dfaea773084cedcdb33cec31cf07baa0790c6dd0f2eb2","category":"cinema","rank":1,"sourceWeight":13.522101458989173,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4195078812","date":"2026-08-07T12:53:54.168Z","signal":"track"},{"id":4563492,"artist":"RJD2","title":"The Proxy","album":"Deadringer: Deluxe","cover":"https://cdn-images.dzcdn.net/images/cover/893ebb789d7748c80cf3b18b5c81cdbd/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/1/5/0/7158b8f683c284c04dcdadb646ebbed4.mp3?hdnea=exp=1786108136~acl=/api/1/1/7/1/5/0/7158b8f683c284c04dcdadb646ebbed4.mp3*~data=user_id=0,application_id=42~hmac=165b420c6416e2bc82cfba031c64ca6c85c90cf3737d3c5647b208e95c709d39","category":"altpop","rank":29,"sourceWeight":11.985808840553261,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4563492","date":"2026-08-07T12:54:07.608Z","signal":"track"},{"id":71039597,"artist":"Panic! At the Disco","title":"This Is Gospel","album":"Too Weird to Live, Too Rare to Die!","cover":"https://cdn-images.dzcdn.net/images/cover/77debfbf2a94e8f5a59ddb3cb0853f6b/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/a/1/0/ca1c76a480b0085162d15bff240eebb4.mp3?hdnea=exp=1786108148~acl=/api/1/1/c/a/1/0/ca1c76a480b0085162d15bff240eebb4.mp3*~data=user_id=0,application_id=42~hmac=ab17472ad44e5abac39ffa634c53bb170f5729dc0e0aba655a5bdef5b440980e","category":"rock","rank":15,"sourceWeight":17.69786619664285,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/71039597","date":"2026-08-07T12:55:27.074Z","signal":"track"},{"id":894643622,"artist":"Breakbot","title":"Be Mine Tonight","album":"Be Mine Tonight","cover":"https://cdn-images.dzcdn.net/images/cover/3ace46e8ed02834e20c944e97de46024/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/9/d/b/0/9dbef2d86e5a5db98b84c80fa1c55a2d.mp3?hdnea=exp=1786108227~acl=/api/1/1/9/d/b/0/9dbef2d86e5a5db98b84c80fa1c55a2d.mp3*~data=user_id=0,application_id=42~hmac=55bb0e9f492db90bc7a2a40d31348eebeea5322471854ebd23a882be949311dd","category":"altpop","rank":13,"sourceWeight":9.34149610257637,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/894643622","date":"2026-08-07T12:55:35.380Z","signal":"track"},{"id":638272182,"artist":"Peter Sandberg","title":"Inconclusive Results","album":"Dismantle","cover":"https://cdn-images.dzcdn.net/images/cover/543c800c94f7fa6bc1ac627f84f2afa0/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/d/7/0/0/d70e0fb34be5ee3f852fae68bb078356.mp3?hdnea=exp=1786108375~acl=/api/1/1/d/7/0/0/d70e0fb34be5ee3f852fae68bb078356.mp3*~data=user_id=0,application_id=42~hmac=206b4b74a5cf56a56174d8c15585b7bcd0baeb25a6954a206a5646d9502498a2","category":"piano","rank":18,"sourceWeight":7.563897808102128,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/638272182","date":"2026-08-07T12:58:15.671Z","signal":"track"},{"id":3082129781,"artist":"John Murphy","title":"28 Weeks Later","album":"Front Side One","cover":"https://cdn-images.dzcdn.net/images/cover/7390e11f6e9b69bffbc5aae392d97736/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/f/6/0/8f6477cd18537de0549228f3bb448958.mp3?hdnea=exp=1786108435~acl=/api/1/1/8/f/6/0/8f6477cd18537de0549228f3bb448958.mp3*~data=user_id=0,application_id=42~hmac=1df38e713feb9985c5d917d3148766ffedd68aca76b1ee216608efaa31b0e9d8","category":"cinema","rank":31,"sourceWeight":10.706969610348999,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3082129781","date":"2026-08-07T12:59:04.213Z","signal":"track"},{"id":3376902931,"artist":"Weval","title":"OPEN UP THAT DOOR","album":"CHOROPHOBIA","cover":"https://cdn-images.dzcdn.net/images/cover/3000e241cfa7b09fb694e05301eb90b6/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/7/f/0/c7f20fda3fb04a37187931587fb4503d.mp3?hdnea=exp=1786108445~acl=/api/1/1/c/7/f/0/c7f20fda3fb04a37187931587fb4503d.mp3*~data=user_id=0,application_id=42~hmac=92d0afd893740cdc1dcc7684212d163f68c6c6aebd3f98a961fc05c9d8bd1c1f","category":"piano","rank":32,"sourceWeight":11.968517690263344,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3376902931","date":"2026-08-07T12:59:54.056Z","signal":"track"},{"id":55841581,"artist":"Helen Jane Long","title":"Embers","album":"Embers","cover":"https://cdn-images.dzcdn.net/images/cover/c9ab673bfd192d727b855e7ea5e7e082/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/4/9/0/4491fd625b27858c7e226d5de24d24ac.mp3?hdnea=exp=1786108494~acl=/api/1/1/4/4/9/0/4491fd625b27858c7e226d5de24d24ac.mp3*~data=user_id=0,application_id=42~hmac=983aafeecad64e91024dc58d6fae08a690dfb2d5df0c3c4c17f4812926f211ef","category":"piano","rank":2,"sourceWeight":9.917004140006014,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/55841581","date":"2026-08-07T13:00:01.042Z","signal":"track"},{"id":62304914,"artist":"Loscil","title":"Triton","album":"Submers","cover":"https://cdn-images.dzcdn.net/images/cover/0ff345d4e157315bc37e58995d664b66/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/b/f/0/7bf742e4fb52e6b60468eb2bef7e2376.mp3?hdnea=exp=1786108501~acl=/api/1/1/7/b/f/0/7bf742e4fb52e6b60468eb2bef7e2376.mp3*~data=user_id=0,application_id=42~hmac=1a90654ce3a04367a777aafcb47236b80a1dee6475f18d1e7447ff4521129e97","category":"piano","rank":20,"sourceWeight":12.866788312451195,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/62304914","date":"2026-08-07T13:00:20.490Z","signal":"track"},{"id":59054001,"artist":"The xx","title":"Angels","album":"Coexist","cover":"https://cdn-images.dzcdn.net/images/cover/2eb83e06e6c14e0bed87c1f441bfd9d9/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/a/3/0/4a3b8e80dfe424decbb218dcb51fa0c1.mp3?hdnea=exp=1786108520~acl=/api/1/1/4/a/3/0/4a3b8e80dfe424decbb218dcb51fa0c1.mp3*~data=user_id=0,application_id=42~hmac=d60141eb703efe941d185b097a8d7ca38cb152f04b642352c2d9dd9ffd3e287a","category":"piano","rank":4,"sourceWeight":13.88669052859364,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/59054001","date":"2026-08-07T13:00:37.794Z","signal":"track"},{"id":3801651942,"artist":"alt-J","title":"Nara","album":"This Is All Yours","cover":"https://cdn-images.dzcdn.net/images/cover/933fe6cb28f56e2aa154c8bdfdcc3b29/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/1/e/0/c1ef78734f61d602fab5fc583b27406c.mp3?hdnea=exp=1786108538~acl=/api/1/1/c/1/e/0/c1ef78734f61d602fab5fc583b27406c.mp3*~data=user_id=0,application_id=42~hmac=24c1d4abdca79f2ee0ce482827186e19f6e9d69812801fd79ed56562d9d35004","category":"piano","rank":10,"sourceWeight":8.26085108144681,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3801651942","date":"2026-08-07T13:01:10.984Z","signal":"track"}],"seen":["claudio arrau|chopin waltz no 19 in a minor kk ivb 11","this is the kit|this is what you did","christian loffler|nil","roberto cacciapaglia|wild side","london music works|driving with the top down","les enfoires|a cote de toi","doctor flake|rock on","frederic chopin|raindrop prelude","jean michel blais|if you build it they will come","parcels|leaveyourlove","placebo|the bitter end","pixies|que sera sera","hvob|dogs","fabrizio paterlini|my piano the clouds","hypnolove|winter in the sun","yiruma|yellow room","james heather|empire sounds","peter sandberg|routine","philip wesley|dark night of the soul","yuja wang|rhapsody on a theme of paganini op 43 rachmaninoff rhapsody on a theme of paganini op 43 var 16","p nk|never gonna not dance again","wim mertens|often a bird","telephone|ca c est vraiment toi","rhye|last dance","placebo|every you every me","interpol|the new","mogwai|i know you are but what am i","david nevue|winter walk","jean michel blais|l amitie","helen jane long|renewed","justice|neverender","romeo elvis|quand je marche comme ben mazue","johannes bornlof|the rose and the thorn","arcade fire|une annee sans lumiere","villagers|courage","helios|again","jon hopkins|open eye signal under the fabric","rjd2|the proxy","panic at the disco|this is gospel","breakbot|be mine tonight","kiasmos|grown","peter sandberg|inconclusive results","helios|your zenith","john murphy|28 weeks later","bob moses|desire","helen jane long|embers","loscil|triton","the xx|angels","collapse under the empire|stjarna","helios|vainglory"],"blocked":[],"weights":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"artists":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.07,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035,"weval":-0.035,"loscil":-0.035,"the xx":-0.035,"alt j":-0.035},"undo":[{"x":{"id":374205461,"artist":"Arcade Fire","title":"Une Annee Sans Lumiere","album":"Funeral","cover":"https://cdn-images.dzcdn.net/images/cover/d73ebc04554b4ab4a334fa9acaa5f9af/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/1/0/a/0/10ab1cb69ca77704f91ba45e660224d4.mp3?hdnea=exp=1786107379~acl=/api/1/1/1/0/a/0/10ab1cb69ca77704f91ba45e660224d4.mp3*~data=user_id=0,application_id=42~hmac=0629c3f287cffba532120a30e09f8455d833aea588673a2327385219a74d2db2","category":"rock","rank":25,"sourceWeight":5.493067498377228,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/374205461","date":"2026-08-07T12:41:35.031Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035},"b":[],"ra":["arcade fire","johannes bornlof","romeo elvis","justice","helen jane long","jean michel blais","david nevue","mogwai"],"rc":["rock","piano","french","altpop","funk"]},{"x":{"id":104574544,"artist":"Helios","title":"Again","album":"Yume","cover":"https://cdn-images.dzcdn.net/images/cover/1085872a45868a9875d13b6fe62e990d/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/e/1/e/0/e1e2e6cc396b040f3bc325755ca66c4f.mp3?hdnea=exp=1786108063~acl=/api/1/1/e/1/e/0/e1e2e6cc396b040f3bc325755ca66c4f.mp3*~data=user_id=0,application_id=42~hmac=09ce333ac612fef963402250ea35eeb1372a8046a4bfc5b2b59d137e63edc863","category":"piano","rank":20,"sourceWeight":13.127408149183438,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/104574544","date":"2026-08-07T12:53:13.788Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035},"b":[],"ra":["helios","villagers","arcade fire","johannes bornlof","romeo elvis","justice","helen jane long","jean michel blais"],"rc":["piano","altpop","rock","french","funk"]},{"x":{"id":4195078812,"artist":"Jon Hopkins","title":"Open Eye Signal (under the fabric)","album":"9 months & 50 hours","cover":"https://cdn-images.dzcdn.net/images/cover/b945dcfb50bf0dea43fddbb196c5bd12/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/5/4/0/654b1265154c83158a546f635df71376.mp3?hdnea=exp=1786108096~acl=/api/1/1/6/5/4/0/654b1265154c83158a546f635df71376.mp3*~data=user_id=0,application_id=42~hmac=ee2e338413c33e64ca1dfaea773084cedcdb33cec31cf07baa0790c6dd0f2eb2","category":"cinema","rank":1,"sourceWeight":13.522101458989173,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4195078812","date":"2026-08-07T12:53:54.168Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035},"b":[],"ra":["jon hopkins","helios","villagers","arcade fire","johannes bornlof","romeo elvis","justice","helen jane long"],"rc":["cinema","piano","altpop","rock","french"]},{"x":{"id":4563492,"artist":"RJD2","title":"The Proxy","album":"Deadringer: Deluxe","cover":"https://cdn-images.dzcdn.net/images/cover/893ebb789d7748c80cf3b18b5c81cdbd/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/1/5/0/7158b8f683c284c04dcdadb646ebbed4.mp3?hdnea=exp=1786108136~acl=/api/1/1/7/1/5/0/7158b8f683c284c04dcdadb646ebbed4.mp3*~data=user_id=0,application_id=42~hmac=165b420c6416e2bc82cfba031c64ca6c85c90cf3737d3c5647b208e95c709d39","category":"altpop","rank":29,"sourceWeight":11.985808840553261,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4563492","date":"2026-08-07T12:54:07.608Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035},"b":[],"ra":["rjd2","jon hopkins","helios","villagers","arcade fire","johannes bornlof","romeo elvis","justice"],"rc":["altpop","cinema","piano","rock","french"]},{"x":{"id":71039597,"artist":"Panic! At the Disco","title":"This Is Gospel","album":"Too Weird to Live, Too Rare to Die!","cover":"https://cdn-images.dzcdn.net/images/cover/77debfbf2a94e8f5a59ddb3cb0853f6b/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/a/1/0/ca1c76a480b0085162d15bff240eebb4.mp3?hdnea=exp=1786108148~acl=/api/1/1/c/a/1/0/ca1c76a480b0085162d15bff240eebb4.mp3*~data=user_id=0,application_id=42~hmac=ab17472ad44e5abac39ffa634c53bb170f5729dc0e0aba655a5bdef5b440980e","category":"rock","rank":15,"sourceWeight":17.69786619664285,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/71039597","date":"2026-08-07T12:55:27.074Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035,"rjd2":-0.035},"b":[],"ra":["panic at the disco","rjd2","jon hopkins","helios","villagers","arcade fire","johannes bornlof","romeo elvis"],"rc":["rock","altpop","cinema","piano","french"]},{"x":{"id":894643622,"artist":"Breakbot","title":"Be Mine Tonight","album":"Be Mine Tonight","cover":"https://cdn-images.dzcdn.net/images/cover/3ace46e8ed02834e20c944e97de46024/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/9/d/b/0/9dbef2d86e5a5db98b84c80fa1c55a2d.mp3?hdnea=exp=1786108227~acl=/api/1/1/9/d/b/0/9dbef2d86e5a5db98b84c80fa1c55a2d.mp3*~data=user_id=0,application_id=42~hmac=55bb0e9f492db90bc7a2a40d31348eebeea5322471854ebd23a882be949311dd","category":"altpop","rank":13,"sourceWeight":9.34149610257637,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/894643622","date":"2026-08-07T12:55:35.380Z","signal":"track"},"type":"rejected","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035},"b":[],"ra":["breakbot","panic at the disco","rjd2","jon hopkins","helios","villagers","arcade fire","johannes bornlof"],"rc":["altpop","rock","cinema","piano","french"]},{"x":{"id":4029695931,"artist":"Kiasmos","title":"Grown","album":"II Reworked","cover":"https://cdn-images.dzcdn.net/images/cover/0189e7f1d646863e0cb5d28a7509b0dc/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/6/3/1/0/631fd3d9c95bedc5e262442dc0ce6f77.mp3?hdnea=exp=1786108235~acl=/api/1/1/6/3/1/0/631fd3d9c95bedc5e262442dc0ce6f77.mp3*~data=user_id=0,application_id=42~hmac=03da19ab2b88106bb7b2de04bbc816c50b18b36742a85a42d5b6c63a48788769","category":"piano","rank":20,"sourceWeight":11.22869365482701,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/4029695931","date":"2026-08-07T12:57:54.437Z","signal":"keep"},"type":"kept","w":{"piano":1.6800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035},"b":[],"ra":["kiasmos","breakbot","panic at the disco","rjd2","jon hopkins","helios","villagers","arcade fire"],"rc":["piano","altpop","rock","cinema","french"]},{"x":{"id":638272182,"artist":"Peter Sandberg","title":"Inconclusive Results","album":"Dismantle","cover":"https://cdn-images.dzcdn.net/images/cover/543c800c94f7fa6bc1ac627f84f2afa0/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/d/7/0/0/d70e0fb34be5ee3f852fae68bb078356.mp3?hdnea=exp=1786108375~acl=/api/1/1/d/7/0/0/d70e0fb34be5ee3f852fae68bb078356.mp3*~data=user_id=0,application_id=42~hmac=206b4b74a5cf56a56174d8c15585b7bcd0baeb25a6954a206a5646d9502498a2","category":"piano","rank":18,"sourceWeight":7.563897808102128,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/638272182","date":"2026-08-07T12:58:15.671Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18},"b":[],"ra":["peter sandberg","kiasmos","breakbot","panic at the disco","rjd2","jon hopkins","helios","villagers"],"rc":["piano","altpop","rock","cinema","french"]},{"x":{"id":78812046,"artist":"Helios","title":"Your Zenith","album":"Moiety","cover":"https://cdn-images.dzcdn.net/images/cover/68121c467ccbd9600d52922cf723316a/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/a/6/0/7a67ccd48909b6414e7bca328c80e082.mp3?hdnea=exp=1786108396~acl=/api/1/1/7/a/6/0/7a67ccd48909b6414e7bca328c80e082.mp3*~data=user_id=0,application_id=42~hmac=23114a3dc0953ed2aabe0409beebd0c134524358e5d6196920d3bc1f583efc6c","category":"electro","rank":34,"sourceWeight":17.48211068943473,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/78812046","date":"2026-08-07T12:58:54.576Z","signal":"keep"},"type":"kept","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":-0.035,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035},"b":[],"ra":["helios","peter sandberg","kiasmos","breakbot","panic at the disco","rjd2","jon hopkins","villagers"],"rc":["electro","piano","altpop","rock","cinema"]},{"x":{"id":3082129781,"artist":"John Murphy","title":"28 Weeks Later","album":"Front Side One","cover":"https://cdn-images.dzcdn.net/images/cover/7390e11f6e9b69bffbc5aae392d97736/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/8/f/6/0/8f6477cd18537de0549228f3bb448958.mp3?hdnea=exp=1786108435~acl=/api/1/1/8/f/6/0/8f6477cd18537de0549228f3bb448958.mp3*~data=user_id=0,application_id=42~hmac=1df38e713feb9985c5d917d3148766ffedd68aca76b1ee216608efaa31b0e9d8","category":"cinema","rank":31,"sourceWeight":10.706969610348999,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3082129781","date":"2026-08-07T12:59:04.213Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035},"b":[],"ra":["john murphy","helios","peter sandberg","kiasmos","breakbot","panic at the disco","rjd2","jon hopkins"],"rc":["cinema","electro","piano","altpop","rock"]},{"x":{"id":3376902931,"artist":"Weval","title":"OPEN UP THAT DOOR","album":"CHOROPHOBIA","cover":"https://cdn-images.dzcdn.net/images/cover/3000e241cfa7b09fb694e05301eb90b6/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/7/f/0/c7f20fda3fb04a37187931587fb4503d.mp3?hdnea=exp=1786108445~acl=/api/1/1/c/7/f/0/c7f20fda3fb04a37187931587fb4503d.mp3*~data=user_id=0,application_id=42~hmac=92d0afd893740cdc1dcc7684212d163f68c6c6aebd3f98a961fc05c9d8bd1c1f","category":"piano","rank":32,"sourceWeight":11.968517690263344,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3376902931","date":"2026-08-07T12:59:54.056Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035},"b":[],"ra":["weval","john murphy","helios","peter sandberg","kiasmos","breakbot","panic at the disco","rjd2"],"rc":["piano","cinema","electro","altpop","rock"]},{"x":{"id":55841581,"artist":"Helen Jane Long","title":"Embers","album":"Embers","cover":"https://cdn-images.dzcdn.net/images/cover/c9ab673bfd192d727b855e7ea5e7e082/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/4/9/0/4491fd625b27858c7e226d5de24d24ac.mp3?hdnea=exp=1786108494~acl=/api/1/1/4/4/9/0/4491fd625b27858c7e226d5de24d24ac.mp3*~data=user_id=0,application_id=42~hmac=983aafeecad64e91024dc58d6fae08a690dfb2d5df0c3c4c17f4812926f211ef","category":"piano","rank":2,"sourceWeight":9.917004140006014,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/55841581","date":"2026-08-07T13:00:01.042Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.035,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035,"weval":-0.035},"b":[],"ra":["helen jane long","weval","john murphy","helios","peter sandberg","kiasmos","breakbot","panic at the disco"],"rc":["piano","cinema","electro","altpop","rock"]},{"x":{"id":62304914,"artist":"Loscil","title":"Triton","album":"Submers","cover":"https://cdn-images.dzcdn.net/images/cover/0ff345d4e157315bc37e58995d664b66/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/7/b/f/0/7bf742e4fb52e6b60468eb2bef7e2376.mp3?hdnea=exp=1786108501~acl=/api/1/1/7/b/f/0/7bf742e4fb52e6b60468eb2bef7e2376.mp3*~data=user_id=0,application_id=42~hmac=1a90654ce3a04367a777aafcb47236b80a1dee6475f18d1e7447ff4521129e97","category":"piano","rank":20,"sourceWeight":12.866788312451195,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/62304914","date":"2026-08-07T13:00:20.490Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.07,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035,"weval":-0.035},"b":[],"ra":["loscil","helen jane long","weval","john murphy","helios","peter sandberg","kiasmos","breakbot"],"rc":["piano","cinema","electro","altpop","rock"]},{"x":{"id":59054001,"artist":"The xx","title":"Angels","album":"Coexist","cover":"https://cdn-images.dzcdn.net/images/cover/2eb83e06e6c14e0bed87c1f441bfd9d9/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/4/a/3/0/4a3b8e80dfe424decbb218dcb51fa0c1.mp3?hdnea=exp=1786108520~acl=/api/1/1/4/a/3/0/4a3b8e80dfe424decbb218dcb51fa0c1.mp3*~data=user_id=0,application_id=42~hmac=d60141eb703efe941d185b097a8d7ca38cb152f04b642352c2d9dd9ffd3e287a","category":"piano","rank":4,"sourceWeight":13.88669052859364,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/59054001","date":"2026-08-07T13:00:37.794Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.07,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035,"weval":-0.035,"loscil":-0.035},"b":[],"ra":["the xx","loscil","helen jane long","weval","john murphy","helios","peter sandberg","kiasmos"],"rc":["piano","cinema","electro","altpop","rock"]},{"x":{"id":3801651942,"artist":"alt-J","title":"Nara","album":"This Is All Yours","cover":"https://cdn-images.dzcdn.net/images/cover/933fe6cb28f56e2aa154c8bdfdcc3b29/500x500-000000-80-0-0.jpg","preview":"https://cdnt-preview.dzcdn.net/api/1/1/c/1/e/0/c1ef78734f61d602fab5fc583b27406c.mp3?hdnea=exp=1786108538~acl=/api/1/1/c/1/e/0/c1ef78734f61d602fab5fc583b27406c.mp3*~data=user_id=0,application_id=42~hmac=24c1d4abdca79f2ee0ce482827186e19f6e9d69812801fd79ed56562d9d35004","category":"piano","rank":10,"sourceWeight":8.26085108144681,"source":"listenbrainz","externalUrl":"https://www.deezer.com/track/3801651942","date":"2026-08-07T13:01:10.984Z","signal":"track"},"type":"rejected","w":{"piano":1.7800000000000002,"classic":1.35,"cinema":1.5,"altpop":1.35,"rock":1.05,"french":1.15,"funk":0.95,"electro":1.1},"a":{"fabrizio paterlini":0.12,"james heather":-0.035,"philip wesley":-0.035,"yuja wang":-0.035,"p nk":-0.035,"wim mertens":-0.035,"telephone":-0.035,"rhye":-0.035,"interpol":-0.035,"david nevue":-0.035,"jean michel blais":-0.035,"helen jane long":-0.07,"justice":0.18,"romeo elvis":-0.035,"johannes bornlof":-0.035,"arcade fire":-0.035,"helios":0.145,"jon hopkins":-0.035,"rjd2":-0.035,"panic at the disco":-0.035,"breakbot":-0.035,"kiasmos":0.18,"peter sandberg":-0.035,"john murphy":-0.035,"weval":-0.035,"loscil":-0.035,"the xx":-0.035},"b":[],"ra":["alt j","the xx","loscil","helen jane long","weval","john murphy","helios","peter sandberg"],"rc":["piano","cinema","electro","altpop","rock"]}],"mode":"mix","discovery":100,"variation":"high","recentCategories":["piano","cinema","electro","altpop","rock"],"recentArtists":["helios","alt j","the xx","loscil","helen jane long","weval","john murphy","peter sandberg"],"mbidCache":{"fabrizio paterlini":"066160ce-d1fe-4e93-a446-2f72f15a580b","chopin":"d36a5931-b018-4913-af3c-ecd31651af93","coldplay":"cc197bad-dc9c-440d-a5b5-d52ba2e14234","calogero":"7e26f094-2ab2-4810-be12-f8fd8953d99d","bonobo":"9a709693-b4f8-4da9-8cc1-038c911a61be","muse":"9c9f1380-2516-4fc9-a3e6-f9f61941d090","jungle":"6bbb3983-ce8a-4971-96e0-7cae73268fc4","nils frahm":"d03a54bc-6e07-4c04-a8d4-7fbf2bd07a01","woodkid":"420e923e-e74c-42ef-b771-2e2bcee93394","pomme":"c75b226d-d643-41dc-a2b7-00c0ff8c8e7b","patrick watson":"592da4c4-9618-4a1a-a944-e60c05c39037","hans zimmer":"e6de1f3b-6484-491c-88dd-6d619f142abc","justice":"860b2707-6153-4e3a-aa57-74d2b42c55b5","olafur arnalds":"6655955b-1c1e-4bcb-84e4-81bcd9efab30","tycho":"cbef45a9-7acb-4325-94c9-70081ac8d1b8","thomas newman":"348f3a5f-5112-4d72-b33b-11c60b4f9af2","kiasmos":"3252542b-98a7-48ba-9861-7a612b16c227","helios":"50a32791-ee43-4c67-aabc-3dc65e4a9838"},"sourceStats":{"listenbrainz":36,"deezer":148,"itunes":0,"fallback":1},"updatedAt":1786107680056}));localStorage.setItem("radio_hugo_ui_v1",JSON.stringify({"coverHeight":44,"tagTop":-23,"titleFont":1.4,"titleY":2,"artistFont":0.89,"artistY":-3,"trackGap":9,"tileGap":8,"choiceHeight":62,"altHeight":43,"statsY":-8,"statsHeight":40,"statsNumberFont":1.15,"statsLabelFont":0.8,"toolsFont":0.8,"toolsHeight":50}));</script><main class="app"><section class="player"><div class="cover"><img id="cover" src="https://cdn-images.dzcdn.net/images/cover/11f12774c008cca2b88d8bf4866e7120/500x500-000000-80-0-0.jpg" alt="Pochette Radio intelligente"><button id="back" class="round" aria-label="Revenir">↶</button><button id="play" class="round" aria-label="Lecture">❚❚</button></div><div class="track"><span id="cat" class="tag">Piano et néoclassique</span><h1 id="title">Vainglory</h1><div id="artist" class="artist">Helios — Remembrance</div><audio id="audio" preload="none" data-unlocked="1" src="https://cdnt-preview.dzcdn.net/api/1/1/5/7/e/0/57e9871e0f410a9bcf1e9f5f96340fb1.mp3?hdnea=exp=1786108571~acl=/api/1/1/5/7/e/0/57e9871e0f410a9bcf1e9f5f96340fb1.mp3*~data=user_id=0,application_id=42~hmac=d25b33c37e25b69b7c41621239d83f3c3694626f4ba63a3d1fde7ef8d9192334"></audio><div class="playerbar" aria-label="Lecteur audio"><button id="miniPlay" class="mini-btn" aria-label="Lecture">❚❚</button><span id="ct" class="time">0:08</span><div class="seek-wrap"><input id="seek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div><span id="tt" class="time">0:29</span><button id="miniMute" class="icon-btn" aria-label="Couper le son">◔</button><button id="miniMore" class="icon-btn" aria-label="Ouvrir les réglages">⚙</button></div><div class="primary"><button id="no" class="choice">✕&nbsp; Non</button><button id="yes" class="choice">✓&nbsp; Oui</button></div><div class="alt"><button id="like"><span class="ico">♫</span><span class="txt">J’aime le style,<br>pas ce titre</span></button><button id="lessStyle"><span class="ico">⊖</span><span class="txt">Moins de<br>ce style</span></button><button id="lessArtist"><span class="ico">◉</span><span class="txt">Moins de<br>cet artiste</span></button><button id="block"><span class="ico">⊘</span><span class="txt">Exclure<br>cet artiste</span></button></div><div class="quick"><div class="stats"><div class="stat"><span class="sico">♥</span><span class="meta"><b id="kc">4</b><span>gardés</span></span></div><div class="divider"></div><div class="stat"><span class="sico">⏭</span><span class="meta"><b id="rc">12</b><span>passés</span></span></div></div></div></div></section><button id="undo" class="undo">↶ Revenir sur le dernier choix</button><div id="status" class="status">HTML, préférences et interface téléchargés.</div><section class="card settings"><div><label>Univers</label><select id="mode"><option value="mix">Mélange personnalisé</option><option value="piano">Piano et néoclassique</option><option value="cinema">Musique de film</option><option value="altpop">Pop alternative</option><option value="rock">Rock mélodique</option><option value="french">Francophone</option><option value="electro">Électro atmosphérique</option><option value="funk">Funk et groove</option></select></div><div><label>Découverte : <span id="dv">100</span> %</label><input id="disc" type="range" min="20" max="100" value="75"></div><div class="wide"><label>Variation des styles</label><select id="variation"><option value="low">Faible</option><option value="medium">Moyenne</option><option value="high">Forte</option></select></div></section><section class="card ui-card"><button id="uiToggle" class="ui-open">🎛 Régler l’interface</button><div id="uiPanel" class="ui-panel hide"><h3>Réglages de l’interface</h3><p class="ui-note">Aperçu en temps réel. Enregistre seulement quand le rendu te convient.</p><div class="ui-grid">
+<div class="ui-control ui-color-control"><label>Couleur de fond principale <output id="uiBgColorOut">#f4f1f8</output></label><input id="uiBgColor" type="color" value="#f4f1f8" aria-label="Couleur de fond principale"></div>
+<div class="ui-control ui-color-control"><label>Couleur secondaire du thème <output id="uiAccentColorOut">#8542ea</output></label><input id="uiAccentColor" type="color" value="#8542ea" aria-label="Couleur secondaire du thème"></div>
+<div class="ui-control ui-color-control"><label>Fond de la tuile Gardés / Passés <output id="uiStatsBgOut">#ffffff</output></label><input id="uiStatsBg" type="color" value="#ffffff" aria-label="Fond de la tuile Gardés et Passés"></div>
+<div class="ui-control ui-skins-control">
+  <label>Skins prêts à l’emploi <span>1 clic</span></label>
+  <div class="skin-grid" id="skinGrid">
+    <button type="button" class="skin-btn" data-skin="Lavande douce" data-bg="#f4f1f8" data-accent="#8542ea" data-stats="#ffffff"><i style="--skin-bg:#f4f1f8;--skin-accent:#8542ea;--skin-stats:#ffffff"></i><span>Lavande douce</span></button>
+    <button type="button" class="skin-btn" data-skin="Bleu glacier" data-bg="#edf5fa" data-accent="#2878d0" data-stats="#f8fbff"><i style="--skin-bg:#edf5fa;--skin-accent:#2878d0;--skin-stats:#f8fbff"></i><span>Bleu glacier</span></button>
+    <button type="button" class="skin-btn" data-skin="Sauge calme" data-bg="#eef5ef" data-accent="#438a63" data-stats="#f9fcf9"><i style="--skin-bg:#eef5ef;--skin-accent:#438a63;--skin-stats:#f9fcf9"></i><span>Sauge calme</span></button>
+    <button type="button" class="skin-btn" data-skin="Sable chaud" data-bg="#f7f1e7" data-accent="#b56d2d" data-stats="#fffaf3"><i style="--skin-bg:#f7f1e7;--skin-accent:#b56d2d;--skin-stats:#fffaf3"></i><span>Sable chaud</span></button>
+    <button type="button" class="skin-btn" data-skin="Rose poudré" data-bg="#f8eff3" data-accent="#c84e7b" data-stats="#fff9fb"><i style="--skin-bg:#f8eff3;--skin-accent:#c84e7b;--skin-stats:#fff9fb"></i><span>Rose poudré</span></button>
+    <button type="button" class="skin-btn" data-skin="Graphite chic" data-bg="#eef0f3" data-accent="#596579" data-stats="#fafbfc"><i style="--skin-bg:#eef0f3;--skin-accent:#596579;--skin-stats:#fafbfc"></i><span>Graphite chic</span></button>
+    <button type="button" class="skin-btn" data-skin="Nuit violette" data-bg="#e9e5f2" data-accent="#5f46c7" data-stats="#f7f5fc"><i style="--skin-bg:#e9e5f2;--skin-accent:#5f46c7;--skin-stats:#f7f5fc"></i><span>Nuit violette</span></button>
+    <button type="button" class="skin-btn" data-skin="Menthe fraîche" data-bg="#eaf7f4" data-accent="#168f7a" data-stats="#f6fffd"><i style="--skin-bg:#eaf7f4;--skin-accent:#168f7a;--skin-stats:#f6fffd"></i><span>Menthe fraîche</span></button>
+    <button type="button" class="skin-btn" data-skin="Pêche claire" data-bg="#fff0e8" data-accent="#d4663c" data-stats="#fff9f5"><i style="--skin-bg:#fff0e8;--skin-accent:#d4663c;--skin-stats:#fff9f5"></i><span>Pêche claire</span></button>
+    <button type="button" class="skin-btn" data-skin="Océan" data-bg="#eaf2f5" data-accent="#176d8d" data-stats="#f7fbfc"><i style="--skin-bg:#eaf2f5;--skin-accent:#176d8d;--skin-stats:#f7fbfc"></i><span>Océan</span></button>
+  </div>
+  <div class="skin-note">Chaque skin change le fond général, la couleur secondaire et la tuile Gardés / Passés.</div>
+</div>
+
+<div class="ui-control"><label>Hauteur de la pochette <output id="uiCoverOut">44svh</output></label><input id="uiCover" type="range" min="40" max="55" step="0.5"></div>
+<div class="ui-control"><label>Position de la tuile style <output id="uiTagOut">-23px</output></label><input id="uiTag" type="range" min="-24" max="12" step="1"></div>
+<div class="ui-control"><label>Taille du titre <output id="uiTitleFontOut">1.4rem</output></label><input id="uiTitleFont" type="range" min="1.00" max="2.20" step="0.02"></div>
+<div class="ui-control"><label>Position verticale du titre <output id="uiTitleYOut">2px</output></label><input id="uiTitleY" type="range" min="-24" max="24" step="1"></div>
+<div class="ui-control"><label>Taille du sous-titre <output id="uiArtistFontOut">0.89rem</output></label><input id="uiArtistFont" type="range" min="0.65" max="1.40" step="0.02"></div>
+<div class="ui-control"><label>Position verticale du sous-titre <output id="uiArtistYOut">-3px</output></label><input id="uiArtistY" type="range" min="-24" max="24" step="1"></div>
+<div class="ui-control"><label>Espacement vertical principal <output id="uiTrackGapOut">9px</output></label><input id="uiTrackGap" type="range" min="2" max="14" step="1"></div>
+<div class="ui-control"><label>Espace entre les tuiles <output id="uiTileGapOut">8px</output></label><input id="uiTileGap" type="range" min="4" max="18" step="1"></div>
+<div class="ui-control"><label>Hauteur des boutons Oui / Non <output id="uiChoiceOut">62px</output></label><input id="uiChoice" type="range" min="52" max="92" step="1"></div>
+<div class="ui-control"><label>Hauteur des 4 boutons de préférence <output id="uiAltOut">43px</output></label><input id="uiAlt" type="range" min="36" max="72" step="1"></div>
+<div class="ui-control"><label>Position verticale Gardés / Passés <output id="uiStatsYOut">-8px</output></label><input id="uiStatsY" type="range" min="-24" max="24" step="1"></div>
+<div class="ui-control"><label>Hauteur de la tuile Gardés / Passés <output id="uiStatsHeightOut">40px</output></label><input id="uiStatsHeight" type="range" min="34" max="80" step="1"></div>
+<div class="ui-control"><label>Taille des chiffres Gardés / Passés <output id="uiStatsNumberFontOut">1.15rem</output></label><input id="uiStatsNumberFont" type="range" min="0.75" max="1.80" step="0.02"></div>
+<div class="ui-control"><label>Taille du texte Gardés / Passés <output id="uiStatsLabelFontOut">0.8rem</output></label><input id="uiStatsLabelFont" type="range" min="0.50" max="1.10" step="0.02"></div>
+<div class="ui-control"><label>Taille du texte Sauvegarde / Restaurer <output id="uiToolsFontOut">0.8rem</output></label><input id="uiToolsFont" type="range" min="0.60" max="1.00" step="0.02"></div>
+<div class="ui-control"><label>Hauteur des boutons Sauvegarde / Restaurer <output id="uiToolsHeightOut">50px</output></label><input id="uiToolsHeight" type="range" min="50" max="90" step="1"></div>
+</div><div class="ui-actions"><button id="uiSave" class="ui-save">Enregistrer</button><button id="uiReset">Réglages d’origine</button><button id="uiHide" class="ui-hide-btn">Masquer les réglages</button></div><div id="uiSaved" class="ui-saved">Réglages enregistrés sur cet appareil</div></div><section class="card tools"><button id="export" class="tool">Sauvegarde JSON</button><button id="importBtn" class="tool">Restaurer JSON</button><button id="reset" class="tool">Tout réinitialiser</button><button id="full" class="tool backup">Sauvegarde complète<br>HTML + JSON</button><input id="file" type="file" accept="application/json" class="hide"></section><section class="card"><div class="tabs"><button class="tab on" data-tab="kept">Gardés</button><button class="tab" data-tab="rejected">Passés</button></div><div id="hist" class="hist"><div class="row"><b>Your Zenith</b><br><span>Helios</span><div class="row-actions"><a class="row-link" href="https://www.youtube.com/results?search_query=Helios%20Your%20Zenith" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="https://www.deezer.com/track/78812046" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="2026-08-07T12:58:54.576Z" data-key="helios|your zenith">Supprimer</button></div></div><div class="row"><b>Grown</b><br><span>Kiasmos</span><div class="row-actions"><a class="row-link" href="https://www.youtube.com/results?search_query=Kiasmos%20Grown" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="https://www.deezer.com/track/4029695931" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="2026-08-07T12:57:54.437Z" data-key="kiasmos|grown">Supprimer</button></div></div><div class="row"><b>Neverender</b><br><span>Justice</span><div class="row-actions"><a class="row-link" href="https://www.youtube.com/results?search_query=Justice%20Neverender" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="https://www.deezer.com/track/2989813501" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="2026-08-07T12:38:33.791Z" data-key="justice|neverender">Supprimer</button></div></div><div class="row"><b>My Piano, The Clouds</b><br><span>Fabrizio Paterlini</span><div class="row-actions"><a class="row-link" href="https://www.youtube.com/results?search_query=Fabrizio%20Paterlini%20My%20Piano%2C%20The%20Clouds" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="https://www.deezer.com/track/139907813" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="2026-08-06T13:32:14.716Z" data-key="fabrizio paterlini|my piano the clouds">Supprimer</button></div></div></div></section><section class="card install-card"><button id="install" class="tool install">Installer / ajouter à l’accueil</button></section></section></main><div id="help" class="sheet hide"><div><h2>Installer la radio</h2><p>Dans Chrome : menu ⋮, puis Installer l’application. Si cette option n’apparaît pas, choisis Ajouter à l’écran d’accueil.</p><button id="close" class="tool">Fermer</button></div></div><script>
+const $=x=>document.getElementById(x),KEY='radio_hugo_master_v1',BACK='radio_hugo_master_backup_v1',UIKEY='radio_hugo_ui_v1',DEF=$('cover').src,L={piano:'Piano et néoclassique',classic:'Classique',cinema:'Musique de film',altpop:'Pop alternative',rock:'Rock mélodique',french:'Francophone',electro:'Électro atmosphérique',funk:'Funk et groove'},SEEDS=[['Hania Rani','piano',18],['Ólafur Arnalds','piano',18],['Max Richter','piano',16],['Nils Frahm','piano',14],['Chopin','classic',15],['Hans Zimmer','cinema',17],['Thomas Newman','cinema',15],['Muse','rock',16],['Radiohead','altpop',13],['Coldplay','altpop',12],['London Grammar','altpop',12],['Agnes Obel','altpop',13],['Patrick Watson','altpop',12],['Woodkid','altpop',11],['Calogero','french',14],['Pomme','french',10],['Bonobo','electro',12],['Christian Löffler','electro',12],['Tycho','electro',9],['Parcels','funk',10],['Jungle','funk',10],['L’Impératrice','funk',10]];
+
+const uiDefaults=()=>{const narrow=matchMedia('(max-width:390px)').matches,short=!narrow&&matchMedia('(max-height:760px)').matches;return{coverHeight:narrow?46:(short?44:47),tagTop:narrow?-7:(short?-6:-7),titleFont:narrow?1.4:(short?1.4:1.52),titleY:0,artistFont:narrow?.88:(short?.89:.92),artistY:0,trackGap:6,tileGap:8,choiceHeight:narrow?62:(short?60:62),altHeight:narrow?43:(short?42:43),statsY:0,statsHeight:narrow?40:(short?38:42),statsNumberFont:narrow?1:(short?.98:1.02),statsLabelFont:narrow?.61:(short?.60:.62),toolsFont:narrow?.74:(short?.75:.76),toolsHeight:narrow?70:(short?72:74),bgColor:'#f4f1f8',accentColor:'#8542ea',statsBg:'#ffffff'}};
+let UI={...uiDefaults()};
+function uiStyleEl(){let s=$('uiRuntimeStyle');if(!s){s=document.createElement('style');s.id='uiRuntimeStyle';document.head.appendChild(s)}return s}
+function applyUI(u=UI){UI={...UI,...u};uiStyleEl().textContent=`.player{grid-template-rows:${UI.coverHeight}svh minmax(0,1fr)!important}.tag{top:${UI.tagTop}px!important}#title{font-size:${UI.titleFont}rem!important;transform:translateY(${UI.titleY}px)!important}.artist{font-size:${UI.artistFont}rem!important;transform:translateY(${UI.artistY}px)!important}.track{gap:${UI.trackGap}px!important}.primary,.alt,.quick{gap:${UI.tileGap}px!important}.alt{gap:${UI.tileGap}px!important;grid-template-rows:${UI.altHeight}px ${UI.altHeight}px!important}.alt button{min-height:${UI.altHeight}px!important}.choice{min-height:${UI.choiceHeight}px!important}.stats{transform:translateY(${UI.statsY}px)!important}.stat{min-height:${UI.statsHeight}px!important}.stat b{font-size:${UI.statsNumberFont}rem!important}.stat span{font-size:${UI.statsLabelFont}rem!important}.tools .tool{font-size:${UI.toolsFont}rem!important;min-height:${UI.toolsHeight}px!important}`;document.documentElement.style.setProperty('--ui-main-bg',UI.bgColor||'#f4f1f8');document.documentElement.style.setProperty('--ui-accent',UI.accentColor||'#8542ea');document.documentElement.style.setProperty('--ui-stats-bg',UI.statsBg||'#ffffff');const theme=document.querySelector('meta[name="theme-color"]');if(theme)theme.setAttribute('content',UI.accentColor||'#8542ea');syncUIControls()}
+function syncUIControls(){const map={uiCover:['coverHeight','svh'],uiTag:['tagTop','px'],uiTitleFont:['titleFont','rem'],uiTitleY:['titleY','px'],uiArtistFont:['artistFont','rem'],uiArtistY:['artistY','px'],uiTrackGap:['trackGap','px'],uiTileGap:['tileGap','px'],uiChoice:['choiceHeight','px'],uiAlt:['altHeight','px'],uiStatsY:['statsY','px'],uiStatsHeight:['statsHeight','px'],uiStatsNumberFont:['statsNumberFont','rem'],uiStatsLabelFont:['statsLabelFont','rem'],uiToolsFont:['toolsFont','rem'],uiToolsHeight:['toolsHeight','px'],uiBgColor:['bgColor',''],uiAccentColor:['accentColor',''],uiStatsBg:['statsBg','']};for(const [id,[k,suf]] of Object.entries(map)){const el=$(id),out=$(id+'Out');if(el)el.value=UI[k];if(out)out.textContent=UI[k]+suf}}
+function loadUI(){try{const x=JSON.parse(localStorage.getItem(UIKEY)||'null');if(x&&typeof x==='object')UI={...uiDefaults(),...x}}catch{}applyUI(UI)}
+function previewUI(){UI={coverHeight:+$('uiCover').value,tagTop:+$('uiTag').value,titleFont:+$('uiTitleFont').value,titleY:+$('uiTitleY').value,artistFont:+$('uiArtistFont').value,artistY:+$('uiArtistY').value,trackGap:+$('uiTrackGap').value,tileGap:+$('uiTileGap').value,choiceHeight:+$('uiChoice').value,altHeight:+$('uiAlt').value,statsY:+$('uiStatsY').value,statsHeight:+$('uiStatsHeight').value,statsNumberFont:+$('uiStatsNumberFont').value,statsLabelFont:+$('uiStatsLabelFont').value,toolsFont:+$('uiToolsFont').value,toolsHeight:+$('uiToolsHeight').value,bgColor:$('uiBgColor').value,accentColor:$('uiAccentColor').value,statsBg:$('uiStatsBg').value};applyUI(UI);$('uiSaved').textContent='Aperçu non enregistré'}
+function saveUI(){localStorage.setItem(UIKEY,JSON.stringify(UI));$('uiSaved').textContent='Réglages enregistrés sur cet appareil'}
+function resetUI(){UI=uiDefaults();applyUI(UI);localStorage.setItem(UIKEY,JSON.stringify(UI));$('uiSaved').textContent='Réglages d’origine restaurés'}
+
+const fresh=()=>({kept:[],likedMemory:[],rejected:[],seen:[],blocked:[],weights:{piano:1.6,classic:1.35,cinema:1.5,altpop:1.25,rock:1.05,french:1.15,funk:.95,electro:1},artists:{},undo:[],mode:'mix',discovery:75,variation:'high',recentCategories:[],recentArtists:[],mbidCache:{},sourceStats:{listenbrainz:0,deezer:0,itunes:0,fallback:0}}),N=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(),Q=x=>N(x.artist)+'|'+N(x.title),clone=x=>JSON.parse(JSON.stringify(x)),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function norm(o={}){const f=fresh();return{...f,...o,weights:{...f.weights,...(o.weights||{})},kept:Array.isArray(o.kept)?o.kept:[],likedMemory:Array.isArray(o.likedMemory)?o.likedMemory:[],rejected:Array.isArray(o.rejected)?o.rejected:[],seen:Array.isArray(o.seen)?o.seen:[],blocked:Array.isArray(o.blocked)?o.blocked:[],artists:o.artists||{},undo:Array.isArray(o.undo)?o.undo:[],recentCategories:Array.isArray(o.recentCategories)?o.recentCategories:[],recentArtists:Array.isArray(o.recentArtists)?o.recentArtists:[],mbidCache:o.mbidCache||{},sourceStats:{...f.sourceStats,...(o.sourceStats||{})}}}let S;try{S=norm(JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(BACK)||'{}'))}catch{S=fresh()}let cur=null,busy=false,tab='kept',deferred=null,sessionRejected=[];
+function save(msg=''){S.updatedAt=Date.now();const r=JSON.stringify(S);localStorage.setItem(KEY,r);localStorage.setItem(BACK,r);render();window.dispatchEvent(new Event('radio-backup-change'));if(msg)$('status').textContent=msg}
+function jp(url,timeout=12000){return new Promise((ok,no)=>{const cb='cb'+Date.now()+Math.random().toString(36).slice(2),s=document.createElement('script'),t=setTimeout(()=>{clean();no(Error('Délai dépassé'))},timeout),clean=()=>{clearTimeout(t);delete window[cb];s.remove()};window[cb]=d=>{clean();ok(d)};s.onerror=()=>{clean();no(Error('Service musical inaccessible'))};s.src=url+(url.includes('?')?'&':'?')+'output=jsonp&callback='+cb;document.head.append(s)})}
+async function getJSON(url,timeout=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(url,{signal:c.signal,headers:{Accept:'application/json'}});if(!r.ok)throw Error('Service de recommandation indisponible');return await r.json()}finally{clearTimeout(t)}}
+function pick(a,w){if(!a.length)return null;let n=a.reduce((s,x)=>s+Math.max(.01,w(x)),0),r=Math.random()*n;for(const x of a){r-=Math.max(.01,w(x));if(r<=0)return x}return a[a.length-1]}
+function weightedSample(a,w,count){const pool=[...a],out=[];while(pool.length&&out.length<count){const x=pick(pool,w);if(!x)break;out.push(x);pool.splice(pool.indexOf(x),1)}return out}
+function isBlocked(name){return S.blocked.some(b=>N(b)===N(name))}
+function categoryAllowed(cat){return S.mode==='mix'||cat===S.mode||(S.mode==='piano'&&cat==='classic')}
+function seed(){const positives=[...S.kept.map((x,i)=>({...x,positive:1,age:i})),...S.likedMemory.map((x,i)=>({...x,positive:1,age:i})),...S.rejected.filter(x=>x.signal==='like').map((x,i)=>({...x,positive:.45,age:i}))].filter(x=>categoryAllowed(x.category)&&!isBlocked(x.artist));const usePersonal=positives.length&&Math.random()<(S.discovery<=45?.82:S.discovery<=75?.70:.58);if(usePersonal){const x=pick(positives,p=>p.positive*(S.weights[p.category]||1)*Math.max(.25,1+(S.artists[N(p.artist)]||0))*(1+Math.min(20,p.age||0)/100));return{artist:x.artist,title:x.title||'',cat:x.category,w:18,personal:true}}let a=SEEDS.map(([artist,cat,w])=>({artist,cat,w})).filter(x=>categoryAllowed(x.cat)&&!isBlocked(x.artist));if(S.mode==='mix'){const d=S.variation==='low'?1:S.variation==='medium'?2:3,r=S.recentCategories.slice(0,d),f=a.filter(x=>!r.includes(x.cat));if(f.length)a=f}return pick(a,x=>x.w*(S.weights[x.cat]||1)*Math.max(.25,1+(S.artists[N(x.artist)]||0)))}
+async function resolveArtistMbid(name){const k=N(name);if(S.mbidCache[k])return S.mbidCache[k];try{const q=encodeURIComponent('artist:"'+name.replace(/"/g,'')+'"'),d=await getJSON('https://musicbrainz.org/ws/2/artist/?query='+q+'&fmt=json&limit=5',8500),a=(d.artists||[]).sort((x,y)=>{const ex=N(x.name)===k?1:0,ey=N(y.name)===k?1:0;return ey-ex+(Number(y.score||0)-Number(x.score||0))/100});const id=a[0]?.id||'';if(id)S.mbidCache[k]=id;return id||null}catch{return null}}
+function deepObjects(x,out=[]){if(!x)return out;if(Array.isArray(x)){x.forEach(v=>deepObjects(v,out));return out}if(typeof x==='object'){out.push(x);Object.values(x).forEach(v=>deepObjects(v,out))}return out}
+async function listenBrainzArtists(sd){const mbid=await resolveArtistMbid(sd.artist);if(!mbid)return[];const mode=S.variation==='low'?'easy':S.variation==='medium'?'medium':'hard',pop=S.discovery<=40?[60,100]:S.discovery<=75?[25,100]:[5,92],max=S.variation==='low'?5:S.variation==='medium'?8:12;try{const u='https://api.listenbrainz.org/1/lb-radio/artist/'+encodeURIComponent(mbid)+'?mode='+mode+'&max_similar_artists='+max+'&max_recordings_per_artist=4&pop_begin='+pop[0]+'&pop_end='+pop[1],d=await getJSON(u,10000),m=new Map;for(const o of deepObjects(d)){const name=o.similar_artist_name||o.artist_name||'';if(!name||isBlocked(name))continue;const score=Math.log10(10+Number(o.total_listen_count||o.listen_count||1));m.set(N(name),{artist:name,score:(m.get(N(name))?.score||0)+score,source:'listenbrainz'})}if(m.size){S.sourceStats.listenbrainz++;return[...m.values()]}return[]}catch{return[]}}
+async function deezerRelated(sd){try{let d=await jp('https://api.deezer.com/search/artist?q='+encodeURIComponent(sd.artist)+'&limit=6'),a=(d.data||[]).sort((x,y)=>(N(y.name)===N(sd.artist))-(N(x.name)===N(sd.artist)))[0];if(!a)return[];d=await jp('https://api.deezer.com/artist/'+a.id+'/related?limit=14');S.sourceStats.fallback++;return(d.data||[]).filter(x=>!isBlocked(x.name)).map((x,i)=>({artist:x.name,score:3-Math.min(2,i/6),source:'deezer-related'}))}catch{return[]}}
+async function candidateArtists(sd){let rel=await listenBrainzArtists(sd);if(!rel.length)rel=await deezerRelated(sd);const own={artist:sd.artist,score:sd.personal?7:5,source:'seed'},all=[own,...rel.filter(x=>N(x.artist)!==N(sd.artist))];const recent=S.recentArtists.slice(0,S.variation==='low'?1:S.variation==='medium'?2:3),freshArtists=all.filter(x=>!recent.includes(N(x.artist)));const usable=freshArtists.length>=2?freshArtists:all,count=S.variation==='low'?2:S.variation==='medium'?3:4;return weightedSample(usable,x=>x.score*Math.max(.2,1+(S.artists[N(x.artist)]||0)),count)}
+async function deezerTracks(a,cat){let d=await jp('https://api.deezer.com/search/artist?q='+encodeURIComponent(a.artist)+'&limit=7'),artists=d.data||[],exact=artists.find(x=>N(x.name)===N(a.artist)),ar=exact||artists[0];if(!ar)return[];d=await jp('https://api.deezer.com/artist/'+ar.id+'/top?limit=35');S.sourceStats.deezer++;return(d.data||[]).filter(x=>x.preview).map((x,i)=>({id:x.id,artist:x.artist?.name||ar.name,title:x.title_short||x.title,album:x.album?.title||'',cover:x.album?.cover_big||x.album?.cover_medium||'',preview:x.preview,category:cat,rank:i+1,sourceWeight:a.score||1,source:a.source||'deezer',externalUrl:'https://www.deezer.com/track/'+x.id}))}
+async function itunesTracks(sd){try{const term=encodeURIComponent(sd.artist+' '+(sd.title||'')),d=await jp('https://itunes.apple.com/search?term='+term+'&country=FR&media=music&entity=song&limit=35',12000);S.sourceStats.itunes++;return(d.results||[]).filter(x=>x.previewUrl).map((x,i)=>({id:'it'+x.trackId,artist:x.artistName,title:x.trackName,album:x.collectionName||'',cover:String(x.artworkUrl100||'').replace('100x100','600x600'),preview:x.previewUrl,category:sd.cat,rank:i+1,sourceWeight:1.5,source:'itunes',externalUrl:x.trackViewUrl||''}))}catch{return[]}}
+function scoreTrack(x,sd){const pref=Math.max(.12,1+(S.artists[N(x.artist)]||0)),cw=S.weights[x.category]||1,rank=x.rank||20,d=S.discovery/100;let popularity=(1-d)*Math.max(.12,1-(rank-1)/38)+d*(.58+Math.min(rank,22)/40);if(S.discovery>82&&rank<4)popularity*=.72;if(N(x.artist)===N(sd.artist))popularity*=sd.personal?1.15:.92;if(S.recentArtists.slice(0,3).includes(N(x.artist)))popularity*=.22;return Math.max(.01,(x.sourceWeight||1)*pref*cw*popularity)}
+function unseen(a){return a.filter(x=>x.artist&&x.title&&x.preview&&!isBlocked(x.artist)&&!S.seen.includes(Q(x))&&!S.kept.some(y=>Q(y)===Q(x))&&!S.likedMemory.some(y=>Q(y)===Q(x))&&!S.rejected.some(y=>Q(y)===Q(x)))}
+async function fill(){for(let attempt=0;attempt<3;attempt++){const sd=seed();if(!sd)throw Error('Aucun univers disponible');const arts=await candidateArtists(sd);let sets=await Promise.all(arts.map(a=>deezerTracks(a,sd.cat).catch(()=>[]))),t=unseen(sets.flat());if(!t.length)t=unseen(await itunesTracks(sd));if(t.length)return pick(t,x=>scoreTrack(x,sd))}throw Error('Aucun extrait nouveau disponible')}
+function enable(on){['yes','no','like','lessStyle','lessArtist','block'].forEach(x=>$(x).disabled=!on);$('undo').disabled=!S.undo.length}
+function fmtTime(v){if(!isFinite(v)||v<0)return '0:00';const m=Math.floor(v/60),s=Math.floor(v%60).toString().padStart(2,'0');return m+':'+s}function updatePlayer(){const a=$('audio'),has=!!a.getAttribute('src');$('ct').textContent=fmtTime(a.currentTime||0);$('tt').textContent=fmtTime(a.duration||0);$('seek').value=has&&isFinite(a.duration)&&a.duration>0?((a.currentTime||0)/a.duration)*100:0;$('miniPlay').textContent=has&&!a.paused?'❚❚':'▶';if($('miniMute'))$('miniMute').textContent=a.muted||a.volume===0?'◌':'◔'}function sync(){const a=$('audio'),has=!!a.getAttribute('src');$('play').textContent=has&&!a.paused?'❚❚':'▶';$('back').disabled=!S.undo.length;updatePlayer()}
+function show(){const a=$('audio');$('title').textContent=cur.title;$('artist').textContent=cur.artist+(cur.album?' — '+cur.album:'');$('cat').textContent=L[cur.category]||cur.category;a.src=cur.preview;a.load();$('cover').src=cur.cover||DEF;sync()}
 async function next(){if(busy)return;busy=true;$('play').disabled=true;$('play').textContent='…';enable(false);$('status').textContent='Recherche de la prochaine découverte…';try{cur=await fill();S.seen.push(Q(cur));S.seen=S.seen.slice(-700);S.recentCategories=[cur.category,...S.recentCategories.filter(x=>x!==cur.category)].slice(0,5);S.recentArtists=[N(cur.artist),...S.recentArtists.filter(x=>x!==N(cur.artist))].slice(0,8);show();save();try{await $('audio').play()}catch{}}catch(e){cur=null;$('audio').removeAttribute('src');$('audio').load();$('cat').textContent='Connexion';$('title').textContent='Appuie pour réessayer';$('artist').textContent='Service musical momentanément indisponible';$('cover').src=DEF;$('status').textContent=e.message+' — réessaie.'}finally{busy=false;$('play').disabled=false;enable(!!cur);sync()}}
 function decide(type,sig){if(!cur)return;const x={...cur,date:new Date().toISOString(),signal:sig},a=N(x.artist),c=x.category;S.undo.push({x:clone(x),type,w:clone(S.weights),a:clone(S.artists),b:clone(S.blocked),ra:clone(S.recentArtists),rc:clone(S.recentCategories)});S.undo=S.undo.slice(-15);S[type].push(x);if(type==='rejected')sessionRejected.push(x);if(sig==='keep'){S.weights[c]=(S.weights[c]||1)+.10;S.artists[a]=(S.artists[a]||0)+.18}else if(sig==='like')S.weights[c]=(S.weights[c]||1)+.09;else if(sig==='style')S.weights[c]=Math.max(.2,(S.weights[c]||1)-.18);else if(sig==='artist')S.artists[a]=(S.artists[a]||0)-.35;else if(sig==='block'){if(!isBlocked(x.artist))S.blocked.push(x.artist)}else if(sig==='track')S.artists[a]=(S.artists[a]||0)-.035;cur=null;save('Préférence prise en compte.');next()}
 function undo(){const u=S.undo.pop();if(!u)return;const l=S[u.type],i=l.findIndex(x=>x.date===u.x.date&&Q(x)===Q(u.x));if(i>=0)l.splice(i,1);if(u.type==='rejected')sessionRejected=sessionRejected.filter(x=>!(x.date===u.x.date&&Q(x)===Q(u.x)));S.weights=u.w;S.artists=u.a;S.blocked=u.b;S.recentArtists=u.ra||S.recentArtists;S.recentCategories=u.rc||S.recentCategories;S.seen=S.seen.filter(k=>k!==Q(u.x));cur=u.x;show();save('Dernier choix annulé.');enable(true)}
