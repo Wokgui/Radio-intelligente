@@ -37,6 +37,24 @@
     return '/api/youtube-search?redirect=1&target='+encodeURIComponent(target)+'&q='+encodeURIComponent(trackSearchQuery(track));
   }
 
+  function youtubeEmbedTarget(track){
+    const direct=trackYoutubeUrl(track);
+    const id=videoId(direct);
+    if(id)return 'https://www.youtube-nocookie.com/embed/'+id+'?controls=1&playsinline=1&rel=0';
+    return '/api/youtube-search?redirect=1&target=embed&q='+encodeURIComponent(trackSearchQuery(track));
+  }
+
+  function firefoxUrl(value){
+    const raw=String(value||'');
+    if(!/Android/i.test(navigator.userAgent))return raw;
+    try{
+      const url=new URL(raw,location.href);
+      if(!/^https?:$/.test(url.protocol))return raw;
+      return 'intent://'+url.host+url.pathname+url.search+url.hash+
+        '#Intent;scheme='+url.protocol.slice(0,-1)+';package=org.mozilla.firefox;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
+    }catch{return raw}
+  }
+
   function noTubeUrl(value){
     const id=videoId(value);
     return id?NOTUBE_BASE+'?v='+encodeURIComponent(id):NOTUBE_BASE;
@@ -99,7 +117,7 @@
     const id=videoId(url);
     if(!id){
       const search=document.getElementById('youtubeSearchLink');
-      search.href='https://www.youtube.com/results?search_query='+encodeURIComponent(raw);
+      search.href=firefoxUrl('https://www.youtube.com/results?search_query='+encodeURIComponent(raw));
       search.click();
       setError('Résultats ouverts : choisis une vidéo, puis colle son lien ici pour l’ajouter.');
       return;
@@ -157,7 +175,7 @@
       if(!track||!actions)return;
       const youtube=actions.children[0];
       if(youtube?.tagName==='A'){
-        youtube.href=resolvedTarget(track,'youtube');
+        youtube.href=firefoxUrl(resolvedTarget(track,'youtube'));
         youtube.title='Ouvrir directement la vidéo la plus pertinente';
       }
       const current=actions.children[1];
@@ -167,6 +185,16 @@
       download.textContent='Télécharger';
       download.onclick=()=>window.open(resolvedTarget(track,'download'),'_blank','noopener');
       current?.replaceWith(download);
+      if(!row.querySelector('.youtube-full-player')){
+        const player=document.createElement('iframe');
+        player.className='youtube-full-player';
+        player.src=youtubeEmbedTarget(track);
+        player.title='Lecteur YouTube complet pour '+track.title;
+        player.loading='lazy';
+        player.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        player.setAttribute('allowfullscreen','');
+        row.appendChild(player);
+      }
     });
   }
 

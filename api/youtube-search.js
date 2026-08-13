@@ -10,7 +10,8 @@ function firstVideoId(html) {
 
 module.exports = async function handler(request, response) {
   const query = String(request.query?.q || '').trim().slice(0, 180);
-  const target = request.query?.target === 'download' ? 'download' : 'youtube';
+  const requestedTarget = String(request.query?.target || 'youtube');
+  const target = ['download', 'embed'].includes(requestedTarget) ? requestedTarget : 'youtube';
   const redirect = request.query?.redirect === '1';
 
   if (!query) {
@@ -33,7 +34,9 @@ module.exports = async function handler(request, response) {
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const destination = target === 'download'
       ? `${NOTUBE_BASE}?v=${encodeURIComponent(videoId)}`
-      : youtubeUrl;
+      : target === 'embed'
+        ? `https://www.youtube-nocookie.com/embed/${videoId}?controls=1&playsinline=1&rel=0`
+        : youtubeUrl;
 
     response.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
     if (redirect) return response.redirect(302, destination);
