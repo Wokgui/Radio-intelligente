@@ -1,7 +1,5 @@
 (function(){
   const NOTUBE_BASE='https://notube.lol/fr/youtube-app-394';
-  let sheetMode='add';
-  let sheetTarget=null;
 
   function videoId(value){
     const raw=String(value||'').trim();
@@ -29,8 +27,14 @@
     return canonicalUrl(track?.youtubeUrl||track?.externalUrl||'');
   }
 
-  function youtubeSearchUrl(track){
-    return trackYoutubeUrl(track)||'https://www.youtube.com/results?search_query='+encodeURIComponent((track?.artist||'')+' '+(track?.title||''));
+  function trackSearchQuery(track){
+    return ((track?.artist||'')+' '+(track?.title||'')).trim();
+  }
+
+  function resolvedTarget(track,target){
+    const direct=trackYoutubeUrl(track);
+    if(direct)return target==='download'?noTubeUrl(direct):direct;
+    return '/api/youtube-search?redirect=1&target='+encodeURIComponent(target)+'&q='+encodeURIComponent(trackSearchQuery(track));
   }
 
   function noTubeUrl(value){
@@ -53,13 +57,10 @@
       sheet.classList.remove('open');
       sheet.setAttribute('aria-hidden','true');
     }
-    sheetTarget=null;
     setError('');
   }
 
-  function openSheet(mode,track){
-    sheetMode=mode;
-    sheetTarget=track?{date:track.date,key:Q(track)}:null;
+  function openSheet(){
     const sheet=document.getElementById('youtubeAddSheet');
     const title=document.getElementById('youtubeAddTitle');
     const note=document.getElementById('youtubeAddNote');
@@ -67,13 +68,12 @@
     const confirm=document.getElementById('youtubeAddConfirm');
     const search=document.getElementById('youtubeSearchLink');
     if(!sheet||!title||!note||!input||!confirm||!search)return;
-    const downloading=mode==='download';
-    title.textContent=downloading?'Télécharger « '+(track?.title||'ce morceau')+' »':'Ajouter un morceau';
-    note.textContent=downloading?'Choisis la bonne vidéo sur YouTube, puis colle son lien ici. Il sera mémorisé pour les prochains téléchargements.':'Colle le lien YouTube : le titre, l’artiste et la pochette seront ajoutés automatiquement.';
-    confirm.textContent=downloading?'Ouvrir noTube':'Ajouter';
-    search.classList.toggle('visible',downloading);
-    search.href=downloading?youtubeSearchUrl(track):'#';
-    input.value=trackYoutubeUrl(track);
+    title.textContent='Ajouter un morceau';
+    note.textContent='Colle le lien YouTube : le titre, l’artiste et la pochette seront ajoutés automatiquement.';
+    confirm.textContent='Ajouter';
+    search.classList.remove('visible');
+    search.href='#';
+    input.value='';
     input.placeholder='https://www.youtube.com/watch?v=…';
     setError('');
     sheet.classList.add('open');
@@ -87,17 +87,6 @@
     const url=canonicalUrl(input?.value);
     const id=videoId(url);
     if(!id){setError('Colle un lien de vidéo YouTube valide.');return}
-
-    if(sheetMode==='download'){
-      const track=sheetTarget&&findTrack(sheetTarget.date,sheetTarget.key);
-      if(track){
-        track.youtubeUrl=url;
-        save('Lien YouTube mémorisé pour ce morceau.');
-      }
-      closeSheet();
-      window.open(noTubeUrl(url),'_blank','noopener');
-      return;
-    }
 
     if(S.kept.some(track=>videoId(track.youtubeUrl||track.externalUrl)===id)){
       setError('Ce morceau est déjà dans Gardés.');
@@ -150,17 +139,16 @@
       const actions=row.querySelector('.row-actions');
       if(!track||!actions)return;
       const youtube=actions.children[0];
-      if(youtube?.tagName==='A')youtube.href=youtubeSearchUrl(track);
+      if(youtube?.tagName==='A'){
+        youtube.href=resolvedTarget(track,'youtube');
+        youtube.title='Ouvrir directement la vidéo la plus pertinente';
+      }
       const current=actions.children[1];
       const download=document.createElement('button');
       download.type='button';
       download.className='row-link row-download';
       download.textContent='Télécharger';
-      download.onclick=()=>{
-        const direct=trackYoutubeUrl(track);
-        if(direct)window.open(noTubeUrl(direct),'_blank','noopener');
-        else openSheet('download',track);
-      };
+      download.onclick=()=>window.open(resolvedTarget(track,'download'),'_blank','noopener');
       current?.replaceWith(download);
     });
   }
@@ -174,7 +162,7 @@
       add.className='history-add-tab';
       add.setAttribute('aria-label','Ajouter un morceau depuis YouTube');
       add.innerHTML='<span aria-hidden="true">＋</span><small>Ajouter</small>';
-      add.onclick=()=>openSheet('add');
+      add.onclick=openSheet;
       tabs.insertBefore(add,tabs.children[1]||null);
     }
 

@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v51';
+const CACHE = 'radio-intelligente-pwa-v52';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -11,8 +11,8 @@ const APP_SHELL = [
   '/silence.wav'
   ,'/cloud-backup.js?v=4'
   ,'/vendor/supabase/supabase.js?v=1'
-  ,'/radio-v51.css?v=1'
-  ,'/radio-v51.js?v=1'
+  ,'/radio-v51.css?v=2'
+  ,'/radio-v51.js?v=2'
 ];
 
 self.addEventListener('install', event => {
