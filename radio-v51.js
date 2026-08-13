@@ -1,5 +1,45 @@
 (function(){
   const NOTUBE_BASE='https://notube.lol/fr/youtube-app-394';
+  const historyPageUndo=[];
+  const historyPageRedo=[];
+
+  function historySnapshot(){
+    return JSON.stringify({music:S,sessionRejected});
+  }
+
+  function updateHistoryActions(){
+    const undo=document.getElementById('historyPageUndo');
+    const redo=document.getElementById('historyPageRedo');
+    if(undo)undo.disabled=!historyPageUndo.length;
+    if(redo)redo.disabled=!historyPageRedo.length;
+  }
+
+  function rememberHistoryAction(){
+    historyPageUndo.push(historySnapshot());
+    if(historyPageUndo.length>20)historyPageUndo.shift();
+    historyPageRedo.length=0;
+    updateHistoryActions();
+  }
+
+  function restoreHistorySnapshot(snapshot,message){
+    const restored=JSON.parse(snapshot);
+    S=norm(restored.music||{});
+    sessionRejected=Array.isArray(restored.sessionRejected)?restored.sessionRejected:[];
+    save(message);
+    updateHistoryActions();
+  }
+
+  function undoHistoryAction(){
+    if(!historyPageUndo.length)return;
+    historyPageRedo.push(historySnapshot());
+    restoreHistorySnapshot(historyPageUndo.pop(),'Dernière modification de Gardés annulée.');
+  }
+
+  function redoHistoryAction(){
+    if(!historyPageRedo.length)return;
+    historyPageUndo.push(historySnapshot());
+    restoreHistorySnapshot(historyPageRedo.pop(),'Dernière modification de Gardés rétablie.');
+  }
 
   function videoId(value){
     const raw=String(value||'').trim();
@@ -151,6 +191,7 @@
         date:new Date().toISOString(),
         signal:'keep'
       };
+      rememberHistoryAction();
       S.kept.push(track);
       if(!S.seen.includes(Q(track)))S.seen.push(Q(track));
       save('Morceau YouTube ajouté dans Gardés.');
@@ -199,6 +240,25 @@
   }
 
   function install(){
+    const settings=document.getElementById('settingsPage');
+    const settingsHead=settings?.querySelector('.settings-head');
+    if(settings&&settingsHead&&!document.getElementById('radioHistoryActions')){
+      const actions=document.createElement('div');
+      actions.id='radioHistoryActions';
+      actions.className='radio-history-actions';
+      actions.setAttribute('aria-label','Historique des modifications de Gardés et passés');
+      actions.innerHTML='<button id="historyPageUndo" type="button" aria-label="Annuler la dernière modification"><span aria-hidden="true">↶</span><small>Annuler</small></button><button id="historyPageRedo" type="button" aria-label="Rétablir la dernière modification"><span aria-hidden="true">↷</span><small>Rétablir</small></button>';
+      settingsHead.insertAdjacentElement('afterend',actions);
+      document.getElementById('historyPageUndo').onclick=undoHistoryAction;
+      document.getElementById('historyPageRedo').onclick=redoHistoryAction;
+    }
+
+    const baseRemoveKept=removeKept;
+    removeKept=function(date,key){
+      if(S.kept.some(track=>track.date===date&&Q(track)===key))rememberHistoryAction();
+      return baseRemoveKept(date,key);
+    };
+
     const tabs=document.querySelector('#settingsPage .radio-history-card .tabs');
     if(tabs&&!document.getElementById('addYoutubeTrack')){
       const add=document.createElement('button');
@@ -230,6 +290,7 @@
     render=function(){
       const result=baseRender();
       decorateRows();
+      updateHistoryActions();
       return result;
     };
     render();

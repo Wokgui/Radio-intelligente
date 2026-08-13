@@ -1,4 +1,30 @@
 /* Gardés : proposition 3, cartes symétriques avec bandeau issu de la pochette. */
+#settingsPage>.radio-history-actions{display:none}
+#settingsPage.history-only>.radio-history-actions{
+  width:min(calc(100% - 28px),520px);
+  margin:10px auto 8px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+#settingsPage.history-only>.radio-history-actions button{
+  min-height:48px;
+  padding:6px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  border:1px solid color-mix(in srgb,var(--a) 18%,var(--l));
+  border-radius:15px;
+  background:#fff;
+  color:#7035ca;
+  box-shadow:0 5px 16px rgba(80,50,120,.08);
+  font-weight:900;
+}
+#settingsPage.history-only>.radio-history-actions button>span{font-size:1.4rem;line-height:1}
+#settingsPage.history-only>.radio-history-actions button>small{font-size:.75rem;line-height:1}
+#settingsPage.history-only>.radio-history-actions button:disabled{opacity:.38;box-shadow:none}
+
 #settingsPage.history-only>.radio-history-card .tabs{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 74px minmax(0,1fr)!important;
