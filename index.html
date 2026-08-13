@@ -941,7 +941,7 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function youtubeUrl(x){return 'https://www.youtube.com/results?search_query='+encodeURIComponent((x.artist||'')+' '+(x.title||''))}
 function fallbackUrl(x){if(x.externalUrl)return x.externalUrl;if(/^\d+$/.test(String(x.id||'')))return 'https://www.deezer.com/track/'+x.id;return 'https://music.apple.com/fr/search?term='+encodeURIComponent((x.artist||'')+' '+(x.title||''))}
 function removeKept(date,key){const i=S.kept.findIndex(x=>x.date===date&&Q(x)===key);if(i<0)return;const x=S.kept[i];S.kept.splice(i,1);if(!S.likedMemory.some(y=>Q(y)===Q(x)))S.likedMemory.push({...x,hiddenFromKept:true,hiddenAt:new Date().toISOString()});S.likedMemory=S.likedMemory.slice(-1000);if(!S.seen.includes(Q(x)))S.seen.push(Q(x));save('Retiré de la liste. Ton avis positif reste mémorisé.')}
-function render(){$('kc').textContent=S.kept.length;$('rc').textContent=sessionRejected.length;$('mode').value=S.mode;$('variation').value=S.variation;$('disc').value=S.discovery;$('dv').textContent=S.discovery;enable(!!cur);const a=tab==='rejected'?sessionRejected:S.kept;$('hist').innerHTML=a.length?a.slice().reverse().map(x=>{const key=Q(x),u=youtubeUrl(x),f=fallbackUrl(x),cover=esc(x.cover||DEF);return '<div class="row">'+(tab==='kept'?'<div class="row-main"><img class="row-cover" src="'+cover+'" alt="" loading="lazy" onerror="this.src=\''+esc(DEF)+'\'"><div class="row-info"><b>'+esc(x.title)+'</b><span>'+esc(x.artist)+'</span></div></div>':'<b>'+esc(x.title)+'</b><br><span>'+esc(x.artist)+'</span>')+(tab==='kept'?'<div class="row-actions"><a class="row-link" href="'+esc(u)+'" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="'+esc(f)+'" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="'+esc(x.date||'')+'" data-key="'+esc(key)+'">Supprimer</button></div>':'')+'</div>'}).join(''):'<div class="empty">Aucun morceau.</div>';if(tab==='kept')$('hist').querySelectorAll('.row-delete').forEach(b=>b.onclick=()=>removeKept(b.dataset.date,b.dataset.key))}
+function render(){$('kc').textContent=S.kept.length;$('rc').textContent=sessionRejected.length;$('mode').value=S.mode;$('variation').value=S.variation;$('disc').value=S.discovery;$('dv').textContent=S.discovery;enable(!!cur);const a=tab==='rejected'?S.rejected:S.kept;$('hist').innerHTML=a.length?a.slice().reverse().map(x=>{const key=Q(x),u=youtubeUrl(x),f=fallbackUrl(x),cover=esc(x.cover||DEF);return '<div class="row">'+(tab==='kept'?'<div class="row-main"><img class="row-cover" src="'+cover+'" alt="" loading="lazy" onerror="this.src=\''+esc(DEF)+'\'"><div class="row-info"><b>'+esc(x.title)+'</b><span>'+esc(x.artist)+'</span></div></div>':'<b>'+esc(x.title)+'</b><br><span>'+esc(x.artist)+'</span>')+(tab==='kept'?'<div class="row-actions"><a class="row-link" href="'+esc(u)+'" target="_blank" rel="noopener">YouTube</a><a class="row-link" href="'+esc(f)+'" target="_blank" rel="noopener">Autre lien</a><button class="row-delete" data-date="'+esc(x.date||'')+'" data-key="'+esc(key)+'">Supprimer</button></div>':'')+'</div>'}).join(''):'<div class="empty">Aucun morceau.</div>';if(tab==='kept')$('hist').querySelectorAll('.row-delete').forEach(b=>b.onclick=()=>removeKept(b.dataset.date,b.dataset.key))}
 function backupPayload(){return{format:'radio-intelligente-backup',version:2,music:S,interface:UI}}
 function restorePayload(raw){const p=raw&&typeof raw==='object'?raw:{};if(p.format==='radio-intelligente-backup'||p.music||p.interface){S=norm(p.music||{});if(p.interface&&typeof p.interface==='object'){UI={...uiDefaults(),...p.interface};localStorage.setItem(UIKEY,JSON.stringify(UI));applyUI(UI)}return}S=norm(p)}
 function dl(data,name,type){const u=URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500)}
@@ -1141,14 +1141,6 @@ if(radioHistoryCard){
   radioActionGrid.insertAdjacentElement('afterend',radioHistoryCard);
 }
 [radioBackupCard,radioResetHost,radioInstallHost].forEach(card=>{if(card&&card!==radioActionGrid&&!card.children.length)card.remove()});
-const radioBaseRender=render;
-render=function(){
-  const currentSessionRejected=sessionRejected;
-  sessionRejected=S.rejected;
-  try{return radioBaseRender()}
-  finally{sessionRejected=currentSessionRejected}
-};
-render();
 AutoBackupCloud.create({
   appId:'radio-intelligente',
   eventName:'radio-backup-change',
