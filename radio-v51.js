@@ -1,7 +1,7 @@
-// deploy-refresh-v13
+// deploy-refresh-v14
 (function(){
   const THEME={
-    status:'#6848bf',
+    status:'#6f4fc8',
     primary:'#865bea',
     primaryHi:'#c597fc',
     primaryDark:'#5b31ba',
