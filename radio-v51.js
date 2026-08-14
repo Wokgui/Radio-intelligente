@@ -1,6 +1,6 @@
 (function(){
   const THEME={
-    status:'#6f4fc8',
+    status:'#6848bf',
     primary:'#865bea',
     primaryHi:'#c597fc',
     primaryDark:'#5b31ba',
@@ -97,6 +97,10 @@
       }
       .ui-actions .ui-save,.tab.on,.backup{
         background:linear-gradient(145deg,${THEME.primaryHi} 0%,${THEME.primary} 55%,${THEME.primaryDark} 100%)!important;
+        color:#fff!important;
+      }
+      #settingsPage .tab.on,
+      #settingsPage .tab.on *{
         color:#fff!important;
       }
       .seek{background:#d9ccec!important}
