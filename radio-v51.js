@@ -1,300 +1,85 @@
 (function(){
-  const NOTUBE_BASE='https://notube.lol/fr/youtube-app-394';
-  const historyPageUndo=[];
-  const historyPageRedo=[];
-
-  function historySnapshot(){
-    return JSON.stringify({music:S,sessionRejected});
-  }
-
-  function updateHistoryActions(){
-    const undo=document.getElementById('historyPageUndo');
-    const redo=document.getElementById('historyPageRedo');
-    if(undo)undo.disabled=!historyPageUndo.length;
-    if(redo)redo.disabled=!historyPageRedo.length;
-  }
-
-  function rememberHistoryAction(){
-    historyPageUndo.push(historySnapshot());
-    if(historyPageUndo.length>20)historyPageUndo.shift();
-    historyPageRedo.length=0;
-    updateHistoryActions();
-  }
-
-  function restoreHistorySnapshot(snapshot,message){
-    const restored=JSON.parse(snapshot);
-    S=norm(restored.music||{});
-    sessionRejected=Array.isArray(restored.sessionRejected)?restored.sessionRejected:[];
-    save(message);
-    updateHistoryActions();
-  }
-
-  function undoHistoryAction(){
-    if(!historyPageUndo.length)return;
-    historyPageRedo.push(historySnapshot());
-    restoreHistorySnapshot(historyPageUndo.pop(),'Dernière modification de Gardés annulée.');
-  }
-
-  function redoHistoryAction(){
-    if(!historyPageRedo.length)return;
-    historyPageUndo.push(historySnapshot());
-    restoreHistorySnapshot(historyPageRedo.pop(),'Dernière modification de Gardés rétablie.');
-  }
-
-  function videoId(value){
-    const raw=String(value||'').trim();
-    if(/^[A-Za-z0-9_-]{11}$/.test(raw))return raw;
-    try{
-      const url=new URL(raw);
-      const host=url.hostname.replace(/^www\./,'').toLowerCase();
-      if(host==='youtu.be')return url.pathname.split('/').filter(Boolean)[0]||'';
-      if(host==='youtube.com'||host.endsWith('.youtube.com')){
-        if(url.pathname==='/watch')return url.searchParams.get('v')||'';
-        const parts=url.pathname.split('/').filter(Boolean);
-        if(['shorts','embed','live'].includes(parts[0]))return parts[1]||'';
-      }
-    }catch{}
-    const match=raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/))([A-Za-z0-9_-]{11})/i);
-    return match?match[1]:'';
-  }
-
-  function canonicalUrl(value){
-    const id=videoId(value);
-    return id?'https://www.youtube.com/watch?v='+id:'';
-  }
-
-  function trackYoutubeUrl(track){
-    return canonicalUrl(track?.youtubeUrl||track?.externalUrl||'');
-  }
-
-  function trackSearchQuery(track){
-    return ((track?.artist||'')+' '+(track?.title||'')).trim();
-  }
-
-  function resolvedTarget(track,target){
-    const direct=trackYoutubeUrl(track);
-    if(direct)return target==='download'?noTubeUrl(direct):direct;
-    return '/api/youtube-search?redirect=1&target='+encodeURIComponent(target)+'&q='+encodeURIComponent(trackSearchQuery(track));
-  }
-
-  function youtubeEmbedTarget(track){
-    const direct=trackYoutubeUrl(track);
-    const id=videoId(direct);
-    if(id)return 'https://www.youtube-nocookie.com/embed/'+id+'?controls=1&playsinline=1&rel=0';
-    return '/api/youtube-search?redirect=1&target=embed&q='+encodeURIComponent(trackSearchQuery(track));
-  }
-
-  function firefoxUrl(value){
-    const raw=String(value||'');
-    if(!/Android/i.test(navigator.userAgent))return raw;
-    try{
-      const url=new URL(raw,location.href);
-      if(!/^https?:$/.test(url.protocol))return raw;
-      return 'intent://'+url.host+url.pathname+url.search+url.hash+
-        '#Intent;scheme='+url.protocol.slice(0,-1)+';package=org.mozilla.firefox;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
-    }catch{return raw}
-  }
-
-  function noTubeUrl(value){
-    const id=videoId(value);
-    return id?NOTUBE_BASE+'?v='+encodeURIComponent(id):NOTUBE_BASE;
-  }
-
-  function findTrack(date,key){
-    return S.kept.find(track=>track.date===date&&Q(track)===key);
-  }
-
-  function setError(message){
-    const error=document.getElementById('youtubeAddError');
-    if(error)error.textContent=message||'';
-  }
-
-  function closeSheet(){
-    const sheet=document.getElementById('youtubeAddSheet');
-    if(sheet){
-      sheet.classList.remove('open');
-      sheet.setAttribute('aria-hidden','true');
+  function shazamTarget(){
+    const fallback='https://www.shazam.com/';
+    if(/Android/i.test(navigator.userAgent)){
+      return 'intent://www.shazam.com/#Intent;scheme=https;package=com.shazam.android;S.browser_fallback_url='+encodeURIComponent(fallback)+';end';
     }
-    setError('');
+    return fallback;
   }
 
-  function updateAddAction(){
-    const input=document.getElementById('youtubeAddInput');
-    const confirm=document.getElementById('youtubeAddConfirm');
-    if(!input||!confirm||confirm.disabled)return;
-    const value=input.value.trim();
-    confirm.textContent=value&&!videoId(value)?'Rechercher sur YouTube':'Ajouter';
-  }
+  function installShazam(){
+    if(document.getElementById('miniShazam'))return;
+    const mute=document.getElementById('miniMute');
+    const gear=document.getElementById('miniMore');
+    if(!mute||!gear)return;
 
-  function openSheet(){
-    const sheet=document.getElementById('youtubeAddSheet');
-    const title=document.getElementById('youtubeAddTitle');
-    const note=document.getElementById('youtubeAddNote');
-    const input=document.getElementById('youtubeAddInput');
-    const confirm=document.getElementById('youtubeAddConfirm');
-    const search=document.getElementById('youtubeSearchLink');
-    if(!sheet||!title||!note||!input||!confirm||!search)return;
-    title.textContent='Ajouter un morceau';
-    note.textContent='Colle un lien YouTube pour ajouter le morceau, ou écris des mots-clés pour afficher les résultats YouTube.';
-    confirm.textContent='Ajouter';
-    search.classList.remove('visible');
-    search.href='#';
-    input.value='';
-    input.placeholder='Lien YouTube ou artiste + titre';
-    setError('');
-    updateAddAction();
-    sheet.classList.add('open');
-    sheet.setAttribute('aria-hidden','false');
-    setTimeout(()=>input.focus(),30);
-  }
-
-  async function submitSheet(){
-    const input=document.getElementById('youtubeAddInput');
-    const confirm=document.getElementById('youtubeAddConfirm');
-    const raw=String(input?.value||'').trim();
-    if(!raw){setError('Colle un lien YouTube ou écris des termes de recherche.');return}
-    const url=canonicalUrl(raw);
-    const id=videoId(url);
-    if(!id){
-      const search=document.getElementById('youtubeSearchLink');
-      search.href=firefoxUrl('https://www.youtube.com/results?search_query='+encodeURIComponent(raw));
-      search.click();
-      setError('Résultats ouverts : choisis une vidéo, puis colle son lien ici pour l’ajouter.');
-      return;
-    }
-
-    if(S.kept.some(track=>videoId(track.youtubeUrl||track.externalUrl)===id)){
-      setError('Ce morceau est déjà dans Gardés.');
-      return;
-    }
-
-    confirm.disabled=true;
-    confirm.textContent='Ajout…';
-    setError('');
-    try{
-      let metadata={};
-      try{
-        const response=await fetch('https://noembed.com/embed?url='+encodeURIComponent(url),{headers:{Accept:'application/json'}});
-        if(response.ok)metadata=await response.json();
-      }catch{}
-      const track={
-        id:'yt'+id,
-        artist:metadata.author_name||'YouTube',
-        title:metadata.title||'Morceau YouTube',
-        album:'YouTube',
-        cover:metadata.thumbnail_url||'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg',
-        preview:'',
-        category:'youtube',
-        source:'youtube-manual',
-        externalUrl:url,
-        youtubeUrl:url,
-        date:new Date().toISOString(),
-        signal:'keep'
-      };
-      rememberHistoryAction();
-      S.kept.push(track);
-      if(!S.seen.includes(Q(track)))S.seen.push(Q(track));
-      save('Morceau YouTube ajouté dans Gardés.');
-      closeSheet();
-    }catch{
-      setError('Impossible d’ajouter ce morceau pour le moment.');
-    }finally{
-      confirm.disabled=false;
-      confirm.textContent='Ajouter';
-    }
-  }
-
-  function decorateRows(){
-    if(tab!=='kept')return;
-    const rows=[...document.querySelectorAll('#hist .row:has(.row-main)')];
-    rows.forEach(row=>{
-      const cover=row.querySelector('.row-cover');
-      if(cover?.src)row.style.setProperty('--row-cover','url("'+cover.src.replace(/"/g,'%22')+'")');
-      const deleteButton=row.querySelector('.row-delete');
-      const track=deleteButton&&findTrack(deleteButton.dataset.date,deleteButton.dataset.key);
-      const actions=row.querySelector('.row-actions');
-      if(!track||!actions)return;
-      const youtube=actions.children[0];
-      if(youtube?.tagName==='A'){
-        youtube.href=firefoxUrl(resolvedTarget(track,'youtube'));
-        youtube.title='Ouvrir directement la vidéo la plus pertinente';
-      }
-      const current=actions.children[1];
-      const download=document.createElement('button');
-      download.type='button';
-      download.className='row-link row-download';
-      download.textContent='Télécharger';
-      download.onclick=()=>window.open(resolvedTarget(track,'download'),'_blank','noopener');
-      current?.replaceWith(download);
-      if(!row.querySelector('.youtube-full-player')){
-        const player=document.createElement('iframe');
-        player.className='youtube-full-player';
-        player.src=youtubeEmbedTarget(track);
-        player.title='Lecteur YouTube complet pour '+track.title;
-        player.loading='lazy';
-        player.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        player.setAttribute('allowfullscreen','');
-        row.appendChild(player);
-      }
+    const shazam=document.createElement('button');
+    shazam.id='miniShazam';
+    shazam.type='button';
+    shazam.className='icon-btn shazam-btn';
+    shazam.setAttribute('aria-label','Ouvrir Shazam');
+    shazam.title='Shazam';
+    shazam.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M7.3 18.8l4.7 4.7a4.1 4.1 0 0 0 5.8 0l2.7-2.7"/><path d="M24.7 13.2L20 8.5a4.1 4.1 0 0 0-5.8 0l-2.7 2.7"/><path d="M10.8 20.9l10.4-9.8"/></svg>';
+    shazam.addEventListener('click',()=>{
+      const target=shazamTarget();
+      if(/Android/i.test(navigator.userAgent))location.href=target;
+      else window.open(target,'_blank','noopener');
     });
+    mute.replaceWith(shazam);
+
+    const style=document.createElement('style');
+    style.id='radioShazamStyle';
+    style.textContent=`
+      .playerbar{
+        grid-template-columns:52px 46px minmax(0,1fr) 46px 34px 38px!important;
+        gap:7px!important;
+      }
+      #miniShazam{
+        width:34px!important;
+        height:34px!important;
+        min-width:34px!important;
+        border:0!important;
+        border-radius:50%!important;
+        display:grid!important;
+        place-items:center!important;
+        padding:0!important;
+        background:linear-gradient(135deg,var(--a),var(--a2))!important;
+        color:#fff!important;
+        box-shadow:0 6px 15px #8f40ef30!important;
+      }
+      #miniShazam svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:3.15;stroke-linecap:round;stroke-linejoin:round}
+      #miniShazam:active{transform:scale(.93)}
+      @media(max-width:420px){
+        .playerbar{
+          grid-template-columns:48px 42px minmax(0,1fr) 42px 32px 34px!important;
+          gap:6px!important;
+          padding-left:9px!important;
+          padding-right:9px!important;
+        }
+        #miniShazam{width:32px!important;height:32px!important;min-width:32px!important}
+        #miniShazam svg{width:20px;height:20px}
+      }
+      @media(max-width:390px){
+        .playerbar{
+          grid-template-columns:46px 40px minmax(48px,1fr) 40px 30px 34px!important;
+          gap:5px!important;
+          padding-left:8px!important;
+          padding-right:8px!important;
+        }
+        #miniShazam{width:30px!important;height:30px!important;min-width:30px!important}
+        #miniShazam svg{width:19px;height:19px}
+      }
+    `;
+    document.head.appendChild(style);
   }
 
-  function install(){
-    const settings=document.getElementById('settingsPage');
-    const settingsHead=settings?.querySelector('.settings-head');
-    if(settings&&settingsHead&&!document.getElementById('radioHistoryActions')){
-      const actions=document.createElement('div');
-      actions.id='radioHistoryActions';
-      actions.className='radio-history-actions';
-      actions.setAttribute('aria-label','Historique des modifications de Gardés et passés');
-      actions.innerHTML='<button id="historyPageUndo" type="button" aria-label="Annuler la dernière modification"><span aria-hidden="true">↶</span><small>Annuler</small></button><button id="historyPageRedo" type="button" aria-label="Rétablir la dernière modification"><span aria-hidden="true">↷</span><small>Rétablir</small></button>';
-      settingsHead.insertAdjacentElement('afterend',actions);
-      document.getElementById('historyPageUndo').onclick=undoHistoryAction;
-      document.getElementById('historyPageRedo').onclick=redoHistoryAction;
-    }
-
-    const baseRemoveKept=removeKept;
-    removeKept=function(date,key){
-      if(S.kept.some(track=>track.date===date&&Q(track)===key))rememberHistoryAction();
-      return baseRemoveKept(date,key);
-    };
-
-    const tabs=document.querySelector('#settingsPage .radio-history-card .tabs');
-    if(tabs&&!document.getElementById('addYoutubeTrack')){
-      const add=document.createElement('button');
-      add.type='button';
-      add.id='addYoutubeTrack';
-      add.className='history-add-tab';
-      add.setAttribute('aria-label','Ajouter un morceau depuis YouTube');
-      add.innerHTML='<span aria-hidden="true">＋</span><small>Ajouter</small>';
-      add.onclick=openSheet;
-      tabs.insertBefore(add,tabs.children[1]||null);
-    }
-
-    if(!document.getElementById('youtubeAddSheet')){
-      const sheet=document.createElement('div');
-      sheet.id='youtubeAddSheet';
-      sheet.className='youtube-add-sheet';
-      sheet.setAttribute('aria-hidden','true');
-      sheet.innerHTML='<div class="youtube-add-dialog" role="dialog" aria-modal="true" aria-labelledby="youtubeAddTitle"><h3 id="youtubeAddTitle">Ajouter un morceau</h3><p id="youtubeAddNote"></p><a id="youtubeSearchLink" class="youtube-search-link" target="_blank" rel="noopener">Rechercher sur YouTube</a><input id="youtubeAddInput" type="search" inputmode="search" autocomplete="off" aria-label="Lien ou recherche YouTube"><div id="youtubeAddError" class="youtube-add-error" aria-live="polite"></div><div class="youtube-add-actions"><button id="youtubeAddCancel" type="button">Annuler</button><button id="youtubeAddConfirm" class="youtube-add-confirm" type="button">Ajouter</button></div></div>';
-      document.body.appendChild(sheet);
-      sheet.addEventListener('click',event=>{if(event.target===sheet)closeSheet()});
-      document.getElementById('youtubeAddCancel').onclick=closeSheet;
-      document.getElementById('youtubeAddConfirm').onclick=submitSheet;
-      document.getElementById('youtubeAddInput').addEventListener('input',()=>{setError('');updateAddAction()});
-      document.getElementById('youtubeAddInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();submitSheet()}});
-      document.addEventListener('keydown',event=>{if(event.key==='Escape'&&sheet.classList.contains('open'))closeSheet()});
-    }
-
-    const baseRender=render;
-    render=function(){
-      const result=baseRender();
-      decorateRows();
-      updateHistoryActions();
-      return result;
-    };
-    render();
+  function loadCore(){
+    const core=document.createElement('script');
+    core.src='/radio-v51-core.js?v=1';
+    core.onload=installShazam;
+    core.onerror=installShazam;
+    document.head.appendChild(core);
   }
 
-  install();
+  loadCore();
 })();
