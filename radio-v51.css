@@ -231,3 +231,11 @@ body #miniPlay.shazam-btn svg{
 @media(max-width:390px){
   body #miniPlay.shazam-btn svg{width:22px!important;height:22px!important}
 }
+
+/* Gardés/Passés et Réglages : la flèche de retour reste mauve, jamais blanche. */
+#settingsPage .settings-back,
+#settingsPage .settings-back *{
+  color:#5b31ba!important;
+  fill:#5b31ba!important;
+  stroke:#5b31ba!important;
+}
