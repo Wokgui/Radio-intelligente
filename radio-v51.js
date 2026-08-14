@@ -1,6 +1,6 @@
 (function(){
   const THEME={
-    status:'#8a6bdb',
+    status:'#7657cf',
     primary:'#865bea',
     primaryHi:'#c597fc',
     primaryDark:'#5b31ba',
