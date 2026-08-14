@@ -1,4 +1,6 @@
 (function(){
+  const SHAZAM_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M9.872 16.736c-1.287 0-2.573-.426-3.561-1.281-1.214-1.049-1.934-2.479-2.029-4.024-.09-1.499.42-2.944 1.436-4.067C6.86 6.101 8.907 4.139 8.993 4.055c.555-.532 1.435-.511 1.966.045.53.557.512 1.439-.044 1.971-.021.02-2.061 1.976-3.137 3.164-.508.564-.764 1.283-.719 2.027.049.789.428 1.529 1.07 2.086.844.73 2.51.891 3.553-.043.619-.559 1.372-1.377 1.38-1.386.52-.567 1.4-.603 1.965-.081.565.52.603 1.402.083 1.969-.035.035-.852.924-1.572 1.572-1.005.902-2.336 1.357-3.666 1.357m8.41-.099c-1.143 1.262-3.189 3.225-3.276 3.309-.27.256-.615.385-.96.385-.368 0-.732-.145-1.006-.43-.531-.559-.512-1.439.044-1.971.021-.02 2.063-1.977 3.137-3.166.508-.563.764-1.283.719-2.027-.048-.789-.428-1.529-1.07-2.084-.844-.73-2.51-.893-3.552.044-.621.556-1.373 1.376-1.38 1.384-.521.566-1.399.604-1.966.084-.564-.521-.604-1.404-.082-1.971.034-.037.85-.926 1.571-1.573 1.979-1.778 5.221-1.813 7.227-.077 1.214 1.051 1.935 2.48 2.028 4.025.092 1.497-.419 2.945-1.434 4.068"/></svg>';
+
   function shazamTarget(){
     const fallback='https://www.shazam.com/';
     if(/Android/i.test(navigator.userAgent)){
@@ -7,70 +9,108 @@
     return fallback;
   }
 
-  function installShazam(){
-    if(document.getElementById('miniShazam'))return;
-    const mute=document.getElementById('miniMute');
-    const gear=document.getElementById('miniMore');
-    if(!mute||!gear)return;
+  function paintShazam(){
+    const button=document.getElementById('miniPlay');
+    if(!button)return;
+    if(!button.querySelector('svg'))button.innerHTML=SHAZAM_SVG;
+  }
 
-    const shazam=document.createElement('button');
-    shazam.id='miniShazam';
-    shazam.type='button';
-    shazam.className='icon-btn shazam-btn';
-    shazam.setAttribute('aria-label','Ouvrir Shazam');
-    shazam.title='Shazam';
-    shazam.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M7.3 18.8l4.7 4.7a4.1 4.1 0 0 0 5.8 0l2.7-2.7"/><path d="M24.7 13.2L20 8.5a4.1 4.1 0 0 0-5.8 0l-2.7 2.7"/><path d="M10.8 20.9l10.4-9.8"/></svg>';
-    shazam.addEventListener('click',()=>{
+  function installShazam(){
+    const button=document.getElementById('miniPlay');
+    const mute=document.getElementById('miniMute');
+    const oldRight=document.getElementById('miniShazam');
+    if(!button)return;
+
+    if(oldRight)oldRight.remove();
+    if(mute)mute.remove();
+
+    button.type='button';
+    button.className='mini-btn shazam-btn';
+    button.setAttribute('aria-label','Ouvrir Shazam');
+    button.title='Shazam';
+    paintShazam();
+    button.onclick=event=>{
+      event.preventDefault();
+      event.stopPropagation();
       const target=shazamTarget();
       if(/Android/i.test(navigator.userAgent))location.href=target;
       else window.open(target,'_blank','noopener');
-    });
-    mute.replaceWith(shazam);
+    };
 
-    const style=document.createElement('style');
-    style.id='radioShazamStyle';
+    if(typeof window.updatePlayer==='function'&&!window.__radioShazamUpdatePatched){
+      const baseUpdatePlayer=window.updatePlayer;
+      window.updatePlayer=function(){
+        const result=baseUpdatePlayer.apply(this,arguments);
+        paintShazam();
+        return result;
+      };
+      window.__radioShazamUpdatePatched=true;
+    }
+
+    let style=document.getElementById('radioShazamStyle');
+    if(!style){
+      style=document.createElement('style');
+      style.id='radioShazamStyle';
+      document.head.appendChild(style);
+    }
     style.textContent=`
       .playerbar{
-        grid-template-columns:52px 46px minmax(0,1fr) 46px 34px 38px!important;
-        gap:7px!important;
+        grid-template-columns:36px 46px minmax(0,1fr) 46px 36px!important;
+        gap:8px!important;
+        padding-left:14px!important;
+        padding-right:14px!important;
       }
-      #miniShazam{
-        width:34px!important;
-        height:34px!important;
-        min-width:34px!important;
+      #miniPlay.shazam-btn{
+        width:32px!important;
+        height:32px!important;
+        min-width:32px!important;
+        justify-self:center!important;
         border:0!important;
         border-radius:50%!important;
         display:grid!important;
         place-items:center!important;
         padding:0!important;
-        background:linear-gradient(135deg,var(--a),var(--a2))!important;
+        background:linear-gradient(135deg,#315dff 0%,#633ee7 58%,#9a3fe3 100%)!important;
         color:#fff!important;
-        box-shadow:0 6px 15px #8f40ef30!important;
+        box-shadow:0 6px 15px #6842e83b!important;
       }
-      #miniShazam svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:3.15;stroke-linecap:round;stroke-linejoin:round}
-      #miniShazam:active{transform:scale(.93)}
+      #miniPlay.shazam-btn svg{
+        width:19px!important;
+        height:19px!important;
+        display:block!important;
+        color:#fff!important;
+      }
+      #miniPlay.shazam-btn:active{transform:scale(.93)}
+      #miniMore{
+        width:36px!important;
+        height:36px!important;
+        justify-self:center!important;
+      }
       @media(max-width:420px){
         .playerbar{
-          grid-template-columns:48px 42px minmax(0,1fr) 42px 32px 34px!important;
-          gap:6px!important;
-          padding-left:9px!important;
-          padding-right:9px!important;
+          grid-template-columns:34px 42px minmax(0,1fr) 42px 34px!important;
+          gap:7px!important;
+          padding-left:11px!important;
+          padding-right:11px!important;
         }
-        #miniShazam{width:32px!important;height:32px!important;min-width:32px!important}
-        #miniShazam svg{width:20px;height:20px}
+        #miniPlay.shazam-btn{width:30px!important;height:30px!important;min-width:30px!important}
+        #miniPlay.shazam-btn svg{width:18px!important;height:18px!important}
+        #miniMore{width:34px!important;height:34px!important}
       }
       @media(max-width:390px){
         .playerbar{
-          grid-template-columns:46px 40px minmax(48px,1fr) 40px 30px 34px!important;
-          gap:5px!important;
-          padding-left:8px!important;
-          padding-right:8px!important;
+          grid-template-columns:32px 40px minmax(48px,1fr) 40px 32px!important;
+          gap:6px!important;
+          padding-left:10px!important;
+          padding-right:10px!important;
         }
-        #miniShazam{width:30px!important;height:30px!important;min-width:30px!important}
-        #miniShazam svg{width:19px;height:19px}
+        #miniPlay.shazam-btn{width:29px!important;height:29px!important;min-width:29px!important}
+        #miniPlay.shazam-btn svg{width:17.5px!important;height:17.5px!important}
+        #miniMore{width:32px!important;height:32px!important}
       }
     `;
-    document.head.appendChild(style);
+
+    paintShazam();
   }
 
   function loadCore(){
