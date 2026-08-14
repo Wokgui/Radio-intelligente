@@ -219,3 +219,15 @@
   .track .alt button{padding-left:38px!important;padding-right:38px!important}
   .track .alt .ico{left:9px!important;width:30px!important;min-width:30px!important}
 }
+
+/* Shazam : agrandir uniquement le dessin blanc, sans toucher au bouton ni à la barre. */
+body #miniPlay.shazam-btn svg{
+  width:24px!important;
+  height:24px!important;
+}
+@media(max-width:420px){
+  body #miniPlay.shazam-btn svg{width:22.5px!important;height:22.5px!important}
+}
+@media(max-width:390px){
+  body #miniPlay.shazam-btn svg{width:22px!important;height:22px!important}
+}
