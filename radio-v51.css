@@ -191,7 +191,7 @@
 }
 
 /* Les quatre libellés sont centrés dans leur tuile sans tenir compte de l’icône de gauche. */
-.alt button{
+.track .alt button{
   position:relative!important;
   display:flex!important;
   align-items:center!important;
@@ -200,7 +200,7 @@
   padding-right:44px!important;
   text-align:center!important;
 }
-.alt .ico{
+.track .alt .ico{
   position:absolute!important;
   left:12px!important;
   top:50%!important;
@@ -209,13 +209,13 @@
   min-width:32px!important;
   text-align:center!important;
 }
-.alt .txt{
+.track .alt .txt{
   display:block!important;
   width:100%!important;
   margin:0!important;
   text-align:center!important;
 }
 @media(max-width:390px){
-  .alt button{padding-left:38px!important;padding-right:38px!important}
-  .alt .ico{left:9px!important;width:30px!important;min-width:30px!important}
+  .track .alt button{padding-left:38px!important;padding-right:38px!important}
+  .track .alt .ico{left:9px!important;width:30px!important;min-width:30px!important}
 }
