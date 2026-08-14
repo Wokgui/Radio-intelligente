@@ -139,6 +139,14 @@
     `;
   }
 
+  function installKeptStar(){
+    const icon=document.querySelector('.stats .stat:first-child .sico');
+    if(icon){
+      icon.textContent='★';
+      icon.setAttribute('aria-hidden','true');
+    }
+  }
+
   function shazamTarget(){
     const fallback='https://www.shazam.com/';
     if(/Android/i.test(navigator.userAgent)){
@@ -253,6 +261,7 @@
 
   function finishInstall(){
     installTheme();
+    installKeptStar();
     installShazam();
   }
 
@@ -265,5 +274,6 @@
   }
 
   installTheme();
+  installKeptStar();
   loadCore();
 })();
