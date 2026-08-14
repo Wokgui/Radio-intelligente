@@ -1,11 +1,17 @@
 (function(){
   const THEME={
-    deep:'#5b2a86',
-    deep2:'#7541a8',
-    light:'#f0e8f7',
-    light2:'#f8f4fb',
-    border:'#dfd1eb',
-    tag:'#e8daf3'
+    status:'#6f30e4',
+    primary:'#8a43ef',
+    primaryHi:'#bb83ff',
+    primaryDark:'#6e2edd',
+    surface:'#efe8f4',
+    light:'#f3edf7',
+    light2:'#faf7fc',
+    card:'#ffffff',
+    border:'#e6dcf0',
+    tag:'#dfcff3',
+    text:'#2e1166',
+    subtext:'#5f4b89'
   };
 
   const SHAZAM_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M9.872 16.736c-1.287 0-2.573-.426-3.561-1.281-1.214-1.049-1.934-2.479-2.029-4.024-.09-1.499.42-2.944 1.436-4.067C6.86 6.101 8.907 4.139 8.993 4.055c.555-.532 1.435-.511 1.966.045.53.557.512 1.439-.044 1.971-.021.02-2.061 1.976-3.137 3.164-.508.564-.764 1.283-.719 2.027.049.789.428 1.529 1.07 2.086.844.73 2.51.891 3.553-.043.619-.559 1.372-1.377 1.38-1.386.52-.567 1.4-.603 1.965-.081.565.52.603 1.402.083 1.969-.035.035-.852.924-1.572 1.572-1.005.902-2.336 1.357-3.666 1.357m8.41-.099c-1.143 1.262-3.189 3.225-3.276 3.309-.27.256-.615.385-.96.385-.368 0-.732-.145-1.006-.43-.531-.559-.512-1.439.044-1.971.021-.02 2.063-1.977 3.137-3.166.508-.563.764-1.283.719-2.027-.048-.789-.428-1.529-1.07-2.084-.844-.73-2.51-.893-3.552.044-.621.556-1.373 1.376-1.38 1.384-.521.566-1.399.604-1.966.084-.564-.521-.604-1.404-.082-1.971.034-.037.85-.926 1.571-1.573 1.979-1.778 5.221-1.813 7.227-.077 1.214 1.051 1.935 2.48 2.028 4.025.092 1.497-.419 2.945-1.434 4.068"/></svg>';
@@ -13,12 +19,15 @@
   function installTheme(){
     const root=document.documentElement;
     root.style.setProperty('--bg',THEME.light,'important');
-    root.style.setProperty('--a',THEME.deep,'important');
-    root.style.setProperty('--a2',THEME.deep2,'important');
+    root.style.setProperty('--a',THEME.primary,'important');
+    root.style.setProperty('--a2',THEME.primaryDark,'important');
     root.style.setProperty('--l',THEME.border,'important');
+    root.style.setProperty('--t',THEME.text,'important');
+    root.style.setProperty('--m',THEME.subtext,'important');
+    root.style.setProperty('--card','rgba(255,255,255,.90)','important');
 
     const themeMeta=document.querySelector('meta[name="theme-color"]');
-    if(themeMeta)themeMeta.setAttribute('content',THEME.deep);
+    if(themeMeta)themeMeta.setAttribute('content',THEME.status);
 
     let style=document.getElementById('radioUnifiedMauveTheme');
     if(!style){
@@ -29,37 +38,49 @@
     style.textContent=`
       html,body{
         background:linear-gradient(180deg,${THEME.light2} 0%,${THEME.light} 100%)!important;
+        color:${THEME.text}!important;
       }
-      .track,
+      .track{
+        background:linear-gradient(180deg,${THEME.surface} 0%,${THEME.light} 100%)!important;
+      }
       #settingsPage,
       #settingsPage.history-only,
       #settingsPage.settings-only{
         background:linear-gradient(180deg,${THEME.light2} 0%,${THEME.light} 100%)!important;
       }
+      h1,#title{color:${THEME.text}!important}
+      .artist{color:${THEME.subtext}!important}
       .round{
-        background:linear-gradient(135deg,${THEME.deep} 0%,${THEME.deep2} 100%)!important;
+        background:linear-gradient(135deg,${THEME.primaryHi} 0%,${THEME.primary} 56%,${THEME.primaryDark} 100%)!important;
         color:#fff!important;
-        box-shadow:0 9px 22px rgba(91,42,134,.28)!important;
+        box-shadow:0 9px 22px rgba(110,46,221,.30)!important;
       }
       .tag{
         background:${THEME.tag}!important;
-        color:${THEME.deep}!important;
+        color:${THEME.primaryDark}!important;
       }
       .playerbar,.stats,.alt button,.tool,.tab,.undo,.card,.ui-open,.ui-control,.ui-actions button,
       .settings-back,#settingsPage.history-only>.radio-history-actions button{
         border-color:${THEME.border}!important;
       }
+      .playerbar,.stats,.alt button,.card{
+        background:rgba(255,255,255,.84)!important;
+      }
       .icon-btn,#miniMore,.alt .ico,.stat .sico,.stat b,.row-link,.ui-open,.ui-control output,
       .settings-back,#settingsPage.history-only>.radio-history-actions button{
-        color:${THEME.deep}!important;
+        color:${THEME.primaryDark}!important;
       }
       .ui-actions .ui-save,.tab.on,.backup{
-        background:linear-gradient(135deg,${THEME.deep} 0%,${THEME.deep2} 100%)!important;
+        background:linear-gradient(135deg,${THEME.primaryHi} 0%,${THEME.primary} 52%,${THEME.primaryDark} 100%)!important;
         color:#fff!important;
       }
-      .seek::-webkit-slider-thumb{background:${THEME.deep}!important;box-shadow:0 3px 10px rgba(91,42,134,.34)!important}
-      .seek::-moz-range-thumb{background:${THEME.deep}!important}
-      input[type=range]{accent-color:${THEME.deep}!important}
+      .seek{background:#dfd1ee!important}
+      .seek::-webkit-slider-thumb{
+        background:linear-gradient(135deg,${THEME.primaryHi},${THEME.primaryDark})!important;
+        box-shadow:0 3px 10px rgba(110,46,221,.35)!important;
+      }
+      .seek::-moz-range-thumb{background:${THEME.primary}!important}
+      input[type=range]{accent-color:${THEME.primary}!important}
     `;
   }
 
@@ -132,9 +153,9 @@
         display:grid!important;
         place-items:center!important;
         padding:0!important;
-        background:linear-gradient(135deg,${THEME.deep} 0%,${THEME.deep2} 100%)!important;
+        background:linear-gradient(135deg,${THEME.primaryHi} 0%,${THEME.primary} 56%,${THEME.primaryDark} 100%)!important;
         color:#fff!important;
-        box-shadow:0 6px 15px rgba(91,42,134,.28)!important;
+        box-shadow:0 6px 15px rgba(110,46,221,.30)!important;
       }
       #miniPlay.shazam-btn svg{
         width:19px!important;
