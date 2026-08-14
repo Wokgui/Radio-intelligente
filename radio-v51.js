@@ -1,6 +1,6 @@
 (function(){
   const THEME={
-    status:'#46287e',
+    status:'#8a6bdb',
     primary:'#865bea',
     primaryHi:'#c597fc',
     primaryDark:'#5b31ba',
@@ -21,6 +21,9 @@
     root.style.setProperty('--bg',THEME.light,'important');
     root.style.setProperty('--a',THEME.primary,'important');
     root.style.setProperty('--a2',THEME.primaryDark,'important');
+    root.style.setProperty('--accent',THEME.primary,'important');
+    root.style.setProperty('--ui-accent',THEME.primary,'important');
+    root.style.setProperty('--ui-main-bg',THEME.light,'important');
     root.style.setProperty('--l',THEME.border,'important');
     root.style.setProperty('--t',THEME.text,'important');
     root.style.setProperty('--m',THEME.subtext,'important');
@@ -48,7 +51,11 @@
       #settingsPage.settings-only{
         background:linear-gradient(180deg,${THEME.light2} 0%,${THEME.light} 100%)!important;
       }
-      h1,#title{color:${THEME.text}!important}
+      .settings-head{
+        background:rgba(244,238,249,.94)!important;
+        border-bottom-color:${THEME.border}!important;
+      }
+      h1,#title,.settings-head h2{color:${THEME.text}!important}
       .artist{color:${THEME.subtext}!important}
       .round{
         background:linear-gradient(145deg,${THEME.primaryHi} 0%,#9f70f3 30%,${THEME.primary} 58%,${THEME.primaryDark} 100%)!important;
@@ -60,14 +67,32 @@
         color:${THEME.primaryDark}!important;
       }
       .playerbar,.stats,.alt button,.tool,.tab,.undo,.card,.ui-open,.ui-control,.ui-actions button,
-      .settings-back,#settingsPage.history-only>.radio-history-actions button{
+      .settings-back,#settingsPage.history-only>.radio-history-actions button,
+      #settingsPage>.radio-history-card,#settingsPage>.card.settings,#settingsPage>.radio-action-grid>button,
+      #settingsPage>.radio-history-card #hist .row,.youtube-add-dialog{
         border-color:${THEME.border}!important;
       }
-      .playerbar,.stats,.alt button,.card{
+      .playerbar,.stats,.alt button,.card,
+      #settingsPage>.radio-history-card,#settingsPage>.card.settings,
+      #settingsPage>.radio-history-card #hist .row,.youtube-add-dialog{
         background:rgba(255,255,255,.88)!important;
       }
+      #settingsPage>.radio-action-grid>button,
+      #settingsPage>.ui-card .ui-panel,
+      #settingsPage .ui-control{
+        background:rgba(255,255,255,.82)!important;
+      }
+      #settingsPage>.radio-history-card .tabs{
+        background:color-mix(in srgb,${THEME.primary} 8%,${THEME.light2})!important;
+      }
+      #settingsPage>.radio-history-card .history-add-tab{
+        background:color-mix(in srgb,${THEME.primary} 9%,white)!important;
+        color:${THEME.primaryDark}!important;
+        border-color:color-mix(in srgb,${THEME.primary} 25%,transparent)!important;
+      }
       .icon-btn,#miniMore,.alt .ico,.stat .sico,.stat b,.row-link,.ui-open,.ui-control output,
-      .settings-back,#settingsPage.history-only>.radio-history-actions button{
+      .settings-back,#settingsPage.history-only>.radio-history-actions button,
+      #settingsPage .tab,#settingsPage .row-link,#settingsPage .history-add-tab{
         color:${THEME.primaryDark}!important;
       }
       .ui-actions .ui-save,.tab.on,.backup{
@@ -81,6 +106,31 @@
       }
       .seek::-moz-range-thumb{background:${THEME.primary}!important}
       input[type=range]{accent-color:${THEME.primary}!important}
+
+      /* Les icônes des 4 choix restent sur deux axes verticaux parfaitement identiques. */
+      .alt button{
+        display:grid!important;
+        grid-template-columns:32px minmax(0,1fr)!important;
+        align-items:center!important;
+        justify-content:stretch!important;
+        column-gap:8px!important;
+        text-align:center!important;
+      }
+      .alt .ico{
+        width:32px!important;
+        min-width:32px!important;
+        justify-self:center!important;
+        text-align:center!important;
+      }
+      .alt .txt{
+        min-width:0!important;
+        justify-self:stretch!important;
+        text-align:center!important;
+      }
+      @media(max-width:390px){
+        .alt button{grid-template-columns:30px minmax(0,1fr)!important;column-gap:7px!important}
+        .alt .ico{width:30px!important;min-width:30px!important}
+      }
     `;
   }
 
