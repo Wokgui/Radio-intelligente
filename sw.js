@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v81';
+const CACHE = 'radio-intelligente-pwa-v82';
 
 const APP_SHELL = [
   '/',
@@ -7,7 +7,6 @@ const APP_SHELL = [
   '/favicon-32.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon-maskable-192.png',
   '/apple-touch-icon.png',
   '/cover-default.png',
   '/silence.wav',
