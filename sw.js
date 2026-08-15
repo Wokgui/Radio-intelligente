@@ -1,4 +1,5 @@
-const CACHE = 'radio-intelligente-pwa-v80';
+const CACHE = 'radio-intelligente-pwa-v81';
+
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -9,24 +10,36 @@ const APP_SHELL = [
   '/icon-maskable-192.png',
   '/apple-touch-icon.png',
   '/cover-default.png',
-  '/silence.wav'
-  ,'/cloud-backup.js?v=4'
-  ,'/vendor/supabase/supabase.js?v=1'
-  ,'/radio-v51.css?v=7'
-  ,'/radio-v51.js?v=15'
-  ,'/radio-v51-core.js?v=1'
+  '/silence.wav',
+  '/cloud-backup.js?v=4',
+  '/vendor/supabase/supabase.js?v=1',
+  '/radio-v51.css?v=7',
+  '/radio-v51.js?v=15',
+  '/radio-v51-core.js?v=1'
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(APP_SHELL.map(async url => {
+      try {
+        const response = await fetch(url, { cache: 'reload' });
+        if (response.ok) await cache.put(url, response);
+      } catch (_) {
+        // Un fichier secondaire indisponible ne doit jamais empêcher
+        // l'installation du service worker et donc de la PWA.
+      }
+    }));
+  })());
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', event => {
@@ -40,11 +53,13 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put('/index.html', copy));
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put('/index.html', copy));
+          }
           return response;
         })
-        .catch(() => caches.match('/index.html'))
+        .catch(() => caches.match('/index.html').then(cached => cached || caches.match('/')))
     );
     return;
   }
