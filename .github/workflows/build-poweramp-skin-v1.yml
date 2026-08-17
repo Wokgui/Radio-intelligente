@@ -1,4 +1,4 @@
-name: Build Poweramp Skin V1
+name: Build Poweramp Skin V1.3
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout V1 branch
+      - name: Checkout V1.3 branch
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -35,39 +35,15 @@ jobs:
       - name: Clone official Poweramp skin SDK
         run: git clone --depth 1 https://github.com/maxmpz/powerampapi.git upstream
 
-      - name: Dump actual Poweramp 1026 resource table
-        run: |
-          AAPT2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
-          cp upstream/Poweramp-build-1026-resources.zip Poweramp-1026.apk
-          "$AAPT2" dump resources Poweramp-1026.apk > poweramp-resources-full.txt
-          {
-            echo '=== RESOURCE TABLE MATCHES: BACKGROUND / MAIN PLAYER ==='
-            grep -n -E -C 18 'colorBgInverse|colorBg|windowBackground|ActivityTheme_Black|ActivityTheme_White|Base_ActivityTheme|TopContainer|scene_aa|playerBackground|mainBackground|background' poweramp-resources-full.txt | head -n 12000 || true
-            echo
-            echo '=== RESOURCE NAMES WITH COLOR / BG ==='
-            grep -E '^resource .*:(attr|color|style|drawable)/' poweramp-resources-full.txt | grep -Ei 'color|bg|background|topcontainer|scene_aa|player' | head -n 5000 || true
-          } > poweramp-background-report.txt
-          wc -l poweramp-resources-full.txt poweramp-background-report.txt
-
-      - name: Upload background inspection report
-        uses: actions/upload-artifact@v4
-        with:
-          name: Poweramp-Background-Report
-          path: |
-            poweramp-background-report.txt
-            poweramp-resources-full.txt
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Configure local Android SDK
         run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > upstream/local.properties
 
-      - name: Apply Hugo Poweramp V1 overlay
+      - name: Apply Hugo Poweramp V1.3 overlay
         run: |
           cp poweramp-v1/overlay/res/xml/skins.xml upstream/poweramp_skin_sample/src/main/res/xml/skins.xml
           cp poweramp-v1/overlay/res/values/hugo_skin.xml upstream/poweramp_skin_sample/src/main/res/values/hugo_skin.xml
           cp poweramp-v1/overlay/res/values/hugo_strings.xml upstream/poweramp_skin_sample/src/main/res/values/hugo_strings.xml
-          sed -i 's#<string name="app_name">Poweramp v3 Skin Sample</string>#<string name="app_name">Hugo Poweramp V1</string>#' upstream/poweramp_skin_sample/src/main/res/values/strings.xml
+          sed -i 's#<string name="app_name">Poweramp v3 Skin Sample</string>#<string name="app_name">Hugo Poweramp V1.3</string>#' upstream/poweramp_skin_sample/src/main/res/values/strings.xml
 
       - name: Build installable debug APK
         working-directory: upstream
@@ -79,13 +55,13 @@ jobs:
         run: |
           APK="$(find upstream/poweramp_skin_sample/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          cp "$APK" Hugo-Poweramp-V1.apk
-          ls -lh Hugo-Poweramp-V1.apk
+          cp "$APK" Hugo-Poweramp-V1.3.apk
+          ls -lh Hugo-Poweramp-V1.3.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hugo-Poweramp-V1
-          path: Hugo-Poweramp-V1.apk
+          name: Hugo-Poweramp-V1.3
+          path: Hugo-Poweramp-V1.3.apk
           if-no-files-found: error
           retention-days: 30
