@@ -1,4 +1,4 @@
-name: Build Poweramp Skin V1.3
+name: Build Poweramp Skin V1.4
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout V1.3 branch
+      - name: Checkout V1.4 branch
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -38,12 +38,13 @@ jobs:
       - name: Configure local Android SDK
         run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > upstream/local.properties
 
-      - name: Apply Hugo Poweramp V1.3 overlay
+      - name: Apply Hugo Poweramp V1.4 overlay
         run: |
           cp poweramp-v1/overlay/res/xml/skins.xml upstream/poweramp_skin_sample/src/main/res/xml/skins.xml
           cp poweramp-v1/overlay/res/values/hugo_skin.xml upstream/poweramp_skin_sample/src/main/res/values/hugo_skin.xml
           cp poweramp-v1/overlay/res/values/hugo_strings.xml upstream/poweramp_skin_sample/src/main/res/values/hugo_strings.xml
-          sed -i 's#<string name="app_name">Poweramp v3 Skin Sample</string>#<string name="app_name">Hugo Poweramp V1.3</string>#' upstream/poweramp_skin_sample/src/main/res/values/strings.xml
+          cp poweramp-v1/overlay/src/SkinInfoActivity.kt upstream/poweramp_skin_sample/src/main/java/com/poweramp/v3/sampleskin/SkinInfoActivity.kt
+          sed -i 's#<string name="app_name">Poweramp v3 Skin Sample</string>#<string name="app_name">Hugo Poweramp V1.4</string>#' upstream/poweramp_skin_sample/src/main/res/values/strings.xml
 
       - name: Build installable debug APK
         working-directory: upstream
@@ -55,13 +56,13 @@ jobs:
         run: |
           APK="$(find upstream/poweramp_skin_sample/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          cp "$APK" Hugo-Poweramp-V1.3.apk
-          ls -lh Hugo-Poweramp-V1.3.apk
+          cp "$APK" Hugo-Poweramp-V1.4.apk
+          ls -lh Hugo-Poweramp-V1.4.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hugo-Poweramp-V1.3
-          path: Hugo-Poweramp-V1.3.apk
+          name: Hugo-Poweramp-V1.4
+          path: Hugo-Poweramp-V1.4.apk
           if-no-files-found: error
           retention-days: 30
