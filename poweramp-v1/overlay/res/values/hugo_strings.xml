@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hugo_skin_name">Hugo Poweramp V1.3</string>
+    <string name="hugo_skin_name">Hugo Studio</string>
     <string name="hugo_skin_author">Wokgui</string>
     <string name="hugo_skin_description">Skin Poweramp personnalisable : fond du lecteur, accents et pochette.</string>
+
+    <string name="hugo_theme_midnight_violet">Minuit violet</string>
+    <string name="hugo_theme_midnight_violet_desc">Violet profond avec accent lavande.</string>
+    <string name="hugo_theme_deep_ocean">Océan nocturne</string>
+    <string name="hugo_theme_deep_ocean_desc">Bleu marine avec accent cyan doux.</string>
+    <string name="hugo_theme_neon_sunset">Néon coucher de soleil</string>
+    <string name="hugo_theme_neon_sunset_desc">Violet nuit avec accent rose néon.</string>
+    <string name="hugo_theme_jade">Jade profond</string>
+    <string name="hugo_theme_jade_desc">Vert sombre avec accent jade lumineux.</string>
+    <string name="hugo_theme_amber_graphite">Graphite ambré</string>
+    <string name="hugo_theme_amber_graphite_desc">Graphite neutre avec accent ambre chaud.</string>
+    <string name="hugo_theme_burgundy_rose">Bordeaux rosé</string>
+    <string name="hugo_theme_burgundy_rose_desc">Bordeaux sombre avec accent rose poudré.</string>
+    <string name="hugo_theme_slate_ice">Ardoise glacée</string>
+    <string name="hugo_theme_slate_ice_desc">Ardoise bleutée avec accent bleu glace.</string>
+    <string name="hugo_theme_copper_espresso">Espresso cuivré</string>
+    <string name="hugo_theme_copper_espresso_desc">Brun espresso avec accent cuivre.</string>
 
     <string name="hugo_presets">Préréglages</string>
     <string name="hugo_preset">Style général</string>
