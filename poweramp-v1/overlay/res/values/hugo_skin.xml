@@ -22,49 +22,50 @@
         <item name="com.maxmpz.audioplayer:scale">?Hugo_ItemTrackAAImage_scene_aa_scale_playing</item>
     </style>
 
-    <!-- Presets use Poweramp's own black/white base themes so foreground contrast stays coherent. -->
-    <style name="HugoPresetNightViolet" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+    <!-- IMPORTANT: overlap styles must only contain the attributes to override.
+         Using complete Black/Default parent themes here made Poweramp collapse choices to black/white. -->
+    <style name="HugoPresetNightViolet">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#9B6CFF</item>
     </style>
-    <style name="HugoPresetOledPurple" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+    <style name="HugoPresetOledPurple">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#B06CFF</item>
     </style>
-    <style name="HugoPresetDeepBlue" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+    <style name="HugoPresetDeepBlue">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#0A1628</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#4DA3FF</item>
     </style>
-    <style name="HugoPresetGraphiteOrange" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+    <style name="HugoPresetGraphiteOrange">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#FF8A3D</item>
     </style>
-    <style name="HugoPresetForest" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+    <style name="HugoPresetForest">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#102A24</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#5FE1B3</item>
     </style>
-    <style name="HugoPresetLight" parent="com.maxmpz.audioplayer:style/Base_ActivityTheme_Default">
+    <style name="HugoPresetLight">
         <item name="com.maxmpz.audioplayer:colorBgInverse">#F5F3F8</item>
         <item name="com.maxmpz.audioplayer:colorAccent">#7651D6</item>
     </style>
 
-    <!-- Background palette. -->
-    <style name="HugoBgBlack" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item></style>
-    <style name="HugoBgCharcoal" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#121212</item></style>
-    <style name="HugoBgGraphite" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item></style>
-    <style name="HugoBgSlate" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#263238</item></style>
-    <style name="HugoBgNavy" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#0B132B</item></style>
-    <style name="HugoBgDeepBlue" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#0A2342</item></style>
-    <style name="HugoBgViolet" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#261447</item></style>
-    <style name="HugoBgPurple" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#3B145F</item></style>
-    <style name="HugoBgBurgundy" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#4A1628</item></style>
-    <style name="HugoBgBrown" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#3E2723</item></style>
-    <style name="HugoBgForest" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#123524</item></style>
-    <style name="HugoBgOlive" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#344322</item></style>
-    <style name="HugoBgWarmGray" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black"><item name="com.maxmpz.audioplayer:colorBgInverse">#5B5652</item></style>
-    <style name="HugoBgLightGray" parent="com.maxmpz.audioplayer:style/Base_ActivityTheme_Default"><item name="com.maxmpz.audioplayer:colorBgInverse">#ECEFF1</item></style>
-    <style name="HugoBgCream" parent="com.maxmpz.audioplayer:style/Base_ActivityTheme_Default"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFF4E5</item></style>
-    <style name="HugoBgWhite" parent="com.maxmpz.audioplayer:style/Base_ActivityTheme_Default"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFFFFF</item></style>
+    <!-- Background palette: only override Poweramp's documented global background attribute. -->
+    <style name="HugoBgBlack"><item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item></style>
+    <style name="HugoBgCharcoal"><item name="com.maxmpz.audioplayer:colorBgInverse">#121212</item></style>
+    <style name="HugoBgGraphite"><item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item></style>
+    <style name="HugoBgSlate"><item name="com.maxmpz.audioplayer:colorBgInverse">#263238</item></style>
+    <style name="HugoBgNavy"><item name="com.maxmpz.audioplayer:colorBgInverse">#0B132B</item></style>
+    <style name="HugoBgDeepBlue"><item name="com.maxmpz.audioplayer:colorBgInverse">#0A2342</item></style>
+    <style name="HugoBgViolet"><item name="com.maxmpz.audioplayer:colorBgInverse">#261447</item></style>
+    <style name="HugoBgPurple"><item name="com.maxmpz.audioplayer:colorBgInverse">#3B145F</item></style>
+    <style name="HugoBgBurgundy"><item name="com.maxmpz.audioplayer:colorBgInverse">#4A1628</item></style>
+    <style name="HugoBgBrown"><item name="com.maxmpz.audioplayer:colorBgInverse">#3E2723</item></style>
+    <style name="HugoBgForest"><item name="com.maxmpz.audioplayer:colorBgInverse">#123524</item></style>
+    <style name="HugoBgOlive"><item name="com.maxmpz.audioplayer:colorBgInverse">#344322</item></style>
+    <style name="HugoBgWarmGray"><item name="com.maxmpz.audioplayer:colorBgInverse">#5B5652</item></style>
+    <style name="HugoBgLightGray"><item name="com.maxmpz.audioplayer:colorBgInverse">#ECEFF1</item></style>
+    <style name="HugoBgCream"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFF4E5</item></style>
+    <style name="HugoBgWhite"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFFFFF</item></style>
 
     <!-- Accent palette. -->
     <style name="HugoAccentOrange"><item name="com.maxmpz.audioplayer:colorAccent">#FF8A3D</item></style>
