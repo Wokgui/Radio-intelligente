@@ -35,28 +35,27 @@ jobs:
       - name: Clone official Poweramp skin SDK
         run: git clone --depth 1 https://github.com/maxmpz/powerampapi.git upstream
 
-      - name: Inspect actual Poweramp 1026 background resources
+      - name: Dump actual Poweramp 1026 resource table
         run: |
-          rm -rf ref1026
-          mkdir -p ref1026
-          unzip -q upstream/Poweramp-build-1026-resources.zip -d ref1026
+          AAPT2="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt2"
+          cp upstream/Poweramp-build-1026-resources.zip Poweramp-1026.apk
+          "$AAPT2" dump resources Poweramp-1026.apk > poweramp-resources-full.txt
           {
-            echo '=== TOP-LEVEL ZIP CONTENT ==='
-            find ref1026 -maxdepth 3 -type f | sort | head -n 300
+            echo '=== RESOURCE TABLE MATCHES: BACKGROUND / MAIN PLAYER ==='
+            grep -n -E -C 18 'colorBgInverse|colorBg|windowBackground|ActivityTheme_Black|ActivityTheme_White|Base_ActivityTheme|TopContainer|scene_aa|playerBackground|mainBackground|background' poweramp-resources-full.txt | head -n 12000 || true
             echo
-            echo '=== DIRECT BACKGROUND/COLOR MATCHES ==='
-            grep -R -n -E 'colorBgInverse|colorBackground|windowBackground|ActivityTheme_Black|ActivityTheme_White|ActivityTheme_Default|backgroundColor|mainBackground|playerBackground' ref1026 2>/dev/null | head -n 1200 || true
-            echo
-            echo '=== PLAYER / MAIN SCENE BACKGROUND MATCHES ==='
-            grep -R -n -E 'scene_aa|TopContainer|MainActivity|main_activity|activity_main|player|background' ref1026 2>/dev/null | grep -E 'background|colorBg|ActivityTheme|TopContainer|scene_aa|player' | head -n 1800 || true
+            echo '=== RESOURCE NAMES WITH COLOR / BG ==='
+            grep -E '^resource .*:(attr|color|style|drawable)/' poweramp-resources-full.txt | grep -Ei 'color|bg|background|topcontainer|scene_aa|player' | head -n 5000 || true
           } > poweramp-background-report.txt
-          cat poweramp-background-report.txt
+          wc -l poweramp-resources-full.txt poweramp-background-report.txt
 
       - name: Upload background inspection report
         uses: actions/upload-artifact@v4
         with:
           name: Poweramp-Background-Report
-          path: poweramp-background-report.txt
+          path: |
+            poweramp-background-report.txt
+            poweramp-resources-full.txt
           if-no-files-found: error
           retention-days: 7
 
