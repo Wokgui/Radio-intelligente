@@ -35,6 +35,15 @@ jobs:
       - name: Clone official Poweramp skin SDK
         run: git clone --depth 1 https://github.com/maxmpz/powerampapi.git upstream
 
+      - name: Inspect Poweramp 1026 background resources
+        run: |
+          mkdir -p ref1026
+          unzip -q upstream/Poweramp-build-1026-resources.zip -d ref1026
+          echo '=== files mentioning colorBgInverse / windowBackground / ActivityTheme_Black ==='
+          grep -R -n -E 'colorBgInverse|windowBackground|ActivityTheme_Black|colorBackground' ref1026/res 2>/dev/null | head -n 500 || true
+          echo '=== likely player/root background style references ==='
+          grep -R -n -E 'TopContainer|activity_main|scene_aa|background' ref1026/res/values* 2>/dev/null | grep -E 'background|colorBg|ActivityTheme|TopContainer' | head -n 500 || true
+
       - name: Configure local Android SDK
         run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > upstream/local.properties
 
