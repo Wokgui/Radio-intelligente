@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hugo_skin_name">Hugo Poweramp V1</string>
+    <string name="hugo_skin_author">Wokgui</string>
+    <string name="hugo_skin_description">Skin Poweramp personnalisable : couleurs, accents et pochette.</string>
+
+    <string name="hugo_presets">Préréglages</string>
+    <string name="hugo_preset">Style général</string>
+    <string name="hugo_preset_summary">Six combinaisons de fond et couleur d’accent.</string>
+    <string name="hugo_preset_night_violet">Nuit violette</string>
+    <string name="hugo_preset_oled_purple">OLED violet</string>
+    <string name="hugo_preset_deep_blue">Bleu profond</string>
+    <string name="hugo_preset_graphite_orange">Graphite orange</string>
+    <string name="hugo_preset_forest">Forêt</string>
+    <string name="hugo_preset_light">Clair</string>
+
+    <string name="hugo_colors">Couleurs</string>
+    <string name="hugo_background">Fond</string>
+    <string name="hugo_background_summary">Choisir une couleur de fond ou conserver celle du préréglage.</string>
+    <string name="hugo_from_preset">Selon le préréglage</string>
+    <string name="hugo_black">Noir</string>
+    <string name="hugo_charcoal">Charbon</string>
+    <string name="hugo_graphite">Graphite</string>
+    <string name="hugo_slate">Ardoise</string>
+    <string name="hugo_navy">Bleu nuit</string>
+    <string name="hugo_deep_blue">Bleu profond</string>
+    <string name="hugo_violet">Violet sombre</string>
+    <string name="hugo_purple">Pourpre</string>
+    <string name="hugo_burgundy">Bordeaux</string>
+    <string name="hugo_brown">Brun</string>
+    <string name="hugo_forest_bg">Vert forêt</string>
+    <string name="hugo_olive">Olive</string>
+    <string name="hugo_warm_gray">Gris chaud</string>
+    <string name="hugo_light_gray">Gris clair</string>
+    <string name="hugo_cream">Crème</string>
+    <string name="hugo_white">Blanc</string>
+
+    <string name="hugo_accent">Accent</string>
+    <string name="hugo_accent_summary">Couleur des éléments accentués de Poweramp.</string>
+    <string name="hugo_orange">Orange</string>
+    <string name="hugo_amber">Ambre</string>
+    <string name="hugo_red">Rouge</string>
+    <string name="hugo_pink">Rose</string>
+    <string name="hugo_accent_purple">Violet</string>
+    <string name="hugo_blue">Bleu</string>
+    <string name="hugo_cyan">Cyan</string>
+    <string name="hugo_teal">Turquoise</string>
+    <string name="hugo_green">Vert</string>
+    <string name="hugo_lime">Citron vert</string>
+    <string name="hugo_accent_white">Blanc</string>
+
+    <string name="hugo_cover">Pochette</string>
+    <string name="hugo_cover_size">Taille de la pochette</string>
+    <string name="hugo_cover_size_summary">Échelle de la pochette sur l’écran de lecture.</string>
+    <string name="hugo_smaller">Plus petite</string>
+    <string name="hugo_normal">Normale</string>
+    <string name="hugo_larger">Plus grande</string>
+    <string name="hugo_cover_corner">Arrondi de la pochette</string>
+    <string name="hugo_cover_corner_summary">0 = angles droits ; -1 = arrondi maximal Poweramp.</string>
+    <string name="hugo_cover_shadow">Ombre sous la pochette</string>
+    <string name="hugo_cover_shadow_summary">Ajoute une élévation légère autour de la pochette principale.</string>
+</resources>
