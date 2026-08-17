@@ -7,12 +7,6 @@
     <attr name="Hugo_ItemTrackAAImage_scene_aa_scale_playing" format="float" />
     <attr name="Hugo_PlayerBgColor" format="color" />
 
-    <!--
-      V1.3: Poweramp's official TopMilk style has its own bgColor fixed to black.
-      colorBgInverse alone therefore changes secondary surfaces but not the real
-      playback canvas. We replace TopMilk and feed both bgColor and aaBgColor
-      from the skin-selectable Hugo_PlayerBgColor attribute.
-    -->
     <style name="HugoSkin" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
         <item name="Hugo_PlayerBgColor">#120D1D</item>
         <item name="com.maxmpz.audioplayer:colorBgInverse">?Hugo_PlayerBgColor</item>
@@ -38,7 +32,57 @@
         <item name="com.maxmpz.audioplayer:scale">?Hugo_ItemTrackAAImage_scene_aa_scale_playing</item>
     </style>
 
-    <!-- Presets: background + accent. -->
+    <!-- V1.4 ready-made skins: carefully coordinated dark background + accent pairs. -->
+    <style name="HugoSkinMidnightViolet" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#120D1D</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#120D1D</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#A77BFF</item>
+    </style>
+    <style name="HugoSkinDeepOcean" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#071A2B</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#071A2B</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#071A2B</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#4DB6E8</item>
+    </style>
+    <style name="HugoSkinNeonSunset" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#171024</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#171024</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#171024</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#FF5C8A</item>
+    </style>
+    <style name="HugoSkinJade" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#0D211C</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#0D211C</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#0D211C</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#55D6A9</item>
+    </style>
+    <style name="HugoSkinAmberGraphite" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#1B1C20</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#1B1C20</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#1B1C20</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#FFB14A</item>
+    </style>
+    <style name="HugoSkinBurgundyRose" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#2A101A</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#2A101A</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#2A101A</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#F078A0</item>
+    </style>
+    <style name="HugoSkinSlateIce" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#182129</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#182129</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#182129</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#8FC9E8</item>
+    </style>
+    <style name="HugoSkinCopperEspresso" parent="@style/HugoSkin">
+        <item name="Hugo_PlayerBgColor">#241A16</item>
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#241A16</item>
+        <item name="com.maxmpz.audioplayer:colorAABgColor">#241A16</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#D99A6C</item>
+    </style>
+
+    <!-- Studio presets. -->
     <style name="HugoPresetNightViolet">
         <item name="Hugo_PlayerBgColor">#120D1D</item>
         <item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item>
@@ -70,7 +114,7 @@
         <item name="com.maxmpz.audioplayer:colorAccent">#5FE1B3</item>
     </style>
 
-    <!-- Background palette. These now drive the real playback canvas too. -->
+    <!-- Background palette. -->
     <style name="HugoBgBlack"><item name="Hugo_PlayerBgColor">#000000</item><item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item><item name="com.maxmpz.audioplayer:colorAABgColor">#000000</item></style>
     <style name="HugoBgCharcoal"><item name="Hugo_PlayerBgColor">#121212</item><item name="com.maxmpz.audioplayer:colorBgInverse">#121212</item><item name="com.maxmpz.audioplayer:colorAABgColor">#121212</item></style>
     <style name="HugoBgGraphite"><item name="Hugo_PlayerBgColor">#202124</item><item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item><item name="com.maxmpz.audioplayer:colorAABgColor">#202124</item></style>
