@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<skins targetBuild="1003" verification="false">
+    <skin
+        name="@string/hugo_skin_name"
+        author="@string/hugo_skin_author"
+        description="@string/hugo_skin_description"
+        style="@style/HugoSkin"
+        forceGlobalOptions="true"
+        allowNewPadding="true">
+
+        <category name="@string/hugo_presets">
+            <radio
+                key="hugo_preset"
+                name="@string/hugo_preset"
+                summary="@string/hugo_preset_summary"
+                defaultValue="@style/HugoPresetNightViolet">
+                <option name="@string/hugo_preset_night_violet" overlapStyle="@style/HugoPresetNightViolet" />
+                <option name="@string/hugo_preset_oled_purple" overlapStyle="@style/HugoPresetOledPurple" />
+                <option name="@string/hugo_preset_deep_blue" overlapStyle="@style/HugoPresetDeepBlue" />
+                <option name="@string/hugo_preset_graphite_orange" overlapStyle="@style/HugoPresetGraphiteOrange" />
+                <option name="@string/hugo_preset_forest" overlapStyle="@style/HugoPresetForest" />
+                <option name="@string/hugo_preset_light" overlapStyle="@style/HugoPresetLight" />
+            </radio>
+        </category>
+
+        <category name="@string/hugo_colors">
+            <radio
+                key="hugo_background"
+                name="@string/hugo_background"
+                summary="@string/hugo_background_summary"
+                defaultValue="">
+                <option name="@string/hugo_from_preset" overlapStyle="" />
+                <option name="@string/hugo_black" overlapStyle="@style/HugoBgBlack" />
+                <option name="@string/hugo_charcoal" overlapStyle="@style/HugoBgCharcoal" />
+                <option name="@string/hugo_graphite" overlapStyle="@style/HugoBgGraphite" />
+                <option name="@string/hugo_slate" overlapStyle="@style/HugoBgSlate" />
+                <option name="@string/hugo_navy" overlapStyle="@style/HugoBgNavy" />
+                <option name="@string/hugo_deep_blue" overlapStyle="@style/HugoBgDeepBlue" />
+                <option name="@string/hugo_violet" overlapStyle="@style/HugoBgViolet" />
+                <option name="@string/hugo_purple" overlapStyle="@style/HugoBgPurple" />
+                <option name="@string/hugo_burgundy" overlapStyle="@style/HugoBgBurgundy" />
+                <option name="@string/hugo_brown" overlapStyle="@style/HugoBgBrown" />
+                <option name="@string/hugo_forest_bg" overlapStyle="@style/HugoBgForest" />
+                <option name="@string/hugo_olive" overlapStyle="@style/HugoBgOlive" />
+                <option name="@string/hugo_warm_gray" overlapStyle="@style/HugoBgWarmGray" />
+                <option name="@string/hugo_light_gray" overlapStyle="@style/HugoBgLightGray" />
+                <option name="@string/hugo_cream" overlapStyle="@style/HugoBgCream" />
+                <option name="@string/hugo_white" overlapStyle="@style/HugoBgWhite" />
+            </radio>
+
+            <radio
+                key="hugo_accent"
+                name="@string/hugo_accent"
+                summary="@string/hugo_accent_summary"
+                defaultValue="">
+                <option name="@string/hugo_from_preset" overlapStyle="" />
+                <option name="@string/hugo_orange" overlapStyle="@style/HugoAccentOrange" />
+                <option name="@string/hugo_amber" overlapStyle="@style/HugoAccentAmber" />
+                <option name="@string/hugo_red" overlapStyle="@style/HugoAccentRed" />
+                <option name="@string/hugo_pink" overlapStyle="@style/HugoAccentPink" />
+                <option name="@string/hugo_accent_purple" overlapStyle="@style/HugoAccentPurple" />
+                <option name="@string/hugo_blue" overlapStyle="@style/HugoAccentBlue" />
+                <option name="@string/hugo_cyan" overlapStyle="@style/HugoAccentCyan" />
+                <option name="@string/hugo_teal" overlapStyle="@style/HugoAccentTeal" />
+                <option name="@string/hugo_green" overlapStyle="@style/HugoAccentGreen" />
+                <option name="@string/hugo_lime" overlapStyle="@style/HugoAccentLime" />
+                <option name="@string/hugo_accent_white" overlapStyle="@style/HugoAccentWhite" />
+            </radio>
+        </category>
+
+        <category name="@string/hugo_cover">
+            <seekbarOptions
+                key="hugo_cover_size"
+                name="@string/hugo_cover_size"
+                summary="@string/hugo_cover_size_summary"
+                summary2="%s"
+                leftLabel="@string/hugo_smaller"
+                centerLabel="@string/hugo_normal"
+                rightLabel="@string/hugo_larger"
+                defaultValue="@style/HugoAAScale100">
+                <option name="75 %" overlapStyle="@style/HugoAAScale075" />
+                <option name="85 %" overlapStyle="@style/HugoAAScale085" />
+                <option name="95 %" overlapStyle="@style/HugoAAScale095" />
+                <option name="100 %" overlapStyle="@style/HugoAAScale100" />
+                <option name="110 %" overlapStyle="@style/HugoAAScale110" />
+                <option name="125 %" overlapStyle="@style/HugoAAScale125" />
+            </seekbarOptions>
+
+            <seekbar
+                key="hugo_cover_corner"
+                id="@+id/hugoCornersAA"
+                name="@string/hugo_cover_corner"
+                summary="@string/hugo_cover_corner_summary"
+                summary2="%.0fdp"
+                floatScale="1"
+                scale="1"
+                defaultValue="8"
+                min="-1"
+                max="64"
+                step="1" />
+
+            <option
+                key="hugo_cover_shadow"
+                name="@string/hugo_cover_shadow"
+                summary="@string/hugo_cover_shadow_summary"
+                overlapStyle="@style/HugoShadowOn"
+                checkedByDefault="false" />
+        </category>
+    </skin>
+</skins>
