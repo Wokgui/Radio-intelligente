@@ -35,14 +35,30 @@ jobs:
       - name: Clone official Poweramp skin SDK
         run: git clone --depth 1 https://github.com/maxmpz/powerampapi.git upstream
 
-      - name: Inspect Poweramp 1026 background resources
+      - name: Inspect actual Poweramp 1026 background resources
         run: |
+          rm -rf ref1026
           mkdir -p ref1026
           unzip -q upstream/Poweramp-build-1026-resources.zip -d ref1026
-          echo '=== files mentioning colorBgInverse / windowBackground / ActivityTheme_Black ==='
-          grep -R -n -E 'colorBgInverse|windowBackground|ActivityTheme_Black|colorBackground' ref1026/res 2>/dev/null | head -n 500 || true
-          echo '=== likely player/root background style references ==='
-          grep -R -n -E 'TopContainer|activity_main|scene_aa|background' ref1026/res/values* 2>/dev/null | grep -E 'background|colorBg|ActivityTheme|TopContainer' | head -n 500 || true
+          {
+            echo '=== TOP-LEVEL ZIP CONTENT ==='
+            find ref1026 -maxdepth 3 -type f | sort | head -n 300
+            echo
+            echo '=== DIRECT BACKGROUND/COLOR MATCHES ==='
+            grep -R -n -E 'colorBgInverse|colorBackground|windowBackground|ActivityTheme_Black|ActivityTheme_White|ActivityTheme_Default|backgroundColor|mainBackground|playerBackground' ref1026 2>/dev/null | head -n 1200 || true
+            echo
+            echo '=== PLAYER / MAIN SCENE BACKGROUND MATCHES ==='
+            grep -R -n -E 'scene_aa|TopContainer|MainActivity|main_activity|activity_main|player|background' ref1026 2>/dev/null | grep -E 'background|colorBg|ActivityTheme|TopContainer|scene_aa|player' | head -n 1800 || true
+          } > poweramp-background-report.txt
+          cat poweramp-background-report.txt
+
+      - name: Upload background inspection report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Poweramp-Background-Report
+          path: poweramp-background-report.txt
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Configure local Android SDK
         run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > upstream/local.properties
