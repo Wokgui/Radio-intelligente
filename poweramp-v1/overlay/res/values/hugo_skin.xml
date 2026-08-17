@@ -6,8 +6,10 @@
     <attr name="Hugo_ItemTrackAAImage_scene_aa_scale" format="float" />
     <attr name="Hugo_ItemTrackAAImage_scene_aa_scale_playing" format="float" />
 
-    <!-- Stock Poweramp interface, with only requested visual overrides. -->
-    <style name="HugoSkin" parent="com.maxmpz.audioplayer:style/Base_ActivityTheme_Default">
+    <!-- Dark Poweramp base gives stable white foregrounds while our custom background is injected. -->
+    <style name="HugoSkin" parent="com.maxmpz.audioplayer:style/ActivityTheme_Black">
+        <item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item>
+        <item name="com.maxmpz.audioplayer:colorAccent">#9B6CFF</item>
         <item name="com.maxmpz.audioplayer:ItemTrackAAImage_scene_aa">@style/Hugo_ItemTrackAAImage_scene_aa</item>
         <item name="com.maxmpz.audioplayer:ItemTrackAAImage_scene_aa_playing">@style/Hugo_ItemTrackAAImage_scene_aa_playing</item>
         <item name="Hugo_ItemTrackAAImage_scene_aa_scale">0.975</item>
@@ -22,34 +24,12 @@
         <item name="com.maxmpz.audioplayer:scale">?Hugo_ItemTrackAAImage_scene_aa_scale_playing</item>
     </style>
 
-    <!-- IMPORTANT: overlap styles must only contain the attributes to override.
-         Using complete Black/Default parent themes here made Poweramp collapse choices to black/white. -->
-    <style name="HugoPresetNightViolet">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#9B6CFF</item>
-    </style>
-    <style name="HugoPresetOledPurple">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#B06CFF</item>
-    </style>
-    <style name="HugoPresetDeepBlue">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#0A1628</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#4DA3FF</item>
-    </style>
-    <style name="HugoPresetGraphiteOrange">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#FF8A3D</item>
-    </style>
-    <style name="HugoPresetForest">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#102A24</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#5FE1B3</item>
-    </style>
-    <style name="HugoPresetLight">
-        <item name="com.maxmpz.audioplayer:colorBgInverse">#F5F3F8</item>
-        <item name="com.maxmpz.audioplayer:colorAccent">#7651D6</item>
-    </style>
+    <style name="HugoPresetNightViolet"><item name="com.maxmpz.audioplayer:colorBgInverse">#120D1D</item><item name="com.maxmpz.audioplayer:colorAccent">#9B6CFF</item></style>
+    <style name="HugoPresetOledPurple"><item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item><item name="com.maxmpz.audioplayer:colorAccent">#B06CFF</item></style>
+    <style name="HugoPresetDeepBlue"><item name="com.maxmpz.audioplayer:colorBgInverse">#0A1628</item><item name="com.maxmpz.audioplayer:colorAccent">#4DA3FF</item></style>
+    <style name="HugoPresetGraphiteOrange"><item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item><item name="com.maxmpz.audioplayer:colorAccent">#FF8A3D</item></style>
+    <style name="HugoPresetForest"><item name="com.maxmpz.audioplayer:colorBgInverse">#102A24</item><item name="com.maxmpz.audioplayer:colorAccent">#5FE1B3</item></style>
 
-    <!-- Background palette: only override Poweramp's documented global background attribute. -->
     <style name="HugoBgBlack"><item name="com.maxmpz.audioplayer:colorBgInverse">#000000</item></style>
     <style name="HugoBgCharcoal"><item name="com.maxmpz.audioplayer:colorBgInverse">#121212</item></style>
     <style name="HugoBgGraphite"><item name="com.maxmpz.audioplayer:colorBgInverse">#202124</item></style>
@@ -63,11 +43,7 @@
     <style name="HugoBgForest"><item name="com.maxmpz.audioplayer:colorBgInverse">#123524</item></style>
     <style name="HugoBgOlive"><item name="com.maxmpz.audioplayer:colorBgInverse">#344322</item></style>
     <style name="HugoBgWarmGray"><item name="com.maxmpz.audioplayer:colorBgInverse">#5B5652</item></style>
-    <style name="HugoBgLightGray"><item name="com.maxmpz.audioplayer:colorBgInverse">#ECEFF1</item></style>
-    <style name="HugoBgCream"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFF4E5</item></style>
-    <style name="HugoBgWhite"><item name="com.maxmpz.audioplayer:colorBgInverse">#FFFFFF</item></style>
 
-    <!-- Accent palette. -->
     <style name="HugoAccentOrange"><item name="com.maxmpz.audioplayer:colorAccent">#FF8A3D</item></style>
     <style name="HugoAccentAmber"><item name="com.maxmpz.audioplayer:colorAccent">#FFC247</item></style>
     <style name="HugoAccentRed"><item name="com.maxmpz.audioplayer:colorAccent">#FF5A5F</item></style>
@@ -80,7 +56,6 @@
     <style name="HugoAccentLime"><item name="com.maxmpz.audioplayer:colorAccent">#A7DC58</item></style>
     <style name="HugoAccentWhite"><item name="com.maxmpz.audioplayer:colorAccent">#FFFFFF</item></style>
 
-    <!-- Main cover sizes. -->
     <style name="HugoAAScale075"><item name="Hugo_ItemTrackAAImage_scene_aa_scale">0.73</item><item name="Hugo_ItemTrackAAImage_scene_aa_scale_playing">0.75</item></style>
     <style name="HugoAAScale085"><item name="Hugo_ItemTrackAAImage_scene_aa_scale">0.82</item><item name="Hugo_ItemTrackAAImage_scene_aa_scale_playing">0.85</item></style>
     <style name="HugoAAScale095"><item name="Hugo_ItemTrackAAImage_scene_aa_scale">0.92</item><item name="Hugo_ItemTrackAAImage_scene_aa_scale_playing">0.95</item></style>
@@ -88,7 +63,6 @@
     <style name="HugoAAScale110"><item name="Hugo_ItemTrackAAImage_scene_aa_scale">1.07</item><item name="Hugo_ItemTrackAAImage_scene_aa_scale_playing">1.10</item></style>
     <style name="HugoAAScale125"><item name="Hugo_ItemTrackAAImage_scene_aa_scale">1.22</item><item name="Hugo_ItemTrackAAImage_scene_aa_scale_playing">1.25</item></style>
 
-    <!-- Optional shadow. -->
     <style name="HugoShadowOn">
         <item name="com.maxmpz.audioplayer:ItemTrackAAImage_scene_aa">@style/Hugo_ItemTrackAAImage_scene_aa_Shadow</item>
         <item name="com.maxmpz.audioplayer:ItemTrackAAImage_scene_aa_playing">@style/Hugo_ItemTrackAAImage_scene_aa_playing_Shadow</item>
