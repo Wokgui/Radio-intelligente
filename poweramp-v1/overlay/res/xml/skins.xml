@@ -5,7 +5,7 @@
         author="@string/hugo_skin_author"
         description="@string/hugo_skin_description"
         style="@style/HugoSkin"
-        forceGlobalOptions="true"
+        forceGlobalOptions="false"
         allowNewPadding="true">
 
         <category name="@string/hugo_presets">
@@ -19,7 +19,6 @@
                 <option name="@string/hugo_preset_deep_blue" overlapStyle="@style/HugoPresetDeepBlue" />
                 <option name="@string/hugo_preset_graphite_orange" overlapStyle="@style/HugoPresetGraphiteOrange" />
                 <option name="@string/hugo_preset_forest" overlapStyle="@style/HugoPresetForest" />
-                <option name="@string/hugo_preset_light" overlapStyle="@style/HugoPresetLight" />
             </radio>
         </category>
 
@@ -43,9 +42,6 @@
                 <option name="@string/hugo_forest_bg" overlapStyle="@style/HugoBgForest" />
                 <option name="@string/hugo_olive" overlapStyle="@style/HugoBgOlive" />
                 <option name="@string/hugo_warm_gray" overlapStyle="@style/HugoBgWarmGray" />
-                <option name="@string/hugo_light_gray" overlapStyle="@style/HugoBgLightGray" />
-                <option name="@string/hugo_cream" overlapStyle="@style/HugoBgCream" />
-                <option name="@string/hugo_white" overlapStyle="@style/HugoBgWhite" />
             </radio>
 
             <radio
