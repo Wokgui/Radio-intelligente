@@ -239,3 +239,21 @@ body #miniPlay.shazam-btn svg{
   fill:#5b31ba!important;
   stroke:#5b31ba!important;
 }
+
+/* v57 : fonds d'écran blancs et cartes Gardés sans reprise floutée de la pochette. */
+:root{--bg:#fff;--ui-main-bg:#fff}
+html,
+body,
+.app,
+.track,
+#settingsPage,
+body.settings-open #settingsPage{
+  background:#fff!important;
+}
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::before,
+#settingsPage.history-only>.radio-history-card #hist .row:has(.row-main)::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  filter:none!important;
+}
