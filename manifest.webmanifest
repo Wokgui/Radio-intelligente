@@ -8,7 +8,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#eee7f7",
+  "background_color": "#ffffff",
   "theme_color": "#6f4fc8",
   "prefer_related_applications": false,
   "categories": ["music", "entertainment"],
