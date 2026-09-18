@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v85';
+const CACHE = 'radio-intelligente-pwa-v86';
 
 const APP_SHELL = [
   '/',
@@ -14,7 +14,9 @@ const APP_SHELL = [
   '/vendor/supabase/supabase.js?v=1',
   '/radio-v51.css?v=8',
   '/radio-v51.js?v=15',
-  '/radio-v51-core.js?v=1'
+  '/radio-v51-core.js?v=1',
+  '/music-library.css?v=1',
+  '/music-library.js?v=1'
 ];
 
 self.addEventListener('install', event => {
