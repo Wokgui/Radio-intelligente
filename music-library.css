@@ -4,7 +4,8 @@ body.music-shell-ready:not(.settings-open){
   padding-bottom:calc(var(--music-nav-h) + env(safe-area-inset-bottom));
 }
 body.music-shell-ready:not(.settings-open) .app{
-  min-height:calc(100svh - var(--music-nav-h) - env(safe-area-inset-bottom));
+  height:calc(100svh - var(--music-nav-h) - env(safe-area-inset-bottom))!important;
+  min-height:calc(100svh - var(--music-nav-h) - env(safe-area-inset-bottom))!important;
   padding-bottom:0!important;
 }
 body.music-shell-ready:not(.settings-open) #mainPage .player{
