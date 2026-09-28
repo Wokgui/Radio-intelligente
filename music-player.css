@@ -2271,3 +2271,114 @@ body.music-mode #musicQuick .music-radio-shortcut .meta span{
     font-size:.54rem!important;
   }
 }
+
+
+/* v101 — accès Ma musique discret sous Gardés / Passés */
+body.radio-mode .track{
+  grid-template-rows:34px auto auto 56px 68px 94px 82px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick){
+  position:relative!important;
+  width:100%!important;
+  height:82px!important;
+  min-height:82px!important;
+  padding-bottom:20px!important;
+  overflow:visible!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  width:100%!important;
+  height:60px!important;
+  min-height:60px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr)!important;
+  align-items:center!important;
+  padding:3px 8px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .divider{
+  display:block!important;
+  width:1px!important;
+  height:30px!important;
+  justify-self:center!important;
+}
+body.radio-mode .radio-music-open{
+  position:absolute!important;
+  left:50%!important;
+  bottom:0!important;
+  transform:translateX(-50%)!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#a66af4 0%,#7b3ee7 55%,#5f2fca 100%)!important;
+  color:#fff!important;
+  box-shadow:0 6px 16px rgba(103,52,205,.24)!important;
+  z-index:4!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:21px!important;
+  height:21px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+/* La tuile de genre reste parfaitement centrée maintenant que la bascule a disparu. */
+body.radio-mode #cat{
+  justify-self:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* Shazam + Réglages restent dans la barre audio, à leur place d’origine. */
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  grid-template-columns:36px 46px minmax(0,1fr) 46px 36px!important;
+}
+body.radio-mode #miniPlay.shazam-btn{
+  grid-column:1!important;
+}
+body.radio-mode #miniMore{
+  grid-column:5!important;
+}
+
+/* Icônes alternatives : égaliseur avec moins / silhouette avec moins. */
+body.radio-mode #lessStyle .ico svg,
+body.radio-mode #lessArtist .ico svg{
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+@media(max-width:420px){
+  body.radio-mode .track{
+    grid-template-rows:34px auto auto 54px 66px 90px 78px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick){
+    height:78px!important;
+    min-height:78px!important;
+    padding-bottom:18px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:36px!important;
+    height:36px!important;
+    min-width:36px!important;
+    min-height:36px!important;
+  }
+  body.radio-mode .radio-music-open svg{
+    width:20px!important;
+    height:20px!important;
+  }
+}
