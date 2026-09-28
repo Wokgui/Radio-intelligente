@@ -72,11 +72,11 @@ jobs:
         run: gradle -p android :app:assembleDebug --no-daemon
 
       - name: Prepare APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Radio-intelligente-v102-standalone.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Radio-intelligente-v103-standalone.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Radio-intelligente-v102-standalone
-          path: Radio-intelligente-v102-standalone.apk
+          name: Radio-intelligente-v103-standalone
+          path: Radio-intelligente-v103-standalone.apk
           if-no-files-found: error
           retention-days: 30
