@@ -2382,3 +2382,191 @@ body.radio-mode #lessArtist .ico svg{
     height:20px!important;
   }
 }
+
+
+/* v102 — correction du lecteur standard après vérification Android */
+
+/* 1. La barre de lecture a une seule colonne : transport au-dessus, progression en dessous. */
+body.music-mode #musicPlayerbar{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:104px 54px!important;
+  height:158px!important;
+  min-height:158px!important;
+  align-items:stretch!important;
+}
+body.music-mode #musicPlayerbar .music-transport-row,
+body.music-mode #musicPlayerbar .music-progress-row{
+  grid-column:1!important;
+  width:100%!important;
+  min-width:0!important;
+}
+body.music-mode #musicPlayerbar .music-transport-row{
+  grid-row:1!important;
+}
+body.music-mode #musicPlayerbar .music-progress-row{
+  grid-row:2!important;
+  padding:0 10px!important;
+}
+body.music-mode #musicPlayerbar .music-progress-row .seek-wrap,
+body.music-mode #musicPlayerbar .music-time-row{
+  width:100%!important;
+  min-width:0!important;
+}
+body.music-mode #musicPlayerbar .music-time-row{
+  padding:0 2px!important;
+}
+body.music-mode #musicPlayerbar .time{
+  position:static!important;
+  transform:none!important;
+  white-space:nowrap!important;
+}
+
+/* 2. Plus de grand vide entre commandes et "Prochain morceau". */
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:
+    auto
+    auto
+    auto
+    8px
+    58px
+    10px
+    158px
+    38px
+    minmax(8px,1fr)
+    68px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:
+    34px
+    auto
+    auto
+    auto
+    8px
+    58px
+    10px
+    158px
+    38px
+    minmax(8px,1fr)
+    68px!important;
+}
+body.music-mode:not(.music-has-playlist) #title{grid-row:1!important}
+body.music-mode:not(.music-has-playlist) #artist{grid-row:2!important}
+body.music-mode:not(.music-has-playlist) #musicEmptyImport{grid-row:3!important}
+body.music-mode:not(.music-has-playlist) #musicActions{grid-row:5!important}
+body.music-mode:not(.music-has-playlist) #musicPlayerbar{grid-row:7!important}
+body.music-mode:not(.music-has-playlist) #musicNextTrack{grid-row:8!important}
+body.music-mode:not(.music-has-playlist) #musicQuick{grid-row:10!important}
+
+body.music-mode.music-has-playlist #cat{grid-row:1!important}
+body.music-mode.music-has-playlist #title{grid-row:2!important}
+body.music-mode.music-has-playlist #artist{grid-row:3!important}
+body.music-mode.music-has-playlist #musicEmptyImport{grid-row:4!important}
+body.music-mode.music-has-playlist #musicActions{grid-row:6!important}
+body.music-mode.music-has-playlist #musicPlayerbar{grid-row:8!important}
+body.music-mode.music-has-playlist #musicNextTrack{grid-row:9!important}
+body.music-mode.music-has-playlist #musicQuick{grid-row:11!important}
+
+/* 3. CTA d'import explicite quand la bibliothèque est vide. */
+body.music-mode #musicEmptyImport{
+  justify-self:center!important;
+  align-self:center!important;
+  min-height:42px!important;
+  padding:0 16px!important;
+  border:1px solid #ded1ea!important;
+  border-radius:999px!important;
+  background:linear-gradient(180deg,#fff 0%,#f8f1fc 100%)!important;
+  color:#6e3bbb!important;
+  font-size:.74rem!important;
+  font-weight:850!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  box-shadow:0 5px 14px rgba(92,63,117,.07)!important;
+}
+body.music-mode #musicEmptyImport[hidden]{
+  display:none!important;
+}
+body.music-mode #musicEmptyImport .music-empty-import-icon{
+  font-size:1.08rem!important;
+  line-height:1!important;
+  font-weight:700!important;
+}
+
+/* 4. Barre du bas : "Radio intelligente" a la même hiérarchie que les autres raccourcis. */
+body.music-mode #musicQuick .music-radio-shortcut{
+  background:linear-gradient(180deg,#faf6fd 0%,#f3ebf9 100%)!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .meta{
+  align-items:center!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .meta b{
+  font-size:.78rem!important;
+  line-height:1.03!important;
+  font-weight:900!important;
+  text-transform:none!important;
+  color:#6b3c99!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .meta span{
+  font-size:.60rem!important;
+  line-height:1.03!important;
+  font-weight:750!important;
+  text-transform:none!important;
+  color:#675b70!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .sico{
+  width:27px!important;
+  min-width:27px!important;
+  height:27px!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .sico svg{
+  width:25px!important;
+  height:25px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicPlayerbar{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:96px 52px!important;
+    height:148px!important;
+    min-height:148px!important;
+  }
+  body.music-mode:not(.music-has-playlist) .track{
+    grid-template-rows:
+      auto
+      auto
+      auto
+      6px
+      56px
+      8px
+      148px
+      34px
+      minmax(6px,1fr)
+      64px!important;
+  }
+  body.music-mode.music-has-playlist .track{
+    grid-template-rows:
+      32px
+      auto
+      auto
+      auto
+      6px
+      56px
+      8px
+      148px
+      34px
+      minmax(6px,1fr)
+      64px!important;
+  }
+  body.music-mode #musicEmptyImport{
+    min-height:38px!important;
+    padding:0 13px!important;
+    font-size:.68rem!important;
+  }
+  body.music-mode #musicQuick .music-radio-shortcut .meta b{
+    font-size:.69rem!important;
+  }
+  body.music-mode #musicQuick .music-radio-shortcut .meta span{
+    font-size:.56rem!important;
+  }
+}
