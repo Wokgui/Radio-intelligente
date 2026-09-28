@@ -759,6 +759,8 @@
     const oldIndex=currentIndex;
     try{await dbDelete(id)}catch{}
     tracks=tracks.filter(item=>item.id!==id);
+    playlists.forEach(playlist=>{playlist.trackIds=playlist.trackIds.filter(trackId=>trackId!==id)});
+    savePlaylists();
     if(wasCurrent){
       const audio=$('musicAudio');
       if(audio){audio.pause();audio.removeAttribute('src');audio.load();delete audio.dataset.trackId}
@@ -880,6 +882,8 @@
       $('musicPlayerbar'),
       $('musicActions'),
       $('musicQuick'),
+      $('musicNextTrack'),
+      $('musicSettingsRow'),
       $('musicPrevCover'),
       $('musicPlayCover')
     ].filter(Boolean);
@@ -999,7 +1003,12 @@
     navButton.title='Ma musique';
     navButton.dataset.target='music';
     navButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
-    if(radioQuick)radioQuick.insertAdjacentElement('afterend',navButton);
+    if(radioQuick){
+      const radioStats=radioQuick.querySelector('.stats');
+      const divider=radioStats?radioStats.querySelector('.divider'):null;
+      if(divider)divider.replaceWith(navButton);
+      else if(radioStats)radioStats.appendChild(navButton);
+    }
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
