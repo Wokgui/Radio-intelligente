@@ -577,3 +577,286 @@ body.radio-mode .track>.playerbar:not(.music-playerbar){
     height:17px!important;
   }
 }
+
+
+/* v90 - correspondance visuelle avec la maquette option 2 */
+.mode-topline{
+  width:100%;
+  min-width:0;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+}
+.mode-topline #cat{
+  position:static!important;
+  top:auto!important;
+  justify-self:start!important;
+  max-width:150px!important;
+  height:32px!important;
+  min-height:32px!important;
+  padding:0 14px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  box-shadow:none!important;
+  font-size:.72rem!important;
+}
+.experience-tools{
+  position:static!important;
+  top:auto!important;
+  right:auto!important;
+  z-index:auto!important;
+  justify-self:end!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+.experience-switch{
+  width:154px!important;
+  padding:3px!important;
+  border-radius:999px!important;
+  grid-template-columns:1fr 1.2fr!important;
+  background:#f7f2fa!important;
+  border:1px solid #e6dcec!important;
+  box-shadow:none!important;
+}
+.experience-switch button{
+  height:28px!important;
+  padding:0 6px!important;
+  font-size:.60rem!important;
+  border-radius:999px!important;
+}
+.experience-switch button.on{
+  background:linear-gradient(145deg,#c58ade 0%,#b36e9b 55%,#9e557e 100%)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+.experience-tools #miniPlay.shazam-btn,
+.experience-tools #miniMore{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  border-radius:50%!important;
+  box-shadow:none!important;
+}
+.experience-tools #miniPlay.shazam-btn{
+  background:linear-gradient(145deg,#c58ade 0%,#b36e9b 55%,#9e557e 100%)!important;
+}
+.experience-tools #miniPlay.shazam-btn svg{
+  width:18px!important;
+  height:18px!important;
+}
+.experience-tools #miniMore{
+  background:#fbf8fb!important;
+  border:1px solid #eadfea!important;
+  color:#7d5570!important;
+  font-size:.92rem!important;
+}
+
+/* Radio : composition identique à la maquette, titre/artiste centrés. */
+body.radio-mode .track{
+  padding:8px 14px calc(8px + env(safe-area-inset-bottom))!important;
+  grid-template-rows:34px auto auto 42px 62px 82px 42px!important;
+  gap:6px!important;
+  margin-top:-6px!important;
+  align-content:space-between!important;
+}
+body.radio-mode #title,
+body.radio-mode #artist{
+  width:100%!important;
+  text-align:center!important;
+  justify-self:center!important;
+  transform:none!important;
+}
+body.radio-mode #title{
+  font-size:1.45rem!important;
+  line-height:1.04!important;
+}
+body.radio-mode #artist{
+  margin-top:-3px!important;
+  font-size:.88rem!important;
+}
+
+/* Barre de progression : plus de grosse capsule, comme la maquette. */
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:42px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .time{
+  font-size:.72rem!important;
+  color:#76677f!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek{
+  height:4px!important;
+  background:#eadde8!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek::-webkit-slider-thumb{
+  width:14px!important;
+  height:14px!important;
+  background:#a85c88!important;
+  box-shadow:none!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek::-moz-range-thumb{
+  width:14px!important;
+  height:14px!important;
+  background:#a85c88!important;
+}
+
+/* Boutons principaux de la maquette : Non clair, Oui mauve. */
+body.radio-mode #no{
+  background:#f5e8ee!important;
+  color:#8f456c!important;
+  box-shadow:none!important;
+}
+body.radio-mode #yes{
+  background:linear-gradient(145deg,#be7a9e 0%,#a85c88 100%)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+body.radio-mode .choice{
+  min-height:62px!important;
+  border-radius:20px!important;
+}
+
+/* Les quatre choix secondaires sur une seule ligne. */
+body.radio-mode .track>.alt:not(.music-alt){
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-template-rows:82px!important;
+  gap:7px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) button{
+  min-width:0!important;
+  min-height:82px!important;
+  height:82px!important;
+  padding:8px 5px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  border-radius:16px!important;
+  background:#fbf8fa!important;
+  border:1px solid #eee4eb!important;
+  box-shadow:none!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .ico{
+  position:static!important;
+  transform:none!important;
+  width:auto!important;
+  min-width:0!important;
+  font-size:1.25rem!important;
+  color:#8c5c7a!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .txt{
+  width:auto!important;
+  font-size:.62rem!important;
+  line-height:1.13!important;
+  color:#67596d!important;
+  text-align:center!important;
+}
+
+/* Statistiques : carte pâle et sobre, comme la maquette. */
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  min-height:42px!important;
+  padding:3px 0!important;
+  border-radius:16px!important;
+  background:#fbf8fa!important;
+  border:1px solid #eee4eb!important;
+  box-shadow:none!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .sico{
+  color:#a65d87!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat b{
+  color:#8c466c!important;
+}
+
+/* Séparation stricte des modes, même si une ancienne règle CSS entre en conflit. */
+body.radio-mode #musicPlayerbar,
+body.radio-mode #musicActions,
+body.radio-mode #musicQuick,
+body.radio-mode .music-playerbar,
+body.radio-mode .music-alt,
+body.radio-mode .music-quick,
+body.radio-mode #musicPrevCover,
+body.radio-mode #musicPlayCover{
+  display:none!important;
+}
+body.music-mode .track>.primary,
+body.music-mode .track>.alt:not(.music-alt),
+body.music-mode .track>.quick:not(.music-quick){
+  display:none!important;
+}
+body.music-mode #miniPlay{
+  display:none!important;
+}
+body.music-mode #musicPlayerbar{
+  display:grid!important;
+}
+body.music-mode #musicActions{
+  display:grid!important;
+}
+body.music-mode #musicQuick{
+  display:block!important;
+}
+body.music-mode #musicPrevCover,
+body.music-mode #musicPlayCover{
+  display:grid!important;
+}
+
+/* Ma musique : ne jamais montrer les statistiques radio. */
+body.music-mode .track>.quick:not(#musicQuick){
+  display:none!important;
+}
+
+@media(max-width:420px){
+  .mode-topline{gap:5px}
+  .mode-topline #cat{
+    max-width:118px!important;
+    padding:0 10px!important;
+    font-size:.66rem!important;
+  }
+  .experience-switch{
+    width:142px!important;
+  }
+  .experience-switch button{
+    height:27px!important;
+    padding:0 5px!important;
+    font-size:.56rem!important;
+  }
+  .experience-tools{
+    gap:4px!important;
+  }
+  .experience-tools #miniPlay.shazam-btn,
+  .experience-tools #miniMore{
+    width:28px!important;
+    height:28px!important;
+    min-width:28px!important;
+  }
+  body.radio-mode .track{
+    grid-template-rows:32px auto auto 40px 58px 78px 40px!important;
+    gap:5px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    grid-template-rows:78px!important;
+    gap:5px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) button{
+    min-height:78px!important;
+    height:78px!important;
+    padding:6px 3px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) .txt{
+    font-size:.56rem!important;
+  }
+}
