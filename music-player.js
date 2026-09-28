@@ -1019,8 +1019,9 @@
     prevCover.id='musicPrevCover';
     prevCover.className='round music-cover-prev';
     prevCover.type='button';
-    prevCover.setAttribute('aria-label','Morceau précédent');
-    prevCover.textContent='⏮';
+    prevCover.setAttribute('aria-label','Revenir à Radio intelligente');
+    prevCover.title='Radio intelligente';
+    prevCover.textContent='↶';
     cover.appendChild(prevCover);
 
     const playCover=document.createElement('button');
@@ -1036,13 +1037,13 @@
     bar.className='playerbar music-playerbar';
     bar.setAttribute('aria-label','Lecteur de musique');
     bar.innerHTML=
-      '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente">⏮☷</button>'+
+      '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"></path><path d="M20 7h-7M20 12h-7M20 17h-7"></path></svg></button>'+
       '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent" title="Morceau précédent">⏮</button>'+
       '<span id="musicCt" class="time">0:00</span>'+
       '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
       '<span id="musicTt" class="time">0:00</span>'+
       '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant" title="Morceau suivant">⏭</button>'+
-      '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante">☷⏭</button>';
+      '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6"></path><path d="M4 7h7M4 12h7M4 17h7"></path></svg></button>';
     track.appendChild(bar);
 
     const nextLine=document.createElement('div');
@@ -1131,7 +1132,7 @@
 
   function bindDom(){
     document.querySelectorAll('#experienceSwitch button').forEach(btn=>btn.addEventListener('click',()=>applyMode(btn.dataset.surface,true)));
-    $('musicPrevCover').onclick=previousTrack;
+    $('musicPrevCover').onclick=()=>applyMode('radio',true);
     $('musicPlayCover').onclick=()=>togglePlay();
     $('musicPlaylistPrev').onclick=()=>switchPlaylist(-1);
     $('musicMiniPrev').onclick=previousTrack;
