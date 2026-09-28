@@ -1535,3 +1535,213 @@ body.music-mode:not(.settings-open) #mainPage .player{
     min-height:56px!important;
   }
 }
+
+
+/* v99 — Ma musique : même pochette que Radio intelligente, hauteur mieux exploitée */
+/* Pochette strictement identique à Radio intelligente */
+body.music-mode:not(.settings-open) #mainPage .player{
+  grid-template-rows:44dvh minmax(0,1fr)!important;
+}
+body.music-mode:not(.settings-open) #mainPage .cover{
+  min-height:0!important;
+  height:auto!important;
+}
+
+/* Zone inférieure : on utilise toute la hauteur restante sans gros vide central */
+body.music-mode .track{
+  height:auto!important;
+  min-height:0!important;
+  padding-top:10px!important;
+  padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+  row-gap:0!important;
+  align-content:stretch!important;
+}
+
+/* Sans playlist active */
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:
+    auto
+    auto
+    10px
+    62px
+    8px
+    36px
+    10px
+    60px
+    minmax(8px,1fr)
+    68px!important;
+}
+/* Avec playlist active */
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:
+    34px
+    6px
+    auto
+    auto
+    10px
+    62px
+    8px
+    36px
+    10px
+    60px
+    minmax(8px,1fr)
+    68px!important;
+}
+
+/* Positions explicites pour éviter les effets de règles anciennes */
+body.music-mode:not(.music-has-playlist) #title{grid-row:1!important}
+body.music-mode:not(.music-has-playlist) #artist{grid-row:2!important}
+body.music-mode:not(.music-has-playlist) #musicPlayerbar{grid-row:4!important}
+body.music-mode:not(.music-has-playlist) #musicNextTrack{grid-row:6!important}
+body.music-mode:not(.music-has-playlist) #musicActions{grid-row:8!important}
+body.music-mode:not(.music-has-playlist) #musicQuick{grid-row:10!important}
+
+body.music-mode.music-has-playlist #cat{grid-row:1!important}
+body.music-mode.music-has-playlist #title{grid-row:3!important}
+body.music-mode.music-has-playlist #artist{grid-row:4!important}
+body.music-mode.music-has-playlist #musicPlayerbar{grid-row:6!important}
+body.music-mode.music-has-playlist #musicNextTrack{grid-row:8!important}
+body.music-mode.music-has-playlist #musicActions{grid-row:10!important}
+body.music-mode.music-has-playlist #musicQuick{grid-row:12!important}
+
+/* Éléments importants légèrement agrandis */
+body.music-mode #title{
+  font-size:1.52rem!important;
+  line-height:1.04!important;
+  margin:0!important;
+}
+body.music-mode #artist{
+  font-size:.92rem!important;
+  line-height:1.08!important;
+  margin:5px 0 0!important;
+}
+
+body.music-mode #musicPlayerbar{
+  height:62px!important;
+  min-height:62px!important;
+  padding:9px 11px!important;
+  border-radius:21px!important;
+}
+body.music-mode #musicPlayerbar .icon-btn{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  min-height:30px!important;
+}
+body.music-mode #musicPlayerbar .time{
+  font-size:.76rem!important;
+  font-weight:800!important;
+}
+body.music-mode #musicPlayerbar .seek{
+  height:6px!important;
+}
+
+body.music-mode #musicNextTrack{
+  height:36px!important;
+  min-height:36px!important;
+  padding:0 7px!important;
+  font-size:.70rem!important;
+}
+body.music-mode #musicNextTrack .music-next-label,
+body.music-mode #musicNextTrack .music-next-text{
+  font-size:.70rem!important;
+}
+
+body.music-mode #musicActions{
+  height:60px!important;
+  min-height:60px!important;
+  grid-template-columns:minmax(0,1fr) 50px minmax(0,1fr)!important;
+  gap:9px!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  height:60px!important;
+  min-height:60px!important;
+  border-radius:19px!important;
+}
+body.music-mode #musicShuffle .txt,
+body.music-mode #musicRepeat .txt{
+  font-size:.71rem!important;
+}
+body.music-mode #musicSettingsGear{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  font-size:1.23rem!important;
+}
+
+/* Bandeau bas un peu plus présent mais toujours équilibré */
+body.music-mode #musicQuick,
+body.music-mode #musicQuick .stats{
+  height:68px!important;
+  min-height:68px!important;
+}
+body.music-mode #musicQuick .stats{
+  border-radius:21px!important;
+}
+body.music-mode #musicQuick .stats>.stat{
+  height:64px!important;
+  min-height:64px!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico{
+  width:25px!important;
+  min-width:25px!important;
+  height:25px!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta b{
+  font-size:.72rem!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta span{
+  font-size:.58rem!important;
+}
+
+/* En PWA installée, même règle de pochette que Radio */
+@media (display-mode: standalone){
+  body.music-mode:not(.settings-open) #mainPage .player{
+    grid-template-rows:44dvh minmax(0,1fr)!important;
+  }
+}
+
+/* Mobile : même pochette 44dvh, seulement le contenu inférieur se compacte */
+@media(max-width:420px){
+  body.music-mode:not(.settings-open) #mainPage .player{
+    grid-template-rows:44dvh minmax(0,1fr)!important;
+  }
+  body.music-mode:not(.music-has-playlist) .track{
+    grid-template-rows:
+      auto auto 8px 58px 7px 32px 8px 56px minmax(6px,1fr) 64px!important;
+  }
+  body.music-mode.music-has-playlist .track{
+    grid-template-rows:
+      32px 5px auto auto 8px 58px 7px 32px 8px 56px minmax(6px,1fr) 64px!important;
+  }
+  body.music-mode #title{font-size:1.42rem!important}
+  body.music-mode #artist{font-size:.86rem!important}
+  body.music-mode #musicPlayerbar{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  body.music-mode #musicNextTrack{
+    height:32px!important;
+    min-height:32px!important;
+  }
+  body.music-mode #musicActions{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.music-mode #musicQuick,
+  body.music-mode #musicQuick .stats{
+    height:64px!important;
+    min-height:64px!important;
+  }
+  body.music-mode #musicQuick .stats>.stat{
+    height:60px!important;
+    min-height:60px!important;
+  }
+}
