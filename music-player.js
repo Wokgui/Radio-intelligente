@@ -3,6 +3,7 @@
 
   const MODE_KEY='radio_hugo_surface_v1';
   const STATE_KEY='radio_hugo_music_state_v1';
+  const PLAYLISTS_KEY='radio_hugo_playlists_v1';
   const DB_NAME='radio-hugo-music-v1';
   const DB_VERSION=1;
   const STORE='tracks';
@@ -38,6 +39,8 @@
   let activeMode='radio';
   let filterMode='all';
   let importBusy=false;
+  let playlists=[];
+  let librarySection='tracks';
 
   const defaultState={
     currentId:null,
@@ -45,7 +48,8 @@
     shuffle:false,
     repeat:'off',
     sort:'recent',
-    volume:1
+    volume:1,
+    activePlaylistId:null
   };
   let state=loadState();
 
@@ -56,6 +60,29 @@
     }catch{
       return Object.assign({},defaultState);
     }
+  }
+
+  function loadPlaylists(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(PLAYLISTS_KEY)||'[]');
+      return Array.isArray(raw)?raw.filter(item=>item&&item.id&&item.name&&Array.isArray(item.trackIds)):[];
+    }catch{
+      return [];
+    }
+  }
+
+  function savePlaylists(){
+    try{localStorage.setItem(PLAYLISTS_KEY,JSON.stringify(playlists))}catch{}
+  }
+
+  function activePlaylist(){
+    return playlists.find(item=>item.id===state.activePlaylistId)||null;
+  }
+
+  function playlistTracks(playlist){
+    if(!playlist)return [];
+    const map=new Map(tracks.map(track=>[track.id,track]));
+    return playlist.trackIds.map(id=>map.get(id)).filter(Boolean);
   }
 
   function saveState(){
@@ -247,7 +274,9 @@
   }
 
   function rebuildOrder(anchorId){
-    const ids=sortTracks(tracks).map(track=>track.id);
+    const playlist=activePlaylist();
+    const baseTracks=playlist?playlistTracks(playlist):sortTracks(tracks);
+    const ids=baseTracks.map(track=>track.id);
     const anchor=anchorId||currentId;
     if(state.shuffle&&ids.length){
       const rest=ids.filter(id=>id!==anchor);
@@ -289,8 +318,13 @@
     if($('cover'))$('cover').src=DEFAULT_COVER;
     if($('title'))$('title').textContent='Ajoute ta musique';
     if($('artist'))$('artist').textContent='Tes fichiers restent stockés sur cet appareil';
-    if($('cat'))$('cat').textContent='Ma musique';
+    document.body.classList.remove('music-has-playlist');
+    if($('cat')){
+      $('cat').textContent='';
+      $('cat').classList.add('music-cat-hidden');
+    }
     updateMusicStats();
+    updateNextTrackLine();
   }
 
   function paintTrack(track){
@@ -303,10 +337,19 @@
     if($('title'))$('title').textContent=track.title||track.name||'Morceau';
     if($('artist'))$('artist').textContent=[track.artist,track.album].filter(Boolean).join(' — ')||'Fichier local';
     if($('cat')){
-      const pos=currentIndex>=0?currentIndex+1:1;
-      $('cat').textContent='Ma musique • '+pos+'/'+Math.max(order.length,tracks.length);
+      const playlist=activePlaylist();
+      if(playlist){
+        document.body.classList.add('music-has-playlist');
+        $('cat').textContent=playlist.name;
+        $('cat').classList.remove('music-cat-hidden');
+      }else{
+        document.body.classList.remove('music-has-playlist');
+        $('cat').textContent='';
+        $('cat').classList.add('music-cat-hidden');
+      }
     }
     updateMusicStats();
+    updateNextTrackLine();
     updateMediaMetadata(track);
   }
 
@@ -345,12 +388,144 @@
     }
   }
 
+  function nextTrackCandidate(){
+    if(!order.length)return null;
+    let index=currentIndex+1;
+    if(index>=order.length){
+      if(state.repeat==='all')index=0;
+      else return null;
+    }
+    return tracks.find(track=>track.id===order[index])||null;
+  }
+
+  function updateNextTrackLine(){
+    const line=$('musicNextTrack');
+    const text=$('musicNextTrackText');
+    if(!line||!text)return;
+    const next=nextTrackCandidate();
+    if(next){
+      line.hidden=false;
+      text.textContent=(next.title||next.name||'Morceau')+(next.artist?' — '+next.artist:'');
+    }else{
+      line.hidden=false;
+      text.textContent=order.length?'Fin de la liste':'Aucun morceau suivant';
+    }
+  }
+
+  function switchPlaylist(direction){
+    if(!playlists.length)return;
+    let index=playlists.findIndex(item=>item.id===state.activePlaylistId);
+    if(index<0)index=direction>0?-1:0;
+    index=(index+direction+playlists.length)%playlists.length;
+    const playlist=playlists[index];
+    const valid=playlistTracks(playlist);
+    if(!valid.length){
+      setImportStatus('Cette liste de lecture est vide.');
+      return;
+    }
+    state.activePlaylistId=playlist.id;
+    rebuildOrder(valid[0].id);
+    loadTrack(valid[0].id,{autoplay:true,resume:0});
+    saveState();
+    renderPlaylists();
+  }
+
+  function playPlaylist(id){
+    const playlist=playlists.find(item=>item.id===id);
+    const valid=playlistTracks(playlist);
+    if(!playlist||!valid.length)return;
+    state.activePlaylistId=playlist.id;
+    rebuildOrder(valid[0].id);
+    loadTrack(valid[0].id,{autoplay:true,resume:0});
+    saveState();
+    closeLibrary(false);
+  }
+
+  function createPlaylist(name){
+    const value=String(name||prompt('Nom de la nouvelle liste de lecture :')||'').trim();
+    if(!value)return null;
+    const playlist={id:'pl_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),name:value,trackIds:[]};
+    playlists.push(playlist);
+    savePlaylists();
+    renderPlaylists();
+    return playlist;
+  }
+
+  function addTrackToPlaylist(trackId){
+    if(!tracks.some(track=>track.id===trackId))return;
+    if(!playlists.length){
+      const created=createPlaylist();
+      if(!created)return;
+      created.trackIds.push(trackId);
+      savePlaylists();
+      renderPlaylists();
+      return;
+    }
+    const menu=playlists.map((playlist,index)=>(index+1)+' — '+playlist.name).join('\n');
+    const answer=prompt('Ajouter à quelle liste ?\n0 — Nouvelle liste\n'+menu);
+    if(answer===null)return;
+    const number=Number(answer);
+    let playlist;
+    if(number===0)playlist=createPlaylist();
+    else playlist=playlists[number-1];
+    if(!playlist)return;
+    if(!playlist.trackIds.includes(trackId))playlist.trackIds.push(trackId);
+    savePlaylists();
+    renderPlaylists();
+  }
+
+  function deletePlaylist(id){
+    const playlist=playlists.find(item=>item.id===id);
+    if(!playlist)return;
+    if(!confirm('Supprimer la liste « '+playlist.name+' » ? Les morceaux resteront dans Ma musique.'))return;
+    playlists=playlists.filter(item=>item.id!==id);
+    if(state.activePlaylistId===id){
+      state.activePlaylistId=null;
+      rebuildOrder(currentId);
+      paintTrack(currentTrack());
+      saveState();
+    }
+    savePlaylists();
+    renderPlaylists();
+  }
+
+  function renderPlaylists(){
+    const list=$('musicPlaylistsList');
+    if(!list)return;
+    if(!playlists.length){
+      list.innerHTML='<div class="music-library-empty">Aucune liste de lecture.<br><small>Crée une liste puis ajoute des morceaux avec le bouton ＋.</small></div>';
+      return;
+    }
+    list.innerHTML=playlists.map(playlist=>{
+      const count=playlistTracks(playlist).length;
+      return '<div class="music-playlist-row'+(playlist.id===state.activePlaylistId?' current':'')+'">'+
+        '<button type="button" class="music-playlist-main" data-playlist-play="'+esc(playlist.id)+'">'+
+          '<span class="music-row-note">☷</span><span class="music-row-text"><b>'+esc(playlist.name)+'</b><small>'+count+' morceau'+(count>1?'x':'')+'</small></span>'+
+        '</button>'+
+        '<button type="button" class="music-row-delete" data-playlist-delete="'+esc(playlist.id)+'" aria-label="Supprimer la liste">×</button>'+
+      '</div>';
+    }).join('');
+  }
+
+  function setLibrarySection(section){
+    librarySection=section==='playlists'?'playlists':'tracks';
+    const tracksPanel=$('musicTracksPanel');
+    const playlistsPanel=$('musicPlaylistsPanel');
+    if(tracksPanel)tracksPanel.hidden=librarySection!=='tracks';
+    if(playlistsPanel)playlistsPanel.hidden=librarySection!=='playlists';
+    document.querySelectorAll('#musicSectionTabs button').forEach(btn=>btn.classList.toggle('on',btn.dataset.section===librarySection));
+    if(librarySection==='playlists')renderPlaylists();
+    else renderLibrary();
+  }
+
+  function openPlaylists(){
+    openLibrary();
+    setLibrarySection('playlists');
+  }
+
   function updateMusicStats(){
     if($('musicCount'))$('musicCount').textContent=tracks.length;
-    if($('musicQueuePos')){
-      const pos=currentIndex>=0?currentIndex+1:0;
-      $('musicQueuePos').textContent=pos+'/'+Math.max(order.length,tracks.length);
-    }
+    if($('musicQueueLabel'))$('musicQueueLabel').textContent='Listes de lecture';
     if($('musicCountLabel'))$('musicCountLabel').textContent=tracks.length>1?'morceaux':'morceau';
     const track=currentTrack();
     if($('musicFavorite')){
@@ -508,6 +683,7 @@
     rebuildOrder(currentId);
     saveState();
     updateMusicStats();
+    updateNextTrackLine();
     renderLibrary();
   }
 
@@ -515,6 +691,7 @@
     state.repeat=state.repeat==='off'?'all':state.repeat==='all'?'one':'off';
     saveState();
     updateMusicStats();
+    updateNextTrackLine();
   }
 
   async function toggleFavorite(id){
@@ -551,6 +728,7 @@
             '<span class="music-row-note" aria-hidden="true">♫</span>'+
             '<span class="music-row-text"><b>'+esc(track.title||track.name||'Morceau')+'</b><small>'+esc(info)+'</small></span>'+
           '</button>'+
+          '<button class="music-row-add" type="button" data-add-playlist-id="'+esc(track.id)+'" aria-label="Ajouter à une liste de lecture">＋</button>'+
           '<button class="music-row-fav'+(track.favorite?' on':'')+'" type="button" data-fav-id="'+esc(track.id)+'" aria-label="'+(track.favorite?'Retirer des favoris':'Ajouter aux favoris')+'">'+(track.favorite?'★':'☆')+'</button>'+
           '<button class="music-row-delete" type="button" data-delete-id="'+esc(track.id)+'" aria-label="Retirer de Ma musique">×</button>'+
         '</div>';
@@ -586,6 +764,8 @@
     const oldIndex=currentIndex;
     try{await dbDelete(id)}catch{}
     tracks=tracks.filter(item=>item.id!==id);
+    playlists.forEach(playlist=>{playlist.trackIds=playlist.trackIds.filter(trackId=>trackId!==id)});
+    savePlaylists();
     if(wasCurrent){
       const audio=$('musicAudio');
       if(audio){audio.pause();audio.removeAttribute('src');audio.load();delete audio.dataset.trackId}
@@ -707,6 +887,8 @@
       $('musicPlayerbar'),
       $('musicActions'),
       $('musicQuick'),
+      $('musicNextTrack'),
+      $('musicSettingsRow'),
       $('musicPrevCover'),
       $('musicPlayCover')
     ].filter(Boolean);
@@ -826,14 +1008,20 @@
     navButton.title='Ma musique';
     navButton.dataset.target='music';
     navButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
-    if(radioQuick)radioQuick.insertAdjacentElement('afterend',navButton);
+    if(radioQuick){
+      const radioStats=radioQuick.querySelector('.stats');
+      const divider=radioStats?radioStats.querySelector('.divider'):null;
+      if(divider)divider.replaceWith(navButton);
+      else if(radioStats)radioStats.appendChild(navButton);
+    }
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
     prevCover.className='round music-cover-prev';
     prevCover.type='button';
-    prevCover.setAttribute('aria-label','Morceau précédent');
-    prevCover.textContent='⏮';
+    prevCover.setAttribute('aria-label','Revenir à Radio intelligente');
+    prevCover.title='Radio intelligente';
+    prevCover.textContent='↶';
     cover.appendChild(prevCover);
 
     const playCover=document.createElement('button');
@@ -849,21 +1037,33 @@
     bar.className='playerbar music-playerbar';
     bar.setAttribute('aria-label','Lecteur de musique');
     bar.innerHTML=
-      '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent">⏮</button>'+
+      '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"></path><path d="M20 7h-7M20 12h-7M20 17h-7"></path></svg></button>'+
+      '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent" title="Morceau précédent">⏮</button>'+
       '<span id="musicCt" class="time">0:00</span>'+
       '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
       '<span id="musicTt" class="time">0:00</span>'+
-      '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant">⏭</button>';
+      '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant" title="Morceau suivant">⏭</button>'+
+      '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6"></path><path d="M4 7h7M4 12h7M4 17h7"></path></svg></button>';
     track.appendChild(bar);
+
+    const nextLine=document.createElement('div');
+    nextLine.id='musicNextTrack';
+    nextLine.className='music-next-track';
+    nextLine.innerHTML='<span class="music-next-icon" aria-hidden="true">⏭</span><span class="music-next-label">Prochain morceau :</span><span id="musicNextTrackText" class="music-next-text">Aucun morceau suivant</span>';
+    track.appendChild(nextLine);
+
+    const settingsRow=document.createElement('div');
+    settingsRow.id='musicSettingsRow';
+    settingsRow.className='music-settings-row';
+    settingsRow.innerHTML='<button id="musicSettingsGear" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>';
+    track.appendChild(settingsRow);
 
     const actions=document.createElement('div');
     actions.id='musicActions';
     actions.className='alt music-alt';
     actions.innerHTML=
       '<button id="musicShuffle" type="button"><span class="ico">⇄</span><span class="txt">Lecture aléatoire</span></button>'+
-      '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>'+
-      '<button id="musicFavorite" type="button"><span class="ico">☆</span><span class="txt">Ajouter aux favoris</span></button>'+
-      '<button id="musicLibraryOpen" type="button"><span class="ico">☰</span><span class="txt">Bibliothèque</span></button>';
+      '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>';
     track.appendChild(actions);
 
     const quick=document.createElement('div');
@@ -873,7 +1073,7 @@
       '<div class="stats">'+
         '<div class="stat" id="musicCountTile" role="button" tabindex="0"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceau</span></span></div>'+
         '<div class="divider"></div>'+
-        '<div class="stat" id="musicQueueTile" role="button" tabindex="0"><span class="sico">☷</span><span class="meta"><b id="musicQueuePos">0/0</b><span>file</span></span></div>'+
+        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes</b><span>de lecture</span></span></button>'+
       '</div>';
     track.appendChild(quick);
 
@@ -913,32 +1113,47 @@
     library.innerHTML=
       '<div class="music-library-head"><button id="musicLibraryBack" type="button" aria-label="Retour">‹</button><h2>Ma musique</h2><span></span></div>'+
       '<div class="music-library-body">'+
-        '<div class="music-import-actions"><button id="musicAddFiles" type="button">＋ Morceaux</button><button id="musicAddFolder" type="button">▣ Dossier</button></div>'+
-        '<div id="musicImportStatus" class="music-import-status" aria-live="polite"></div>'+
-        '<div class="music-search-row"><input id="musicSearch" type="search" autocomplete="off" placeholder="Rechercher un titre ou un artiste" aria-label="Rechercher"><select id="musicSort" aria-label="Trier"><option value="recent">Ajouts récents</option><option value="title">Titre</option><option value="artist">Artiste</option></select></div>'+
-        '<div id="musicLibraryTabs" class="music-library-tabs"><button type="button" data-filter="all" class="on">Tout</button><button type="button" data-filter="favorites">Favoris</button></div>'+
-        '<div id="musicStorageText" class="music-storage-text"></div>'+
-        '<div id="musicLibraryList" class="music-library-list"></div>'+
+        '<div id="musicSectionTabs" class="music-section-tabs"><button type="button" data-section="tracks" class="on">Morceaux</button><button type="button" data-section="playlists">Listes de lecture</button></div>'+
+        '<div id="musicTracksPanel">'+
+          '<div class="music-import-actions"><button id="musicAddFiles" type="button">＋ Morceaux</button><button id="musicAddFolder" type="button">▣ Dossier</button></div>'+
+          '<div id="musicImportStatus" class="music-import-status" aria-live="polite"></div>'+
+          '<div class="music-search-row"><input id="musicSearch" type="search" autocomplete="off" placeholder="Rechercher un titre ou un artiste" aria-label="Rechercher"><select id="musicSort" aria-label="Trier"><option value="recent">Ajouts récents</option><option value="title">Titre</option><option value="artist">Artiste</option></select></div>'+
+          '<div id="musicLibraryTabs" class="music-library-tabs"><button type="button" data-filter="all" class="on">Tout</button><button type="button" data-filter="favorites">Favoris</button></div>'+
+          '<div id="musicStorageText" class="music-storage-text"></div>'+
+          '<div id="musicLibraryList" class="music-library-list"></div>'+
+        '</div>'+
+        '<div id="musicPlaylistsPanel" hidden>'+
+          '<div class="music-playlist-actions"><button id="musicCreatePlaylist" type="button">＋ Nouvelle liste</button></div>'+
+          '<div id="musicPlaylistsList" class="music-playlists-list"></div>'+
+        '</div>'+
       '</div>';
     document.body.appendChild(library);
   }
 
   function bindDom(){
     document.querySelectorAll('#experienceSwitch button').forEach(btn=>btn.addEventListener('click',()=>applyMode(btn.dataset.surface,true)));
-    $('musicPrevCover').onclick=previousTrack;
+    $('musicPrevCover').onclick=()=>applyMode('radio',true);
     $('musicPlayCover').onclick=()=>togglePlay();
+    $('musicPlaylistPrev').onclick=()=>switchPlaylist(-1);
     $('musicMiniPrev').onclick=previousTrack;
     $('musicMiniNext').onclick=()=>nextTrack(false);
+    $('musicPlaylistNext').onclick=()=>switchPlaylist(1);
     $('musicShuffle').onclick=toggleShuffle;
     $('musicRepeat').onclick=cycleRepeat;
-    $('musicFavorite').onclick=()=>toggleFavorite();
-    $('musicLibraryOpen').onclick=openLibrary;
-    $('musicCountTile').onclick=openLibrary;
-    $('musicQueueTile').onclick=openLibrary;
+    $('musicSettingsGear').onclick=()=>{const gear=$('miniMore');if(gear)gear.click()};
+    $('musicCountTile').onclick=()=>{openLibrary();setLibrarySection('tracks')};
+    $('musicQueueTile').onclick=openPlaylists;
     $('radioMusicOpen').onclick=()=>applyMode($('radioMusicOpen').dataset.target||'music',true);
-    $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
-    $('musicQueueTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
+    $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary();setLibrarySection('tracks')}};
     $('musicLibraryBack').onclick=()=>closeLibrary(false);
+    document.querySelectorAll('#musicSectionTabs button').forEach(btn=>btn.onclick=()=>setLibrarySection(btn.dataset.section));
+    $('musicCreatePlaylist').onclick=()=>createPlaylist();
+    $('musicPlaylistsList').addEventListener('click',event=>{
+      const play=event.target.closest('[data-playlist-play]');
+      if(play){playPlaylist(play.dataset.playlistPlay);return}
+      const del=event.target.closest('[data-playlist-delete]');
+      if(del){deletePlaylist(del.dataset.playlistDelete)}
+    });
     $('musicAddFiles').onclick=()=>$('musicFileInput').click();
     $('musicAddFolder').onclick=()=>$('musicFolderInput').click();
     $('musicFileInput').onchange=event=>importFiles(event.target.files);
@@ -948,7 +1163,9 @@
     document.querySelectorAll('#musicLibraryTabs button').forEach(btn=>btn.onclick=()=>{filterMode=btn.dataset.filter;renderLibrary()});
     $('musicLibraryList').addEventListener('click',event=>{
       const play=event.target.closest('[data-play-id]');
-      if(play){loadTrack(play.dataset.playId,{autoplay:true,resume:0});closeLibrary(false);return}
+      if(play){state.activePlaylistId=null;rebuildOrder(play.dataset.playId);loadTrack(play.dataset.playId,{autoplay:true,resume:0});saveState();closeLibrary(false);return}
+      const add=event.target.closest('[data-add-playlist-id]');
+      if(add){addTrackToPlaylist(add.dataset.addPlaylistId);return}
       const fav=event.target.closest('[data-fav-id]');
       if(fav){toggleFavorite(fav.dataset.favId);return}
       const del=event.target.closest('[data-delete-id]');
@@ -1003,14 +1220,26 @@
     createDom();
     bindDom();
     document.body.classList.add('radio-mode');
+    playlists=loadPlaylists();
     try{
       tracks=await dbGetAll();
     }catch{
       setImportStatus('Le stockage local du navigateur est indisponible.');
       tracks=[];
     }
+    if(state.activePlaylistId&&!playlists.some(item=>item.id===state.activePlaylistId))state.activePlaylistId=null;
+    if(state.activePlaylistId){
+      const playlist=activePlaylist();
+      const valid=playlistTracks(playlist);
+      if(valid.length&&!valid.some(track=>track.id===state.currentId)){
+        state.currentId=valid[0].id;
+        state.currentTime=0;
+      }
+      if(!valid.length)state.activePlaylistId=null;
+    }
     rebuildOrder(state.currentId);
     renderLibrary();
+    renderPlaylists();
     const savedMode=localStorage.getItem(MODE_KEY)==='music'?'music':'radio';
     if(savedMode==='music'){
       applyMode('music',false);
