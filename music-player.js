@@ -1011,10 +1011,9 @@
     navButton.dataset.target='music';
     navButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
     if(radioQuick){
-      const radioStats=radioQuick.querySelector('.stats');
-      const divider=radioStats?radioStats.querySelector('.divider'):null;
-      if(divider)divider.replaceWith(navButton);
-      else if(radioStats)radioStats.appendChild(navButton);
+      const oldShortcut=radioQuick.querySelector('#radioMusicOpen');
+      if(oldShortcut)oldShortcut.remove();
+      radioQuick.appendChild(navButton);
     }
 
     const prevCover=document.createElement('button');
@@ -1079,9 +1078,9 @@
     track.appendChild(quick);
 
     const lessStyleIcon=document.querySelector('#lessStyle .ico');
-    if(lessStyleIcon)lessStyleIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V9"></path><path d="M9 20V5"></path><path d="M14 16V8"></path><path d="M19 13V11"></path><path d="M17 18h5"></path></svg>';
+    if(lessStyleIcon)lessStyleIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 7v13M19 10v10"></path><path d="M3 9h4M10 12h4M17 15h4"></path><path d="M16 5h6"></path></svg>';
     const lessArtistIcon=document.querySelector('#lessArtist .ico');
-    if(lessArtistIcon)lessArtistIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3"></circle><path d="M4 20c0-4 2.5-7 6-7s6 3 6 7"></path><path d="M16 10h6"></path></svg>';
+    if(lessArtistIcon)lessArtistIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"></circle><path d="M3.5 19c.6-4 2.8-6.5 5.5-6.5 2.1 0 3.9 1.4 4.9 3.6"></path><path d="M15.5 12.5h6"></path></svg>';
 
     const audio=document.createElement('audio');
     audio.id='musicAudio';
