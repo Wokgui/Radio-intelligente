@@ -860,3 +860,107 @@ body.music-mode .track>.quick:not(#musicQuick){
     font-size:.56rem!important;
   }
 }
+
+
+/* v92 - finition visuelle option 2 */
+body.radio-mode #no:disabled,
+body.radio-mode #yes:disabled,
+body.radio-mode .track>.alt:not(.music-alt) button:disabled{
+  opacity:1!important;
+  filter:none!important;
+}
+body.radio-mode #no{
+  background:#f4e8ee!important;
+  color:#8f456c!important;
+}
+body.radio-mode #yes{
+  background:linear-gradient(145deg,#c789a9 0%,#a85c88 100%)!important;
+  color:#fff!important;
+}
+body.radio-mode .choice{
+  min-height:70px!important;
+  font-size:1.08rem!important;
+}
+body.radio-mode .track{
+  grid-template-rows:34px auto auto 42px 70px 92px 56px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt){
+  grid-template-rows:92px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) button{
+  min-height:92px!important;
+  height:92px!important;
+  padding:9px 5px!important;
+  gap:7px!important;
+  background:#fcf9fb!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .ico{
+  font-size:1.42rem!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .txt{
+  font-size:.70rem!important;
+  line-height:1.12!important;
+  font-weight:750!important;
+}
+body.radio-mode .track>.quick:not(.music-quick){
+  display:block!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  min-height:56px!important;
+  height:56px!important;
+  padding:4px 0!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat{
+  min-height:50px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .sico{
+  width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  min-width:34px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .sico svg{
+  width:28px!important;
+  height:28px!important;
+  fill:#a85c88!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .meta b{
+  font-size:1.08rem!important;
+  color:#8c466c!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .meta span{
+  font-size:.68rem!important;
+}
+body.radio-mode .track>.quick.music-quick,
+body.radio-mode #musicQuick{
+  display:none!important;
+}
+body.radio-mode .track>.quick.music-quick *,
+body.radio-mode #musicQuick *{
+  display:none!important;
+}
+
+@media(max-width:420px){
+  body.radio-mode .track{
+    grid-template-rows:32px auto auto 40px 66px 88px 54px!important;
+  }
+  body.radio-mode .choice{
+    min-height:66px!important;
+    font-size:1.02rem!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    grid-template-rows:88px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) button{
+    min-height:88px!important;
+    height:88px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) .txt{
+    font-size:.66rem!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    min-height:54px!important;
+    height:54px!important;
+  }
+}
