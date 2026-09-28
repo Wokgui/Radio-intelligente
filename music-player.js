@@ -764,7 +764,14 @@
     switcher.innerHTML=
       '<button type="button" role="tab" data-surface="music" aria-selected="false">Ma musique</button>'+
       '<button type="button" role="tab" data-surface="radio" aria-selected="true">Radio intelligente</button>';
-    cover.appendChild(switcher);
+
+    const experienceTools=document.createElement('div');
+    experienceTools.id='experienceTools';
+    experienceTools.className='experience-tools';
+    experienceTools.appendChild(switcher);
+    const settingsButton=$('miniMore');
+    if(settingsButton)experienceTools.appendChild(settingsButton);
+    track.appendChild(experienceTools);
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
