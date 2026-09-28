@@ -4,8 +4,8 @@
 
     <application
         android:allowBackup="true"
-        android:usesCleartextTraffic="false"
-        android:label="Radio intelligente"
+        android:usesCleartextTraffic="true"
+        android:label="Ma musique · Radio intelligente"
         android:icon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
