@@ -50,6 +50,26 @@
   font-size:1rem!important;
   box-shadow:none!important;
 }
+.experience-tools #miniPlay.shazam-btn{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  border-radius:50%!important;
+  padding:0!important;
+  background:linear-gradient(145deg,#c597fc 0%,#9f70f3 30%,#865bea 58%,#5b31ba 100%)!important;
+  color:#fff!important;
+  box-shadow:0 4px 10px rgba(91,49,186,.24)!important;
+}
+.experience-tools #miniPlay.shazam-btn svg{
+  width:20px!important;
+  height:20px!important;
+}
+body.music-mode .experience-tools #miniPlay{
+  display:none!important;
+}
 body.radio-mode #cat,
 body.music-mode #cat{
   justify-self:start!important;
@@ -64,7 +84,7 @@ body.music-mode #cat{
   justify-self:center!important;
 }
 body.radio-mode .track>.playerbar:not(.music-playerbar){
-  grid-template-columns:36px 46px minmax(0,1fr) 46px!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
 }
 #musicPrevCover,
 #musicPlayCover,
@@ -384,6 +404,8 @@ body.music-library-open{
   .experience-switch{width:174px}
   .experience-switch button{height:29px;padding:0 6px;font-size:.64rem}
   .experience-tools #miniMore{width:32px!important;height:32px!important;min-width:32px!important}
+  .experience-tools #miniPlay.shazam-btn{width:30px!important;height:30px!important;min-width:30px!important}
+  .experience-tools #miniPlay.shazam-btn svg{width:18px!important;height:18px!important}
 body.music-mode .music-playerbar{
     grid-template-columns:36px 42px minmax(46px,1fr) 42px 36px!important;
     gap:6px!important;
