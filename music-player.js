@@ -318,6 +318,7 @@
     if($('cover'))$('cover').src=DEFAULT_COVER;
     if($('title'))$('title').textContent='Ajoute ta musique';
     if($('artist'))$('artist').textContent='Tes fichiers restent stockés sur cet appareil';
+    document.body.classList.remove('music-has-playlist');
     if($('cat')){
       $('cat').textContent='';
       $('cat').classList.add('music-cat-hidden');
@@ -338,9 +339,11 @@
     if($('cat')){
       const playlist=activePlaylist();
       if(playlist){
+        document.body.classList.add('music-has-playlist');
         $('cat').textContent=playlist.name;
         $('cat').classList.remove('music-cat-hidden');
       }else{
+        document.body.classList.remove('music-has-playlist');
         $('cat').textContent='';
         $('cat').classList.add('music-cat-hidden');
       }
