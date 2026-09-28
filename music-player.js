@@ -1022,21 +1022,33 @@
     bar.className='playerbar music-playerbar';
     bar.setAttribute('aria-label','Lecteur de musique');
     bar.innerHTML=
-      '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent">⏮</button>'+
+      '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente">⏮☷</button>'+
+      '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent" title="Morceau précédent">⏮</button>'+
       '<span id="musicCt" class="time">0:00</span>'+
       '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
       '<span id="musicTt" class="time">0:00</span>'+
-      '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant">⏭</button>';
+      '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant" title="Morceau suivant">⏭</button>'+
+      '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante">☷⏭</button>';
     track.appendChild(bar);
+
+    const nextLine=document.createElement('div');
+    nextLine.id='musicNextTrack';
+    nextLine.className='music-next-track';
+    nextLine.innerHTML='<span class="music-next-icon" aria-hidden="true">⏭</span><span class="music-next-label">Prochain morceau :</span><span id="musicNextTrackText" class="music-next-text">Aucun morceau suivant</span>';
+    track.appendChild(nextLine);
+
+    const settingsRow=document.createElement('div');
+    settingsRow.id='musicSettingsRow';
+    settingsRow.className='music-settings-row';
+    settingsRow.innerHTML='<button id="musicSettingsGear" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>';
+    track.appendChild(settingsRow);
 
     const actions=document.createElement('div');
     actions.id='musicActions';
     actions.className='alt music-alt';
     actions.innerHTML=
       '<button id="musicShuffle" type="button"><span class="ico">⇄</span><span class="txt">Lecture aléatoire</span></button>'+
-      '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>'+
-      '<button id="musicFavorite" type="button"><span class="ico">☆</span><span class="txt">Ajouter aux favoris</span></button>'+
-      '<button id="musicLibraryOpen" type="button"><span class="ico">☰</span><span class="txt">Bibliothèque</span></button>';
+      '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>';
     track.appendChild(actions);
 
     const quick=document.createElement('div');
@@ -1046,7 +1058,7 @@
       '<div class="stats">'+
         '<div class="stat" id="musicCountTile" role="button" tabindex="0"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceau</span></span></div>'+
         '<div class="divider"></div>'+
-        '<div class="stat" id="musicQueueTile" role="button" tabindex="0"><span class="sico">☷</span><span class="meta"><b id="musicQueuePos">0/0</b><span>file</span></span></div>'+
+        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes</b><span>de lecture</span></span></button>'+
       '</div>';
     track.appendChild(quick);
 
@@ -1086,12 +1098,19 @@
     library.innerHTML=
       '<div class="music-library-head"><button id="musicLibraryBack" type="button" aria-label="Retour">‹</button><h2>Ma musique</h2><span></span></div>'+
       '<div class="music-library-body">'+
-        '<div class="music-import-actions"><button id="musicAddFiles" type="button">＋ Morceaux</button><button id="musicAddFolder" type="button">▣ Dossier</button></div>'+
-        '<div id="musicImportStatus" class="music-import-status" aria-live="polite"></div>'+
-        '<div class="music-search-row"><input id="musicSearch" type="search" autocomplete="off" placeholder="Rechercher un titre ou un artiste" aria-label="Rechercher"><select id="musicSort" aria-label="Trier"><option value="recent">Ajouts récents</option><option value="title">Titre</option><option value="artist">Artiste</option></select></div>'+
-        '<div id="musicLibraryTabs" class="music-library-tabs"><button type="button" data-filter="all" class="on">Tout</button><button type="button" data-filter="favorites">Favoris</button></div>'+
-        '<div id="musicStorageText" class="music-storage-text"></div>'+
-        '<div id="musicLibraryList" class="music-library-list"></div>'+
+        '<div id="musicSectionTabs" class="music-section-tabs"><button type="button" data-section="tracks" class="on">Morceaux</button><button type="button" data-section="playlists">Listes de lecture</button></div>'+
+        '<div id="musicTracksPanel">'+
+          '<div class="music-import-actions"><button id="musicAddFiles" type="button">＋ Morceaux</button><button id="musicAddFolder" type="button">▣ Dossier</button></div>'+
+          '<div id="musicImportStatus" class="music-import-status" aria-live="polite"></div>'+
+          '<div class="music-search-row"><input id="musicSearch" type="search" autocomplete="off" placeholder="Rechercher un titre ou un artiste" aria-label="Rechercher"><select id="musicSort" aria-label="Trier"><option value="recent">Ajouts récents</option><option value="title">Titre</option><option value="artist">Artiste</option></select></div>'+
+          '<div id="musicLibraryTabs" class="music-library-tabs"><button type="button" data-filter="all" class="on">Tout</button><button type="button" data-filter="favorites">Favoris</button></div>'+
+          '<div id="musicStorageText" class="music-storage-text"></div>'+
+          '<div id="musicLibraryList" class="music-library-list"></div>'+
+        '</div>'+
+        '<div id="musicPlaylistsPanel" hidden>'+
+          '<div class="music-playlist-actions"><button id="musicCreatePlaylist" type="button">＋ Nouvelle liste</button></div>'+
+          '<div id="musicPlaylistsList" class="music-playlists-list"></div>'+
+        '</div>'+
       '</div>';
     document.body.appendChild(library);
   }
@@ -1100,18 +1119,26 @@
     document.querySelectorAll('#experienceSwitch button').forEach(btn=>btn.addEventListener('click',()=>applyMode(btn.dataset.surface,true)));
     $('musicPrevCover').onclick=previousTrack;
     $('musicPlayCover').onclick=()=>togglePlay();
+    $('musicPlaylistPrev').onclick=()=>switchPlaylist(-1);
     $('musicMiniPrev').onclick=previousTrack;
     $('musicMiniNext').onclick=()=>nextTrack(false);
+    $('musicPlaylistNext').onclick=()=>switchPlaylist(1);
     $('musicShuffle').onclick=toggleShuffle;
     $('musicRepeat').onclick=cycleRepeat;
-    $('musicFavorite').onclick=()=>toggleFavorite();
-    $('musicLibraryOpen').onclick=openLibrary;
-    $('musicCountTile').onclick=openLibrary;
-    $('musicQueueTile').onclick=openLibrary;
+    $('musicSettingsGear').onclick=()=>{const gear=$('miniMore');if(gear)gear.click()};
+    $('musicCountTile').onclick=()=>{openLibrary();setLibrarySection('tracks')};
+    $('musicQueueTile').onclick=openPlaylists;
     $('radioMusicOpen').onclick=()=>applyMode($('radioMusicOpen').dataset.target||'music',true);
-    $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
-    $('musicQueueTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
+    $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary();setLibrarySection('tracks')}};
     $('musicLibraryBack').onclick=()=>closeLibrary(false);
+    document.querySelectorAll('#musicSectionTabs button').forEach(btn=>btn.onclick=()=>setLibrarySection(btn.dataset.section));
+    $('musicCreatePlaylist').onclick=()=>createPlaylist();
+    $('musicPlaylistsList').addEventListener('click',event=>{
+      const play=event.target.closest('[data-playlist-play]');
+      if(play){playPlaylist(play.dataset.playlistPlay);return}
+      const del=event.target.closest('[data-playlist-delete]');
+      if(del){deletePlaylist(del.dataset.playlistDelete)}
+    });
     $('musicAddFiles').onclick=()=>$('musicFileInput').click();
     $('musicAddFolder').onclick=()=>$('musicFolderInput').click();
     $('musicFileInput').onchange=event=>importFiles(event.target.files);
@@ -1178,14 +1205,17 @@
     createDom();
     bindDom();
     document.body.classList.add('radio-mode');
+    playlists=loadPlaylists();
     try{
       tracks=await dbGetAll();
     }catch{
       setImportStatus('Le stockage local du navigateur est indisponible.');
       tracks=[];
     }
+    if(state.activePlaylistId&&!playlists.some(item=>item.id===state.activePlaylistId))state.activePlaylistId=null;
     rebuildOrder(state.currentId);
     renderLibrary();
+    renderPlaylists();
     const savedMode=localStorage.getItem(MODE_KEY)==='music'?'music':'radio';
     if(savedMode==='music'){
       applyMode('music',false);
