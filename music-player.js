@@ -769,6 +769,8 @@
     experienceTools.id='experienceTools';
     experienceTools.className='experience-tools';
     experienceTools.appendChild(switcher);
+    const shazamButton=$('miniPlay');
+    if(shazamButton)experienceTools.appendChild(shazamButton);
     const settingsButton=$('miniMore');
     if(settingsButton)experienceTools.appendChild(settingsButton);
     track.appendChild(experienceTools);
