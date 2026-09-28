@@ -696,6 +696,41 @@
     }
   }
 
+  function setModeVisibility(mode){
+    const isMusic=mode==='music';
+    const radioOnly=[
+      document.querySelector('.track>.primary'),
+      document.querySelector('.track>.alt:not(.music-alt)'),
+      document.querySelector('.track>.quick:not(.music-quick)')
+    ].filter(Boolean);
+    const musicOnly=[
+      $('musicPlayerbar'),
+      $('musicActions'),
+      $('musicQuick'),
+      $('musicPrevCover'),
+      $('musicPlayCover')
+    ].filter(Boolean);
+    radioOnly.forEach(el=>{
+      el.hidden=isMusic;
+      el.style.display=isMusic?'none':'';
+    });
+    musicOnly.forEach(el=>{
+      el.hidden=!isMusic;
+      el.style.display=isMusic?'':'none';
+    });
+    const shazam=$('miniPlay');
+    if(shazam){
+      shazam.hidden=isMusic;
+      shazam.style.display=isMusic?'none':'grid';
+    }
+    if(!isMusic){
+      const radioQuick=document.querySelector('.track>.quick:not(.music-quick)');
+      const icons=radioQuick?radioQuick.querySelectorAll('.stat .sico'):[];
+      if(icons[0])icons[0].textContent='▂▅▇';
+      if(icons[1])icons[1].textContent='⏭';
+    }
+  }
+
   function applyMode(mode,remember){
     const next=mode==='music'?'music':'radio';
     if(next===activeMode&&document.body.classList.contains(next==='music'?'music-mode':'radio-mode')){
@@ -709,6 +744,7 @@
       document.body.classList.add('music-mode');
       document.body.classList.remove('radio-mode');
       activeMode='music';
+      setModeVisibility('music');
       installMediaHandlers();
       rebuildOrder(state.currentId);
       if(state.currentId&&tracks.some(track=>track.id===state.currentId)){
@@ -735,6 +771,7 @@
       document.body.classList.remove('music-mode');
       document.body.classList.add('radio-mode');
       activeMode='radio';
+      setModeVisibility('radio');
       restoreRadio();
     }
     if(remember!==false){
@@ -773,7 +810,14 @@
     if(shazamButton)experienceTools.appendChild(shazamButton);
     const settingsButton=$('miniMore');
     if(settingsButton)experienceTools.appendChild(settingsButton);
-    track.appendChild(experienceTools);
+
+    const topLine=document.createElement('div');
+    topLine.id='modeTopLine';
+    topLine.className='mode-topline';
+    const category=$('cat');
+    if(category)topLine.appendChild(category);
+    topLine.appendChild(experienceTools);
+    track.insertBefore(topLine,track.firstChild);
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
@@ -957,6 +1001,9 @@
       applyMode('music',false);
     }else{
       activeMode='radio';
+      document.body.classList.add('radio-mode');
+      document.body.classList.remove('music-mode');
+      setModeVisibility('radio');
       updateSwitch();
     }
     updateMusicStats();
