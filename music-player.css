@@ -964,3 +964,216 @@ body.radio-mode #musicQuick *{
     height:54px!important;
   }
 }
+
+
+/* v93 - navigation radio simplifiée */
+.experience-switch,
+.experience-tools,
+.mode-topline{
+  display:none!important;
+}
+
+/* Genre recentré seul. */
+body.radio-mode #cat{
+  justify-self:center!important;
+  max-width:min(82vw,360px)!important;
+  position:relative!important;
+  top:-7px!important;
+  height:36px!important;
+  min-height:36px!important;
+  padding:0 18px!important;
+  font-size:.76rem!important;
+}
+body.music-mode #cat{
+  justify-self:center!important;
+}
+
+/* Barre Radio : liseré restauré, Shazam + Réglages remis dans la barre. */
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  display:grid!important;
+  grid-template-columns:36px 46px minmax(0,1fr) 46px 36px!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:56px!important;
+  padding:8px 12px!important;
+  border:1px solid #e9e1f2!important;
+  border-radius:24px!important;
+  background:rgba(255,255,255,.88)!important;
+  box-shadow:0 10px 28px #cfc4dc38!important;
+}
+body.radio-mode #miniPlay.shazam-btn{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  border-radius:50%!important;
+  padding:0!important;
+  background:linear-gradient(145deg,#c597fc 0%,#9f70f3 30%,#865bea 58%,#5b31ba 100%)!important;
+  color:#fff!important;
+  box-shadow:0 5px 12px rgba(91,49,186,.25)!important;
+}
+body.radio-mode #miniPlay.shazam-btn svg{
+  width:18px!important;
+  height:18px!important;
+}
+body.radio-mode #miniMore{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  background:transparent!important;
+  color:#6b38be!important;
+  font-size:1.42rem!important;
+  box-shadow:none!important;
+}
+body.music-mode #miniPlay,
+body.music-mode #miniMore{
+  display:none!important;
+}
+
+/* La progression retrouve les dimensions de la barre d'origine. */
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek{
+  height:5px!important;
+  background:#d9d0e7!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek::-webkit-slider-thumb{
+  width:16px!important;
+  height:16px!important;
+  background:#7d35e6!important;
+  box-shadow:0 3px 10px #7d35e655!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar) .seek::-moz-range-thumb{
+  width:16px!important;
+  height:16px!important;
+  background:#7d35e6!important;
+}
+
+/* Icônes alternatives : égaliseur moins / personne moins. */
+body.radio-mode #lessStyle .ico svg,
+body.radio-mode #lessArtist .ico svg{
+  width:25px!important;
+  height:25px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+/* Accès discret au lecteur standard sous Gardés / Passés. */
+body.radio-mode .track>.quick:not(.music-quick){
+  display:grid!important;
+  grid-template-rows:56px 34px!important;
+  gap:6px!important;
+  align-items:center!important;
+}
+.radio-music-open{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  justify-self:center!important;
+  align-self:center!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:1px solid #e5dcf0!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  color:#713bd0!important;
+  box-shadow:0 5px 14px rgba(95,60,140,.10)!important;
+}
+.radio-music-open svg{
+  width:21px!important;
+  height:21px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.music-mode .radio-music-open{
+  display:grid!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:calc(8px + env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%)!important;
+  z-index:8!important;
+}
+
+/* Recalage vertical sans la ligne de bascule. */
+body.radio-mode .track{
+  padding:4px 14px calc(8px + env(safe-area-inset-bottom))!important;
+  grid-template-rows:10px auto auto 56px 66px 88px 96px!important;
+  gap:6px!important;
+  margin-top:-6px!important;
+  align-content:space-between!important;
+}
+body.radio-mode #title,
+body.radio-mode #artist{
+  width:100%!important;
+  text-align:center!important;
+  justify-self:center!important;
+}
+
+/* En mode musique, la pastille genre devient simplement Ma musique. */
+body.music-mode #cat{
+  max-width:none!important;
+}
+
+@media(max-width:420px){
+  body.radio-mode .track{
+    grid-template-rows:10px auto auto 54px 64px 84px 94px!important;
+    gap:5px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+  body.radio-mode .track>.playerbar:not(.music-playerbar){
+    grid-template-columns:32px 42px minmax(0,1fr) 42px 32px!important;
+    gap:7px!important;
+    padding:8px 10px!important;
+    border-radius:22px!important;
+  }
+  body.radio-mode #miniPlay.shazam-btn{
+    width:30px!important;
+    height:30px!important;
+    min-width:30px!important;
+  }
+  body.radio-mode #miniMore{
+    width:30px!important;
+    height:30px!important;
+    min-width:30px!important;
+    font-size:1.32rem!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick){
+    grid-template-rows:54px 34px!important;
+  }
+  .radio-music-open{
+    width:36px!important;
+    height:36px!important;
+    min-width:36px!important;
+  }
+}
+
+
+/* v93.1 - bouton de navigation sur sa propre ligne */
+body.radio-mode .track>.quick:not(.music-quick){
+  display:block!important;
+}
+body.radio-mode .radio-music-open{
+  position:static!important;
+  transform:none!important;
+  left:auto!important;
+  bottom:auto!important;
+}
+body.radio-mode .track{
+  grid-template-rows:10px auto auto 56px 66px 88px 56px 38px!important;
+}
+@media(max-width:420px){
+  body.radio-mode .track{
+    grid-template-rows:10px auto auto 54px 64px 84px 54px 36px!important;
+  }
+}

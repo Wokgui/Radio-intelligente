@@ -723,6 +723,11 @@
       shazam.hidden=isMusic;
       shazam.style.display=isMusic?'none':'grid';
     }
+    const settings=$('miniMore');
+    if(settings){
+      settings.hidden=isMusic;
+      settings.style.display=isMusic?'none':'grid';
+    }
     if(!isMusic){
       const radioQuick=document.querySelector('.track>.quick:not(.music-quick)');
       document.querySelectorAll('.track>.quick').forEach(el=>{
@@ -787,43 +792,41 @@
   }
 
   function updateSwitch(){
-    document.querySelectorAll('#experienceSwitch button').forEach(btn=>{
-      const on=btn.dataset.surface===activeMode;
-      btn.classList.toggle('on',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-    });
+    const nav=$('radioMusicOpen');
+    if(nav){
+      const music=activeMode==='music';
+      nav.setAttribute('aria-label',music?'Revenir à Radio intelligente':'Ouvrir Ma musique');
+      nav.title=music?'Radio intelligente':'Ma musique';
+      nav.dataset.target=music?'radio':'music';
+      nav.innerHTML=music
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 16 0"></path><path d="M7 9a5 5 0 0 1 10 0"></path><circle cx="12" cy="9" r="1.5"></circle><path d="M12 10.5V20"></path></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
+    }
   }
 
   function createDom(){
     const cover=document.querySelector('.player .cover');
     const track=document.querySelector('.player .track');
-    if(!cover||!track||$('experienceSwitch'))return;
+    if(!cover||!track||$('radioMusicOpen'))return;
 
-    const switcher=document.createElement('div');
-    switcher.id='experienceSwitch';
-    switcher.className='experience-switch';
-    switcher.setAttribute('role','tablist');
-    switcher.setAttribute('aria-label','Choisir le lecteur');
-    switcher.innerHTML=
-      '<button type="button" role="tab" data-surface="music" aria-selected="false">Ma musique</button>'+
-      '<button type="button" role="tab" data-surface="radio" aria-selected="true">Radio intelligente</button>';
-
-    const experienceTools=document.createElement('div');
-    experienceTools.id='experienceTools';
-    experienceTools.className='experience-tools';
-    experienceTools.appendChild(switcher);
+    const radioBar=track.querySelector('.playerbar:not(.music-playerbar)');
     const shazamButton=$('miniPlay');
-    if(shazamButton)experienceTools.appendChild(shazamButton);
     const settingsButton=$('miniMore');
-    if(settingsButton)experienceTools.appendChild(settingsButton);
+    if(radioBar){
+      if(shazamButton)radioBar.insertBefore(shazamButton,radioBar.firstChild);
+      if(settingsButton)radioBar.appendChild(settingsButton);
+    }
 
-    const topLine=document.createElement('div');
-    topLine.id='modeTopLine';
-    topLine.className='mode-topline';
-    const category=$('cat');
-    if(category)topLine.appendChild(category);
-    topLine.appendChild(experienceTools);
-    track.insertBefore(topLine,track.firstChild);
+    const radioQuick=track.querySelector('.quick:not(.music-quick)');
+    const navButton=document.createElement('button');
+    navButton.id='radioMusicOpen';
+    navButton.className='radio-music-open';
+    navButton.type='button';
+    navButton.setAttribute('aria-label','Ouvrir Ma musique');
+    navButton.title='Ma musique';
+    navButton.dataset.target='music';
+    navButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
+    if(radioQuick)radioQuick.insertAdjacentElement('afterend',navButton);
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
@@ -873,6 +876,11 @@
         '<div class="stat" id="musicQueueTile" role="button" tabindex="0"><span class="sico">☷</span><span class="meta"><b id="musicQueuePos">0/0</b><span>file</span></span></div>'+
       '</div>';
     track.appendChild(quick);
+
+    const lessStyleIcon=document.querySelector('#lessStyle .ico');
+    if(lessStyleIcon)lessStyleIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V9"></path><path d="M9 20V5"></path><path d="M14 16V8"></path><path d="M19 13V11"></path><path d="M17 18h5"></path></svg>';
+    const lessArtistIcon=document.querySelector('#lessArtist .ico');
+    if(lessArtistIcon)lessArtistIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3"></circle><path d="M4 20c0-4 2.5-7 6-7s6 3 6 7"></path><path d="M16 10h6"></path></svg>';
 
     const audio=document.createElement('audio');
     audio.id='musicAudio';
@@ -927,6 +935,7 @@
     $('musicLibraryOpen').onclick=openLibrary;
     $('musicCountTile').onclick=openLibrary;
     $('musicQueueTile').onclick=openLibrary;
+    $('radioMusicOpen').onclick=()=>applyMode($('radioMusicOpen').dataset.target||'music',true);
     $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
     $('musicQueueTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary()}};
     $('musicLibraryBack').onclick=()=>closeLibrary(false);
