@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v90';
+const CACHE = 'radio-intelligente-pwa-v91';
 
 const APP_SHELL = [
   '/',
@@ -13,9 +13,9 @@ const APP_SHELL = [
   '/cloud-backup.js?v=4',
   '/vendor/supabase/supabase.js?v=1',
   '/radio-v51.css?v=8',
-  '/radio-v51.js?v=20',
-  '/music-player.css?v=5',
-  '/music-player.js?v=5',
+  '/radio-v51.js?v=21',
+  '/music-player.css?v=6',
+  '/music-player.js?v=6',
   '/radio-v51-core.js?v=1'
 ];
 
@@ -61,6 +61,22 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match('/index.html').then(cached => cached || caches.match('/')))
+    );
+    return;
+  }
+
+  const isCodeAsset = /\.(?:js|css)$/.test(url.pathname);
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
