@@ -876,3 +876,468 @@ body.music-mode.music-has-playlist .track{
     font-size:.56rem!important;
   }
 }
+
+
+/* v97 — harmonisation globale Radio / Ma musique */
+:root{
+  --ui-content-gap:12px;
+  --ui-radius-lg:20px;
+  --ui-radius-md:17px;
+  --ui-border:#e6dced;
+  --ui-shadow:0 7px 20px rgba(92,63,117,.08);
+  --ui-purple:#7b42c8;
+  --ui-purple-soft:#f4edf9;
+}
+
+/* Largeur et centrage communs sous la pochette */
+body.radio-mode .track,
+body.music-mode .track{
+  width:100%!important;
+  padding-left:14px!important;
+  padding-right:14px!important;
+  text-align:center!important;
+}
+body.radio-mode #title,
+body.music-mode #title{
+  width:100%!important;
+  margin:0!important;
+  text-align:center!important;
+  justify-self:center!important;
+  font-size:1.46rem!important;
+  line-height:1.05!important;
+  letter-spacing:-.018em!important;
+  transform:none!important;
+}
+body.radio-mode #artist,
+body.music-mode #artist{
+  width:100%!important;
+  margin:0!important;
+  text-align:center!important;
+  justify-self:center!important;
+  font-size:.88rem!important;
+  line-height:1.12!important;
+  color:#756b80!important;
+  transform:none!important;
+}
+
+/* RADIO : rythme vertical, tag, barre et tuiles */
+body.radio-mode .track{
+  gap:8px!important;
+  grid-template-rows:34px auto auto 56px 68px 94px 60px!important;
+  align-content:space-between!important;
+}
+body.radio-mode #cat{
+  position:relative!important;
+  top:-8px!important;
+  justify-self:center!important;
+  height:36px!important;
+  min-height:36px!important;
+  max-width:min(82vw,360px)!important;
+  padding:0 17px!important;
+  font-size:.75rem!important;
+  border-radius:999px!important;
+  box-shadow:0 5px 15px rgba(112,53,202,.08)!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  width:100%!important;
+  min-height:56px!important;
+  height:56px!important;
+  padding:8px 12px!important;
+  border-radius:var(--ui-radius-lg)!important;
+  border:1px solid var(--ui-border)!important;
+  background:#fff!important;
+  box-shadow:var(--ui-shadow)!important;
+  align-items:center!important;
+}
+body.radio-mode #miniPlay.shazam-btn,
+body.radio-mode #miniMore{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  align-self:center!important;
+  justify-self:center!important;
+}
+body.radio-mode .primary{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:10px!important;
+  width:100%!important;
+}
+body.radio-mode .choice{
+  min-height:68px!important;
+  height:68px!important;
+  border-radius:var(--ui-radius-lg)!important;
+  font-size:1.05rem!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt){
+  width:100%!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-template-rows:94px!important;
+  gap:8px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) button{
+  height:94px!important;
+  min-height:94px!important;
+  padding:9px 6px!important;
+  border-radius:var(--ui-radius-md)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  background:linear-gradient(180deg,#fcf9fe 0%,var(--ui-purple-soft) 100%)!important;
+  border:1px solid #e4d7ed!important;
+  box-shadow:none!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .ico{
+  position:static!important;
+  width:27px!important;
+  height:27px!important;
+  min-width:27px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:1.25rem!important;
+  line-height:1!important;
+  color:#9657a7!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .ico svg{
+  width:25px!important;
+  height:25px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) .txt{
+  width:100%!important;
+  margin:0!important;
+  font-size:.64rem!important;
+  line-height:1.13!important;
+  font-weight:780!important;
+  text-align:center!important;
+  color:#64576b!important;
+}
+
+/* RADIO : bandeau Gardés / Ma musique / Passés */
+body.radio-mode .track>.quick:not(.music-quick){
+  width:100%!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  width:100%!important;
+  height:60px!important;
+  min-height:60px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr)!important;
+  align-items:center!important;
+  padding:3px 8px!important;
+  border-radius:var(--ui-radius-lg)!important;
+  border:1px solid var(--ui-border)!important;
+  background:#fff!important;
+  box-shadow:var(--ui-shadow)!important;
+  transform:none!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat{
+  min-height:52px!important;
+  padding:3px 6px!important;
+  gap:9px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .sico{
+  width:30px!important;
+  min-width:30px!important;
+  height:30px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat .sico svg{
+  width:25px!important;
+  height:25px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat b{
+  font-size:1rem!important;
+  line-height:1!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stat span{
+  font-size:.66rem!important;
+  line-height:1.05!important;
+}
+body.radio-mode .radio-music-open{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  margin:0!important;
+  align-self:center!important;
+  justify-self:center!important;
+  box-shadow:0 4px 11px rgba(92,63,117,.09)!important;
+}
+
+/* MA MUSIQUE : rythme vertical régulier */
+body.music-mode .track{
+  gap:10px!important;
+  align-content:space-between!important;
+}
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:auto auto 58px 34px 56px 62px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:34px auto auto 58px 34px 56px 62px!important;
+}
+body.music-mode.music-has-playlist #cat{
+  top:-7px!important;
+  height:34px!important;
+  min-height:34px!important;
+  padding:0 15px!important;
+  max-width:min(82vw,360px)!important;
+  font-size:.70rem!important;
+  box-shadow:0 5px 15px rgba(112,53,202,.07)!important;
+}
+body.music-mode #musicPlayerbar{
+  width:100%!important;
+  height:58px!important;
+  min-height:58px!important;
+  padding:8px 10px!important;
+  border-radius:var(--ui-radius-lg)!important;
+  border:1px solid var(--ui-border)!important;
+  background:#fff!important;
+  box-shadow:var(--ui-shadow)!important;
+}
+body.music-mode #musicPlayerbar .icon-btn{
+  width:29px!important;
+  height:29px!important;
+  min-width:29px!important;
+  min-height:29px!important;
+}
+body.music-mode #musicPlayerbar .time{
+  font-size:.72rem!important;
+}
+body.music-mode #musicNextTrack{
+  width:100%!important;
+  height:34px!important;
+  min-height:34px!important;
+  padding:0 8px!important;
+  grid-template-columns:auto auto minmax(0,1fr)!important;
+  gap:6px!important;
+  font-size:.66rem!important;
+  color:#6d6077!important;
+}
+body.music-mode #musicNextTrack .music-next-label{
+  font-size:.66rem!important;
+}
+body.music-mode #musicNextTrack .music-next-text{
+  font-size:.66rem!important;
+  text-align:right!important;
+}
+
+/* MA MUSIQUE : rangée Aléatoire / Réglages / Répétition, mêmes proportions */
+body.music-mode #musicActions{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 50px minmax(0,1fr)!important;
+  grid-template-rows:56px!important;
+  align-items:center!important;
+  gap:9px!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  width:100%!important;
+  height:56px!important;
+  min-height:56px!important;
+  border-radius:var(--ui-radius-md)!important;
+  border:1px solid #e2d8ea!important;
+  background:#fbf8fd!important;
+  padding:0 9px!important;
+  gap:7px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicSettingsGear{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  border-radius:50%!important;
+  border:1px solid #ddd1e7!important;
+  background:#fff!important;
+  color:var(--ui-purple)!important;
+  font-size:1.24rem!important;
+  box-shadow:0 4px 11px rgba(92,63,117,.09)!important;
+}
+body.music-mode #musicShuffle .ico,
+body.music-mode #musicRepeat .ico{
+  flex:0 0 auto!important;
+  font-size:1rem!important;
+}
+body.music-mode #musicShuffle .txt,
+body.music-mode #musicRepeat .txt{
+  font-size:.68rem!important;
+  line-height:1.08!important;
+  font-weight:780!important;
+  white-space:normal!important;
+  text-align:center!important;
+}
+
+/* MA MUSIQUE : bandeau bas parfaitement équilibré */
+body.music-mode #musicQuick{
+  width:100%!important;
+  min-height:62px!important;
+}
+body.music-mode #musicQuick .stats{
+  width:100%!important;
+  height:62px!important;
+  min-height:62px!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  padding:2px!important;
+  gap:0!important;
+  border:1px solid var(--ui-border)!important;
+  border-radius:var(--ui-radius-lg)!important;
+  background:#fff!important;
+  box-shadow:var(--ui-shadow)!important;
+}
+body.music-mode #musicQuick .stats>.stat{
+  width:100%!important;
+  min-width:0!important;
+  height:58px!important;
+  min-height:58px!important;
+  padding:4px 5px!important;
+  display:grid!important;
+  grid-template-columns:24px minmax(0,1fr)!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  overflow:hidden!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+body.music-mode #musicQuick .stats>.stat+.stat{
+  border-left:1px solid #eadff0!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico{
+  width:24px!important;
+  min-width:24px!important;
+  height:24px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:1.05rem!important;
+  color:var(--ui-purple)!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico svg{
+  width:20px!important;
+  height:20px!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta{
+  min-width:0!important;
+  max-width:none!important;
+  width:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  line-height:1.02!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta b,
+body.music-mode #musicQuick .stats>.stat .meta span{
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  text-align:center!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta b{
+  font-size:.69rem!important;
+  line-height:1.04!important;
+  font-weight:850!important;
+  color:#6f3d96!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta span{
+  margin-top:2px!important;
+  font-size:.57rem!important;
+  line-height:1.04!important;
+  color:#6d6473!important;
+}
+body.music-mode #musicCount{
+  font-size:.91rem!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut{
+  background:linear-gradient(180deg,#faf7fc 0%,#f4edf9 100%)!important;
+}
+
+/* Uniformité sur petits écrans */
+@media(max-width:420px){
+  body.radio-mode .track,
+  body.music-mode .track{
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+  body.radio-mode #title,
+  body.music-mode #title{
+    font-size:1.36rem!important;
+  }
+  body.radio-mode #artist,
+  body.music-mode #artist{
+    font-size:.84rem!important;
+  }
+  body.radio-mode .track{
+    grid-template-rows:32px auto auto 54px 64px 90px 58px!important;
+    gap:7px!important;
+  }
+  body.radio-mode .choice{
+    height:64px!important;
+    min-height:64px!important;
+    font-size:1rem!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    grid-template-rows:90px!important;
+    gap:6px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) button{
+    height:90px!important;
+    min-height:90px!important;
+    padding:8px 4px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) .txt{
+    font-size:.60rem!important;
+  }
+
+  body.music-mode #musicActions{
+    grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr)!important;
+    gap:7px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    padding:0 7px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+  }
+  body.music-mode #musicShuffle .txt,
+  body.music-mode #musicRepeat .txt{
+    font-size:.64rem!important;
+  }
+  body.music-mode #musicQuick .stats>.stat{
+    grid-template-columns:21px minmax(0,1fr)!important;
+    gap:4px!important;
+    padding:3px!important;
+  }
+  body.music-mode #musicQuick .stats>.stat .sico{
+    width:21px!important;
+    min-width:21px!important;
+    height:21px!important;
+    font-size:.96rem!important;
+  }
+  body.music-mode #musicQuick .stats>.stat .meta b{
+    font-size:.64rem!important;
+  }
+  body.music-mode #musicQuick .stats>.stat .meta span{
+    font-size:.54rem!important;
+  }
+}
