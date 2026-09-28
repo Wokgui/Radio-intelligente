@@ -1,41 +1,91 @@
 /* Fusion Ma musique / Radio intelligente */
 
-.experience-switch{
+.experience-tools{
   position:absolute;
-  z-index:8;
-  top:calc(11px + env(safe-area-inset-top));
-  left:50%;
-  transform:translateX(-50%);
-  width:min(430px,calc(100% - 28px));
+  z-index:10;
+  top:6px;
+  right:10px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.experience-switch{
+  width:184px;
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:4px;
-  padding:4px;
-  border:1px solid rgba(255,255,255,.72);
-  border-radius:16px;
-  background:rgba(255,255,255,.82);
-  -webkit-backdrop-filter:blur(16px) saturate(1.15);
-  backdrop-filter:blur(16px) saturate(1.15);
-  box-shadow:0 8px 24px rgba(33,20,55,.18);
+  grid-template-columns:1fr 1.25fr;
+  gap:2px;
+  padding:3px;
+  border:1px solid color-mix(in srgb,var(--a) 12%,var(--l));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--a) 5%,white);
+  box-shadow:none;
 }
 .experience-switch button{
   min-width:0;
-  height:38px;
-  padding:0 10px;
+  height:30px;
+  padding:0 8px;
   border:0;
-  border-radius:12px;
+  border-radius:999px;
   background:transparent;
-  color:#5f5276;
-  font-size:.75rem;
-  font-weight:900;
+  color:#6d607e;
+  font-size:.67rem;
+  font-weight:850;
   white-space:nowrap;
 }
 .experience-switch button.on{
-  background:linear-gradient(145deg,#c597fc 0%,#865bea 55%,#5b31ba 100%);
+  background:linear-gradient(145deg,#c597fc 0%,#9f70f3 34%,#865bea 62%,#5b31ba 100%);
   color:#fff;
-  box-shadow:0 5px 12px rgba(91,49,186,.27);
+  box-shadow:0 3px 9px rgba(91,49,186,.22);
 }
-
+.experience-tools #miniMore{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid color-mix(in srgb,var(--a) 10%,var(--l))!important;
+  border-radius:50%!important;
+  background:color-mix(in srgb,var(--a) 4%,white)!important;
+  color:#5b31ba!important;
+  font-size:1rem!important;
+  box-shadow:none!important;
+}
+.experience-tools #miniPlay.shazam-btn{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  border-radius:50%!important;
+  padding:0!important;
+  background:linear-gradient(145deg,#c597fc 0%,#9f70f3 30%,#865bea 58%,#5b31ba 100%)!important;
+  color:#fff!important;
+  box-shadow:0 4px 10px rgba(91,49,186,.24)!important;
+}
+.experience-tools #miniPlay.shazam-btn svg{
+  width:20px!important;
+  height:20px!important;
+}
+body.music-mode .experience-tools #miniPlay{
+  display:none!important;
+}
+body.radio-mode #cat,
+body.music-mode #cat{
+  justify-self:start!important;
+  max-width:128px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#title,
+#artist{
+  width:100%!important;
+  text-align:center!important;
+  justify-self:center!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+}
 #musicPrevCover,
 #musicPlayCover,
 .music-playerbar,
@@ -350,16 +400,13 @@ body.music-library-open{
 }
 
 @media(max-width:420px){
-  .experience-switch{
-    width:calc(100% - 22px);
-    top:calc(9px + env(safe-area-inset-top));
-  }
-  .experience-switch button{
-    height:36px;
-    padding:0 7px;
-    font-size:.71rem;
-  }
-  body.music-mode .music-playerbar{
+  .experience-tools{top:5px;right:8px;gap:5px}
+  .experience-switch{width:174px}
+  .experience-switch button{height:29px;padding:0 6px;font-size:.64rem}
+  .experience-tools #miniMore{width:32px!important;height:32px!important;min-width:32px!important}
+  .experience-tools #miniPlay.shazam-btn{width:30px!important;height:30px!important;min-width:30px!important}
+  .experience-tools #miniPlay.shazam-btn svg{width:18px!important;height:18px!important}
+body.music-mode .music-playerbar{
     grid-template-columns:36px 42px minmax(46px,1fr) 42px 36px!important;
     gap:6px!important;
     padding-left:10px!important;

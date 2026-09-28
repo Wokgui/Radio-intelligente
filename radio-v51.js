@@ -1,4 +1,4 @@
-// deploy-refresh-v16
+// deploy-refresh-v18
 (function(){
   const THEME={
     status:'#6f4fc8',
@@ -263,13 +263,13 @@
     if(!document.querySelector('link[data-music-player]')){
       const css=document.createElement('link');
       css.rel='stylesheet';
-      css.href='/music-player.css?v=1';
+      css.href='/music-player.css?v=3';
       css.dataset.musicPlayer='1';
       document.head.appendChild(css);
     }
     if(!document.querySelector('script[data-music-player]')){
       const script=document.createElement('script');
-      script.src='/music-player.js?v=1';
+      script.src='/music-player.js?v=3';
       script.dataset.musicPlayer='1';
       document.head.appendChild(script);
     }
