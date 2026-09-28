@@ -441,3 +441,139 @@ body.music-mode .music-playerbar{
   .music-row-text b{font-size:.74rem}
   .music-row-text small{font-size:.62rem}
 }
+
+/* v89 - Radio option 2 propre et compacte */
+body.radio-mode .track{
+  position:relative!important;
+  padding-top:52px!important;
+}
+body.radio-mode #cat,
+body.music-mode #cat{
+  justify-self:start!important;
+  max-width:140px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#title,
+#artist{
+  width:100%!important;
+  text-align:center!important;
+  justify-self:center!important;
+}
+
+.experience-tools{
+  position:absolute!important;
+  top:9px!important;
+  right:10px!important;
+  z-index:20!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+.experience-switch{
+  display:grid!important;
+  grid-template-columns:1fr 1.15fr!important;
+  gap:2px!important;
+  width:166px!important;
+  padding:3px!important;
+  border-radius:999px!important;
+  background:#f5f1fb!important;
+  border:1px solid #e5dcf5!important;
+  box-shadow:none!important;
+}
+.experience-switch button{
+  height:28px!important;
+  min-width:0!important;
+  padding:0 7px!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:transparent!important;
+  color:#6c5d86!important;
+  font-size:.62rem!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+}
+.experience-switch button.on{
+  background:linear-gradient(145deg,#c597fc 0%,#865bea 55%,#5b31ba 100%)!important;
+  color:#fff!important;
+  box-shadow:0 3px 8px rgba(91,49,186,.18)!important;
+}
+.experience-tools #miniPlay.shazam-btn,
+.experience-tools #miniMore{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+}
+.experience-tools #miniPlay.shazam-btn{
+  background:linear-gradient(145deg,#c597fc 0%,#865bea 55%,#5b31ba 100%)!important;
+  color:#fff!important;
+  border:0!important;
+  box-shadow:0 3px 8px rgba(91,49,186,.18)!important;
+  padding:0!important;
+}
+.experience-tools #miniPlay.shazam-btn svg{
+  width:18px!important;
+  height:18px!important;
+}
+.experience-tools #miniMore{
+  background:#fff!important;
+  color:#5b31ba!important;
+  border:1px solid #e5dcf5!important;
+  box-shadow:none!important;
+  font-size:.95rem!important;
+}
+
+/* En Radio, aucun élément propre à Ma musique ne doit rester visible. */
+body.radio-mode .music-playerbar,
+body.radio-mode .music-alt,
+body.radio-mode .music-quick,
+body.radio-mode #musicPlayerbar,
+body.radio-mode #musicActions,
+body.radio-mode #musicQuick,
+body.radio-mode #musicCountTile,
+body.radio-mode #musicQueueTile{
+  display:none!important;
+}
+
+/* Shazam est uniquement pertinent côté Radio. */
+body.music-mode .experience-tools #miniPlay{
+  display:none!important;
+}
+
+/* La barre radio retrouve une largeur propre après déplacement de Shazam/réglages. */
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+}
+
+@media(max-width:420px){
+  body.radio-mode .track{
+    padding-top:50px!important;
+  }
+  .experience-tools{
+    top:8px!important;
+    right:8px!important;
+    gap:4px!important;
+  }
+  .experience-switch{
+    width:156px!important;
+  }
+  .experience-switch button{
+    height:27px!important;
+    padding:0 5px!important;
+    font-size:.59rem!important;
+  }
+  .experience-tools #miniPlay.shazam-btn,
+  .experience-tools #miniMore{
+    width:29px!important;
+    height:29px!important;
+    min-width:29px!important;
+  }
+  .experience-tools #miniPlay.shazam-btn svg{
+    width:17px!important;
+    height:17px!important;
+  }
+}
