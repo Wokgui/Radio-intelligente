@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
     private static final String NOTUBE_BASE = "https://notube.lol/fr/youtube-app-394";
 
     private static final Pattern VIDEO_RENDERER =
-            Pattern.compile("\\"videoRenderer\\":\\{\\"videoId\\":\\"([A-Za-z0-9_-]{11})\\"");
+            Pattern.compile("\\"videoRenderer\\":\\\\{\\"videoId\\":\\"([A-Za-z0-9_-]{11})\\"");
     private static final Pattern VIDEO_FALLBACK =
             Pattern.compile("\\"videoId\\":\\"([A-Za-z0-9_-]{11})\\"");
 
