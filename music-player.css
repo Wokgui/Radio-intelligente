@@ -424,3 +424,227 @@ body.music-mode.music-has-playlist .track{
     grid-template-rows:34px auto auto 58px 34px 56px 62px!important;
   }
 }
+
+
+/* v96 - correction visuelle confirmée par capture Android */
+
+/* Les trois commandes doivent impérativement occuper les 3 colonnes */
+body.music-mode #musicActions{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr)!important;
+  grid-template-rows:56px!important;
+  align-items:center!important;
+  gap:9px!important;
+  overflow:visible!important;
+}
+body.music-mode #musicShuffle{
+  display:flex!important;
+  grid-column:1!important;
+  grid-row:1!important;
+  width:100%!important;
+  min-width:0!important;
+  height:56px!important;
+  min-height:56px!important;
+}
+body.music-mode #musicSettingsGear{
+  display:grid!important;
+  grid-column:2!important;
+  grid-row:1!important;
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  place-items:center!important;
+  justify-self:center!important;
+  align-self:center!important;
+  position:static!important;
+  transform:none!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.music-mode #musicRepeat{
+  display:flex!important;
+  grid-column:3!important;
+  grid-row:1!important;
+  width:100%!important;
+  min-width:0!important;
+  height:56px!important;
+  min-height:56px!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  padding:0 9px!important;
+  border-radius:17px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+}
+body.music-mode #musicShuffle .txt,
+body.music-mode #musicRepeat .txt{
+  display:block!important;
+  min-width:0!important;
+  font-size:.70rem!important;
+  line-height:1.05!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  text-align:center!important;
+}
+
+/* Bandeau inférieur : aucune règle générique .stat ne doit agrandir les textes */
+body.music-mode #musicQuick{
+  width:100%!important;
+  min-height:60px!important;
+  overflow:visible!important;
+}
+body.music-mode #musicQuick .stats{
+  width:100%!important;
+  min-height:60px!important;
+  height:60px!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  padding:2px!important;
+  gap:0!important;
+  align-items:stretch!important;
+  overflow:hidden!important;
+}
+body.music-mode #musicQuick .stats > .stat{
+  min-width:0!important;
+  width:100%!important;
+  height:56px!important;
+  min-height:56px!important;
+  padding:3px 4px!important;
+  margin:0!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  overflow:hidden!important;
+}
+body.music-mode #musicQuick .stats > .stat .sico{
+  flex:0 0 22px!important;
+  width:22px!important;
+  min-width:22px!important;
+  height:22px!important;
+  font-size:1rem!important;
+  line-height:1!important;
+}
+body.music-mode #musicQuick .stats > .stat .sico svg{
+  width:19px!important;
+  height:19px!important;
+}
+body.music-mode #musicQuick .stats > .stat .meta{
+  flex:0 1 auto!important;
+  min-width:0!important;
+  width:auto!important;
+  max-width:72px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+body.music-mode #musicQuick .stats > .stat .meta b{
+  display:block!important;
+  width:auto!important;
+  max-width:72px!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:.69rem!important;
+  line-height:1.02!important;
+  font-weight:850!important;
+  white-space:normal!important;
+  word-break:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  text-align:center!important;
+}
+body.music-mode #musicQuick .stats > .stat .meta span{
+  display:block!important;
+  width:auto!important;
+  max-width:72px!important;
+  margin:2px 0 0!important;
+  padding:0!important;
+  font-size:.59rem!important;
+  line-height:1.02!important;
+  font-weight:700!important;
+  white-space:normal!important;
+  word-break:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  text-align:center!important;
+}
+body.music-mode #musicQuick #musicCount{
+  font-size:.92rem!important;
+}
+body.music-mode #musicQuick #musicQueueLabel{
+  font-size:.69rem!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .meta b{
+  font-size:.69rem!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .meta span{
+  font-size:.58rem!important;
+}
+
+/* Resserre légèrement tout le bas pour une hiérarchie régulière */
+body.music-mode #musicNextTrack{
+  font-size:.67rem!important;
+}
+body.music-mode #musicPlayerbar{
+  height:58px!important;
+  min-height:58px!important;
+}
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:auto auto 58px 34px 56px 60px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:34px auto auto 58px 34px 56px 60px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr)!important;
+    gap:7px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:54px!important;
+    min-height:54px!important;
+    padding:0 7px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+  }
+  body.music-mode #musicShuffle .txt,
+  body.music-mode #musicRepeat .txt{
+    font-size:.65rem!important;
+  }
+  body.music-mode #musicQuick .stats > .stat{
+    gap:4px!important;
+    padding:2px 2px!important;
+  }
+  body.music-mode #musicQuick .stats > .stat .sico{
+    flex-basis:20px!important;
+    width:20px!important;
+    min-width:20px!important;
+    font-size:.94rem!important;
+  }
+  body.music-mode #musicQuick .stats > .stat .meta{
+    max-width:66px!important;
+  }
+  body.music-mode #musicQuick .stats > .stat .meta b{
+    max-width:66px!important;
+    font-size:.64rem!important;
+  }
+  body.music-mode #musicQuick .stats > .stat .meta span{
+    max-width:66px!important;
+    font-size:.55rem!important;
+  }
+}
