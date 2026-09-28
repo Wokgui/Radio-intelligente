@@ -826,7 +826,7 @@
     navButton.title='Ma musique';
     navButton.dataset.target='music';
     navButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
-    if(radioQuick)radioQuick.appendChild(navButton);
+    if(radioQuick)radioQuick.insertAdjacentElement('afterend',navButton);
 
     const prevCover=document.createElement('button');
     prevCover.id='musicPrevCover';
