@@ -5,6 +5,16 @@ on:
     branches: [main]
     paths:
       - 'android/**'
+      - 'index.html'
+      - 'radio-v51.css'
+      - 'radio-v51.js'
+      - 'radio-v51-core.js'
+      - 'music-player.css'
+      - 'music-player.js'
+      - 'cloud-backup.js'
+      - 'vendor/**'
+      - 'manifest.webmanifest'
+      - 'sw.js'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -17,6 +27,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -27,15 +39,44 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
+      - name: Bundle web app inside APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSETS=android/app/src/main/assets
+          rm -rf "$ASSETS"
+          mkdir -p "$ASSETS/vendor/supabase"
+
+          cp index.html "$ASSETS/"
+          cp radio-v51.css radio-v51.js radio-v51-core.js "$ASSETS/"
+          cp music-player.css music-player.js "$ASSETS/"
+          cp cloud-backup.js "$ASSETS/"
+          cp vendor/supabase/supabase.js "$ASSETS/vendor/supabase/"
+          cp manifest.webmanifest sw.js "$ASSETS/"
+          cp cover-default.png icon-192.png icon-512.png icon-maskable-192.png apple-touch-icon.png favicon-32.png "$ASSETS/"
+          cp silence.wav "$ASSETS/"
+
+          git show 6720b327b59be4ebc6fdb2138d63d55ef998537c:music-player.css > "$ASSETS/music-player-base.css"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/assets/music-player.css")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace(
+              "@import url('https://cdn.jsdelivr.net/gh/Wokgui/Radio-intelligente@6720b327b59be4ebc6fdb2138d63d55ef998537c/music-player.css');",
+              "@import url('/music-player-base.css');"
+          )
+          p.write_text(s, encoding="utf-8")
+          PY
+
+      - name: Build standalone APK
         run: gradle -p android :app:assembleDebug --no-daemon
 
       - name: Prepare APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Radio-intelligente-v100.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Radio-intelligente-v102-standalone.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Radio-intelligente-v100
-          path: Radio-intelligente-v100.apk
+          name: Radio-intelligente-v102-standalone
+          path: Radio-intelligente-v102-standalone.apk
           if-no-files-found: error
           retention-days: 30
