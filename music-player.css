@@ -1610,3 +1610,14 @@ body.radio-mode #yes{
   background:linear-gradient(145deg,var(--g),var(--g2))!important;
   color:#fff!important;
 }
+
+
+body.music-mode #musicPlayerbar .music-list-nav svg{
+  width:21px!important;
+  height:21px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
