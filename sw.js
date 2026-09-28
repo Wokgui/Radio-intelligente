@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v95';
+const CACHE = 'radio-intelligente-pwa-v96';
 
 const APP_SHELL = [
   '/',
@@ -13,9 +13,9 @@ const APP_SHELL = [
   '/cloud-backup.js?v=4',
   '/vendor/supabase/supabase.js?v=1',
   '/radio-v51.css?v=8',
-  '/radio-v51.js?v=25',
-  '/music-player.css?v=10',
-  '/music-player.js?v=10',
+  '/radio-v51.js?v=26',
+  '/music-player.css?v=11',
+  '/music-player.js?v=11',
   '/radio-v51-core.js?v=1'
 ];
 
