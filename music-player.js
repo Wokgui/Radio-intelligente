@@ -725,9 +725,15 @@
     }
     if(!isMusic){
       const radioQuick=document.querySelector('.track>.quick:not(.music-quick)');
+      document.querySelectorAll('.track>.quick').forEach(el=>{
+        if(el!==radioQuick){
+          el.hidden=true;
+          el.style.setProperty('display','none','important');
+        }
+      });
       const icons=radioQuick?radioQuick.querySelectorAll('.stat .sico'):[];
-      if(icons[0])icons[0].textContent='▂▅▇';
-      if(icons[1])icons[1].textContent='⏭';
+      if(icons[0])icons[0].innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="13" width="4" height="8" rx="1"></rect><rect x="10" y="8" width="4" height="13" rx="1"></rect><rect x="17" y="3" width="4" height="18" rx="1"></rect></svg>';
+      if(icons[1])icons[1].innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14l7-7-7-7Zm8 0v14l7-7-7-7Z"></path><path d="M20 5h2v14h-2z"></path></svg>';
     }
   }
 
