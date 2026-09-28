@@ -1063,7 +1063,7 @@
       '<div class="stats">'+
         '<button class="stat music-count-shortcut" id="musicCountTile" type="button" aria-label="Ouvrir les morceaux"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceaux</span></span></button>'+
         '<button class="stat music-radio-shortcut" id="musicRadioOpen" type="button" aria-label="Revenir à Radio intelligente"><span class="sico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 16 0"></path><path d="M7 9a5 5 0 0 1 10 0"></path><circle cx="12" cy="9" r="1.5"></circle><path d="M12 10.5V20"></path></svg></span><span class="meta"><b>Radio</b><span>intelligente</span></span></button>'+
-        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes de</b><span>lecture</span></span></button>'+
+        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes</b><span>de lecture</span></span></button>'+
       '</div>';
     track.appendChild(quick);
 
