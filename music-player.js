@@ -3,6 +3,7 @@
 
   const MODE_KEY='radio_hugo_surface_v1';
   const STATE_KEY='radio_hugo_music_state_v1';
+  const PLAYLISTS_KEY='radio_hugo_playlists_v1';
   const DB_NAME='radio-hugo-music-v1';
   const DB_VERSION=1;
   const STORE='tracks';
@@ -38,6 +39,8 @@
   let activeMode='radio';
   let filterMode='all';
   let importBusy=false;
+  let playlists=[];
+  let librarySection='tracks';
 
   const defaultState={
     currentId:null,
@@ -45,7 +48,8 @@
     shuffle:false,
     repeat:'off',
     sort:'recent',
-    volume:1
+    volume:1,
+    activePlaylistId:null
   };
   let state=loadState();
 
@@ -56,6 +60,29 @@
     }catch{
       return Object.assign({},defaultState);
     }
+  }
+
+  function loadPlaylists(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(PLAYLISTS_KEY)||'[]');
+      return Array.isArray(raw)?raw.filter(item=>item&&item.id&&item.name&&Array.isArray(item.trackIds)):[];
+    }catch{
+      return [];
+    }
+  }
+
+  function savePlaylists(){
+    try{localStorage.setItem(PLAYLISTS_KEY,JSON.stringify(playlists))}catch{}
+  }
+
+  function activePlaylist(){
+    return playlists.find(item=>item.id===state.activePlaylistId)||null;
+  }
+
+  function playlistTracks(playlist){
+    if(!playlist)return [];
+    const map=new Map(tracks.map(track=>[track.id,track]));
+    return playlist.trackIds.map(id=>map.get(id)).filter(Boolean);
   }
 
   function saveState(){
@@ -247,7 +274,9 @@
   }
 
   function rebuildOrder(anchorId){
-    const ids=sortTracks(tracks).map(track=>track.id);
+    const playlist=activePlaylist();
+    const baseTracks=playlist?playlistTracks(playlist):sortTracks(tracks);
+    const ids=baseTracks.map(track=>track.id);
     const anchor=anchorId||currentId;
     if(state.shuffle&&ids.length){
       const rest=ids.filter(id=>id!==anchor);
@@ -289,8 +318,12 @@
     if($('cover'))$('cover').src=DEFAULT_COVER;
     if($('title'))$('title').textContent='Ajoute ta musique';
     if($('artist'))$('artist').textContent='Tes fichiers restent stockés sur cet appareil';
-    if($('cat'))$('cat').textContent='Ma musique';
+    if($('cat')){
+      $('cat').textContent='';
+      $('cat').classList.add('music-cat-hidden');
+    }
     updateMusicStats();
+    updateNextTrackLine();
   }
 
   function paintTrack(track){
@@ -303,10 +336,17 @@
     if($('title'))$('title').textContent=track.title||track.name||'Morceau';
     if($('artist'))$('artist').textContent=[track.artist,track.album].filter(Boolean).join(' — ')||'Fichier local';
     if($('cat')){
-      const pos=currentIndex>=0?currentIndex+1:1;
-      $('cat').textContent='Ma musique • '+pos+'/'+Math.max(order.length,tracks.length);
+      const playlist=activePlaylist();
+      if(playlist){
+        $('cat').textContent=playlist.name;
+        $('cat').classList.remove('music-cat-hidden');
+      }else{
+        $('cat').textContent='';
+        $('cat').classList.add('music-cat-hidden');
+      }
     }
     updateMusicStats();
+    updateNextTrackLine();
     updateMediaMetadata(track);
   }
 
@@ -345,12 +385,144 @@
     }
   }
 
+  function nextTrackCandidate(){
+    if(!order.length)return null;
+    let index=currentIndex+1;
+    if(index>=order.length){
+      if(state.repeat==='all')index=0;
+      else return null;
+    }
+    return tracks.find(track=>track.id===order[index])||null;
+  }
+
+  function updateNextTrackLine(){
+    const line=$('musicNextTrack');
+    const text=$('musicNextTrackText');
+    if(!line||!text)return;
+    const next=nextTrackCandidate();
+    if(next){
+      line.hidden=false;
+      text.textContent=(next.title||next.name||'Morceau')+(next.artist?' — '+next.artist:'');
+    }else{
+      line.hidden=false;
+      text.textContent=order.length?'Fin de la liste':'Aucun morceau suivant';
+    }
+  }
+
+  function switchPlaylist(direction){
+    if(!playlists.length)return;
+    let index=playlists.findIndex(item=>item.id===state.activePlaylistId);
+    if(index<0)index=direction>0?-1:0;
+    index=(index+direction+playlists.length)%playlists.length;
+    const playlist=playlists[index];
+    const valid=playlistTracks(playlist);
+    if(!valid.length){
+      setImportStatus('Cette liste de lecture est vide.');
+      return;
+    }
+    state.activePlaylistId=playlist.id;
+    rebuildOrder(valid[0].id);
+    loadTrack(valid[0].id,{autoplay:true,resume:0});
+    saveState();
+    renderPlaylists();
+  }
+
+  function playPlaylist(id){
+    const playlist=playlists.find(item=>item.id===id);
+    const valid=playlistTracks(playlist);
+    if(!playlist||!valid.length)return;
+    state.activePlaylistId=playlist.id;
+    rebuildOrder(valid[0].id);
+    loadTrack(valid[0].id,{autoplay:true,resume:0});
+    saveState();
+    closeLibrary(false);
+  }
+
+  function createPlaylist(name){
+    const value=String(name||prompt('Nom de la nouvelle liste de lecture :')||'').trim();
+    if(!value)return null;
+    const playlist={id:'pl_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),name:value,trackIds:[]};
+    playlists.push(playlist);
+    savePlaylists();
+    renderPlaylists();
+    return playlist;
+  }
+
+  function addTrackToPlaylist(trackId){
+    if(!tracks.some(track=>track.id===trackId))return;
+    if(!playlists.length){
+      const created=createPlaylist();
+      if(!created)return;
+      created.trackIds.push(trackId);
+      savePlaylists();
+      renderPlaylists();
+      return;
+    }
+    const menu=playlists.map((playlist,index)=>(index+1)+' — '+playlist.name).join('\n');
+    const answer=prompt('Ajouter à quelle liste ?\n0 — Nouvelle liste\n'+menu);
+    if(answer===null)return;
+    const number=Number(answer);
+    let playlist;
+    if(number===0)playlist=createPlaylist();
+    else playlist=playlists[number-1];
+    if(!playlist)return;
+    if(!playlist.trackIds.includes(trackId))playlist.trackIds.push(trackId);
+    savePlaylists();
+    renderPlaylists();
+  }
+
+  function deletePlaylist(id){
+    const playlist=playlists.find(item=>item.id===id);
+    if(!playlist)return;
+    if(!confirm('Supprimer la liste « '+playlist.name+' » ? Les morceaux resteront dans Ma musique.'))return;
+    playlists=playlists.filter(item=>item.id!==id);
+    if(state.activePlaylistId===id){
+      state.activePlaylistId=null;
+      rebuildOrder(currentId);
+      paintTrack(currentTrack());
+      saveState();
+    }
+    savePlaylists();
+    renderPlaylists();
+  }
+
+  function renderPlaylists(){
+    const list=$('musicPlaylistsList');
+    if(!list)return;
+    if(!playlists.length){
+      list.innerHTML='<div class="music-library-empty">Aucune liste de lecture.<br><small>Crée une liste puis ajoute des morceaux avec le bouton ＋.</small></div>';
+      return;
+    }
+    list.innerHTML=playlists.map(playlist=>{
+      const count=playlistTracks(playlist).length;
+      return '<div class="music-playlist-row'+(playlist.id===state.activePlaylistId?' current':'')+'">'+
+        '<button type="button" class="music-playlist-main" data-playlist-play="'+esc(playlist.id)+'">'+
+          '<span class="music-row-note">☷</span><span class="music-row-text"><b>'+esc(playlist.name)+'</b><small>'+count+' morceau'+(count>1?'x':'')+'</small></span>'+
+        '</button>'+
+        '<button type="button" class="music-row-delete" data-playlist-delete="'+esc(playlist.id)+'" aria-label="Supprimer la liste">×</button>'+
+      '</div>';
+    }).join('');
+  }
+
+  function setLibrarySection(section){
+    librarySection=section==='playlists'?'playlists':'tracks';
+    const tracksPanel=$('musicTracksPanel');
+    const playlistsPanel=$('musicPlaylistsPanel');
+    if(tracksPanel)tracksPanel.hidden=librarySection!=='tracks';
+    if(playlistsPanel)playlistsPanel.hidden=librarySection!=='playlists';
+    document.querySelectorAll('#musicSectionTabs button').forEach(btn=>btn.classList.toggle('on',btn.dataset.section===librarySection));
+    if(librarySection==='playlists')renderPlaylists();
+    else renderLibrary();
+  }
+
+  function openPlaylists(){
+    openLibrary();
+    setLibrarySection('playlists');
+  }
+
   function updateMusicStats(){
     if($('musicCount'))$('musicCount').textContent=tracks.length;
-    if($('musicQueuePos')){
-      const pos=currentIndex>=0?currentIndex+1:0;
-      $('musicQueuePos').textContent=pos+'/'+Math.max(order.length,tracks.length);
-    }
+    if($('musicQueueLabel'))$('musicQueueLabel').textContent='Listes de lecture';
     if($('musicCountLabel'))$('musicCountLabel').textContent=tracks.length>1?'morceaux':'morceau';
     const track=currentTrack();
     if($('musicFavorite')){
@@ -551,6 +723,7 @@
             '<span class="music-row-note" aria-hidden="true">♫</span>'+
             '<span class="music-row-text"><b>'+esc(track.title||track.name||'Morceau')+'</b><small>'+esc(info)+'</small></span>'+
           '</button>'+
+          '<button class="music-row-add" type="button" data-add-playlist-id="'+esc(track.id)+'" aria-label="Ajouter à une liste de lecture">＋</button>'+
           '<button class="music-row-fav'+(track.favorite?' on':'')+'" type="button" data-fav-id="'+esc(track.id)+'" aria-label="'+(track.favorite?'Retirer des favoris':'Ajouter aux favoris')+'">'+(track.favorite?'★':'☆')+'</button>'+
           '<button class="music-row-delete" type="button" data-delete-id="'+esc(track.id)+'" aria-label="Retirer de Ma musique">×</button>'+
         '</div>';
@@ -948,7 +1121,9 @@
     document.querySelectorAll('#musicLibraryTabs button').forEach(btn=>btn.onclick=()=>{filterMode=btn.dataset.filter;renderLibrary()});
     $('musicLibraryList').addEventListener('click',event=>{
       const play=event.target.closest('[data-play-id]');
-      if(play){loadTrack(play.dataset.playId,{autoplay:true,resume:0});closeLibrary(false);return}
+      if(play){state.activePlaylistId=null;rebuildOrder(play.dataset.playId);loadTrack(play.dataset.playId,{autoplay:true,resume:0});saveState();closeLibrary(false);return}
+      const add=event.target.closest('[data-add-playlist-id]');
+      if(add){addTrackToPlaylist(add.dataset.addPlaylistId);return}
       const fav=event.target.closest('[data-fav-id]');
       if(fav){toggleFavorite(fav.dataset.favId);return}
       const del=event.target.closest('[data-delete-id]');
