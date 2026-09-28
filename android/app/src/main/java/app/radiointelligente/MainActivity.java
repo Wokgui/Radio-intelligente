@@ -34,10 +34,8 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 7001;
     private static final String NOTUBE_BASE = "https://notube.lol/fr/youtube-app-394";
 
-    private static final Pattern VIDEO_RENDERER =
-            Pattern.compile("\\"videoRenderer\\":\\\\{\\"videoId\\":\\"([A-Za-z0-9_-]{11})\\"");
-    private static final Pattern VIDEO_FALLBACK =
-            Pattern.compile("\\"videoId\\":\\"([A-Za-z0-9_-]{11})\\"");
+    private static final Pattern VIDEO_ID =
+            Pattern.compile("videoId[^A-Za-z0-9_-]+([A-Za-z0-9_-]{11})");
 
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
@@ -232,10 +230,8 @@ public class MainActivity extends Activity {
     }
 
     private static String firstVideoId(String html) {
-        Matcher renderer = VIDEO_RENDERER.matcher(html);
-        if (renderer.find()) return renderer.group(1);
-        Matcher fallback = VIDEO_FALLBACK.matcher(html);
-        return fallback.find() ? fallback.group(1) : "";
+        Matcher matcher = VIDEO_ID.matcher(html);
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     private static String readString(InputStream stream) throws IOException {
