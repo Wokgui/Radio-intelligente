@@ -524,6 +524,9 @@
   }
 
   function updateMusicStats(){
+    const emptyLibrary=tracks.length===0;
+    document.body.classList.toggle('music-empty-library',emptyLibrary);
+    if($('musicEmptyImport'))$('musicEmptyImport').hidden=!emptyLibrary;
     if($('musicCount'))$('musicCount').textContent=tracks.length;
     if($('musicQueueLabel'))$('musicQueueLabel').textContent='Listes de';
     if($('musicCountLabel'))$('musicCountLabel').textContent=tracks.length>1?'morceaux':'morceau';
@@ -1033,6 +1036,16 @@
     playCover.textContent='▶';
     cover.appendChild(playCover);
 
+    const emptyImport=document.createElement('button');
+    emptyImport.id='musicEmptyImport';
+    emptyImport.className='music-empty-import';
+    emptyImport.type='button';
+    emptyImport.setAttribute('aria-label','Ajouter des morceaux');
+    emptyImport.innerHTML='<span class="music-empty-import-icon" aria-hidden="true">＋</span><span>Ajouter des morceaux</span>';
+    const artistNode=$('artist');
+    if(artistNode&&artistNode.parentNode===track)artistNode.insertAdjacentElement('afterend',emptyImport);
+    else track.insertBefore(emptyImport,track.firstChild);
+
     const bar=document.createElement('div');
     bar.id='musicPlayerbar';
     bar.className='playerbar music-playerbar';
@@ -1158,6 +1171,7 @@
     });
     $('musicAddFiles').onclick=()=>$('musicFileInput').click();
     $('musicAddFolder').onclick=()=>$('musicFolderInput').click();
+    $('musicEmptyImport').onclick=()=>$('musicFileInput').click();
     $('musicFileInput').onchange=event=>importFiles(event.target.files);
     $('musicFolderInput').onchange=event=>importFiles(event.target.files);
     $('musicSearch').oninput=renderLibrary;
