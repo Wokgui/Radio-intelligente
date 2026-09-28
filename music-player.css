@@ -2570,3 +2570,9 @@ body.music-mode #musicQuick .music-radio-shortcut .sico svg{
     font-size:.56rem!important;
   }
 }
+
+
+/* Le CTA d'import n'existe visuellement que dans Ma musique. */
+body.radio-mode #musicEmptyImport{
+  display:none!important;
+}
