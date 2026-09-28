@@ -888,8 +888,6 @@
       $('musicActions'),
       $('musicQuick'),
       $('musicNextTrack'),
-      $('musicSettingsRow'),
-      $('musicPrevCover'),
       $('musicPlayCover')
     ].filter(Boolean);
     radioOnly.forEach(el=>{
@@ -976,13 +974,10 @@
   function updateSwitch(){
     const nav=$('radioMusicOpen');
     if(nav){
-      const music=activeMode==='music';
-      nav.setAttribute('aria-label',music?'Revenir à Radio intelligente':'Ouvrir Ma musique');
-      nav.title=music?'Radio intelligente':'Ma musique';
-      nav.dataset.target=music?'radio':'music';
-      nav.innerHTML=music
-        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 16 0"></path><path d="M7 9a5 5 0 0 1 10 0"></path><circle cx="12" cy="9" r="1.5"></circle><path d="M12 10.5V20"></path></svg>'
-        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
+      nav.setAttribute('aria-label','Ouvrir Ma musique');
+      nav.title='Ma musique';
+      nav.dataset.target='music';
+      nav.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle></svg>';
     }
   }
 
@@ -1052,17 +1047,12 @@
     nextLine.innerHTML='<span class="music-next-icon" aria-hidden="true">⏭</span><span class="music-next-label">Prochain morceau :</span><span id="musicNextTrackText" class="music-next-text">Aucun morceau suivant</span>';
     track.appendChild(nextLine);
 
-    const settingsRow=document.createElement('div');
-    settingsRow.id='musicSettingsRow';
-    settingsRow.className='music-settings-row';
-    settingsRow.innerHTML='<button id="musicSettingsGear" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>';
-    track.appendChild(settingsRow);
-
     const actions=document.createElement('div');
     actions.id='musicActions';
     actions.className='alt music-alt';
     actions.innerHTML=
       '<button id="musicShuffle" type="button"><span class="ico">⇄</span><span class="txt">Lecture aléatoire</span></button>'+
+      '<button id="musicSettingsGear" class="music-settings-inline" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>'+
       '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>';
     track.appendChild(actions);
 
@@ -1071,9 +1061,9 @@
     quick.className='quick music-quick';
     quick.innerHTML=
       '<div class="stats">'+
-        '<div class="stat" id="musicCountTile" role="button" tabindex="0"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceau</span></span></div>'+
-        '<div class="divider"></div>'+
-        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes</b><span>de lecture</span></span></button>'+
+        '<button class="stat music-count-shortcut" id="musicCountTile" type="button" aria-label="Ouvrir les morceaux"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceaux</span></span></button>'+
+        '<button class="stat music-radio-shortcut" id="musicRadioOpen" type="button" aria-label="Revenir à Radio intelligente"><span class="sico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 16 0"></path><path d="M7 9a5 5 0 0 1 10 0"></path><circle cx="12" cy="9" r="1.5"></circle><path d="M12 10.5V20"></path></svg></span><span class="meta"><b>Radio</b><span>intelligente</span></span></button>'+
+        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes de</b><span>lecture</span></span></button>'+
       '</div>';
     track.appendChild(quick);
 
@@ -1132,7 +1122,7 @@
 
   function bindDom(){
     document.querySelectorAll('#experienceSwitch button').forEach(btn=>btn.addEventListener('click',()=>applyMode(btn.dataset.surface,true)));
-    $('musicPrevCover').onclick=()=>applyMode('radio',true);
+    $('musicPrevCover').onclick=previousTrack;
     $('musicPlayCover').onclick=()=>togglePlay();
     $('musicPlaylistPrev').onclick=()=>switchPlaylist(-1);
     $('musicMiniPrev').onclick=previousTrack;
@@ -1143,6 +1133,7 @@
     $('musicSettingsGear').onclick=()=>{const gear=$('miniMore');if(gear)gear.click()};
     $('musicCountTile').onclick=()=>{openLibrary();setLibrarySection('tracks')};
     $('musicQueueTile').onclick=openPlaylists;
+    $('musicRadioOpen').onclick=()=>applyMode('radio',true);
     $('radioMusicOpen').onclick=()=>applyMode($('radioMusicOpen').dataset.target||'music',true);
     $('musicCountTile').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openLibrary();setLibrarySection('tracks')}};
     $('musicLibraryBack').onclick=()=>closeLibrary(false);
