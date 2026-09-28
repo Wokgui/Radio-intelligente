@@ -1599,3 +1599,14 @@ body.radio-mode #musicSettingsRow{
     gap:7px!important;
   }
 }
+
+
+/* v94.1 - couleurs Radio exactement reprises de la version d'origine */
+body.radio-mode #no{
+  background:linear-gradient(145deg,var(--r),var(--r2))!important;
+  color:#fff!important;
+}
+body.radio-mode #yes{
+  background:linear-gradient(145deg,var(--g),var(--g2))!important;
+  color:#fff!important;
+}
