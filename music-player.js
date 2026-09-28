@@ -723,6 +723,12 @@
       shazam.hidden=isMusic;
       shazam.style.display=isMusic?'none':'grid';
     }
+    if(!isMusic){
+      const radioQuick=document.querySelector('.track>.quick:not(.music-quick)');
+      const icons=radioQuick?radioQuick.querySelectorAll('.stat .sico'):[];
+      if(icons[0])icons[0].textContent='▂▅▇';
+      if(icons[1])icons[1].textContent='⏭';
+    }
   }
 
   function applyMode(mode,remember){
