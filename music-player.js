@@ -683,6 +683,7 @@
     rebuildOrder(currentId);
     saveState();
     updateMusicStats();
+    updateNextTrackLine();
     renderLibrary();
   }
 
@@ -690,6 +691,7 @@
     state.repeat=state.repeat==='off'?'all':state.repeat==='all'?'one':'off';
     saveState();
     updateMusicStats();
+    updateNextTrackLine();
   }
 
   async function toggleFavorite(id){
@@ -1225,6 +1227,15 @@
       tracks=[];
     }
     if(state.activePlaylistId&&!playlists.some(item=>item.id===state.activePlaylistId))state.activePlaylistId=null;
+    if(state.activePlaylistId){
+      const playlist=activePlaylist();
+      const valid=playlistTracks(playlist);
+      if(valid.length&&!valid.some(track=>track.id===state.currentId)){
+        state.currentId=valid[0].id;
+        state.currentTime=0;
+      }
+      if(!valid.length)state.activePlaylistId=null;
+    }
     rebuildOrder(state.currentId);
     renderLibrary();
     renderPlaylists();
