@@ -1157,3 +1157,23 @@ body.music-mode #cat{
     min-width:36px!important;
   }
 }
+
+
+/* v93.1 - bouton de navigation sur sa propre ligne */
+body.radio-mode .track>.quick:not(.music-quick){
+  display:block!important;
+}
+body.radio-mode .radio-music-open{
+  position:static!important;
+  transform:none!important;
+  left:auto!important;
+  bottom:auto!important;
+}
+body.radio-mode .track{
+  grid-template-rows:10px auto auto 56px 66px 88px 56px 38px!important;
+}
+@media(max-width:420px){
+  body.radio-mode .track{
+    grid-template-rows:10px auto auto 54px 64px 84px 54px 36px!important;
+  }
+}
