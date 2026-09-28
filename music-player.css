@@ -143,3 +143,284 @@ body.music-mode.music-has-playlist #cat{display:inline-flex!important;}
   body.music-mode #musicQuick .music-playlists-shortcut{padding:3px 5px!important;gap:5px!important;}
   body.music-mode #musicQuick .music-playlists-shortcut b{font-size:.66rem!important;}
 }
+
+
+/* v95 - harmonie Ma musique + plein écran PWA */
+
+/* Ma musique : roue réellement sur la même ligne, exactement au centre */
+body.music-mode #musicSettingsRow{display:none!important}
+body.music-mode #musicActions{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr)!important;
+  grid-template-rows:58px!important;
+  align-items:center!important;
+  gap:10px!important;
+}
+body.music-mode #musicActions>button{
+  min-width:0!important;
+  height:58px!important;
+  min-height:58px!important;
+  border:1px solid #e2d7ea!important;
+  background:#fbf8fd!important;
+  color:#5f5068!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  border-radius:18px!important;
+  padding:0 10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+}
+body.music-mode #musicSettingsGear{
+  width:50px!important;
+  height:50px!important;
+  min-width:50px!important;
+  min-height:50px!important;
+  padding:0!important;
+  justify-self:center!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  color:#713bd0!important;
+  font-size:1.36rem!important;
+  line-height:1!important;
+  box-shadow:0 5px 14px rgba(90,55,125,.11)!important;
+}
+body.music-mode #musicActions .ico{
+  position:static!important;
+  width:auto!important;
+  min-width:0!important;
+  font-size:1.08rem!important;
+  color:#8251aa!important;
+}
+body.music-mode #musicActions .txt{
+  min-width:0!important;
+  font-size:.72rem!important;
+  line-height:1.08!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+/* Bandeau bas : 3 zones égales, lisibles et harmonieuses */
+body.music-mode #musicQuick .stats{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  min-height:64px!important;
+  height:64px!important;
+  padding:3px!important;
+  gap:0!important;
+  overflow:hidden!important;
+  border:1px solid #e5dbea!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px #cdc2da20!important;
+}
+body.music-mode #musicQuick .stat{
+  width:100%!important;
+  min-width:0!important;
+  min-height:58px!important;
+  height:58px!important;
+  margin:0!important;
+  padding:4px 5px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:transparent!important;
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr)!important;
+  align-items:center!important;
+  justify-content:center!important;
+  column-gap:7px!important;
+  overflow:hidden!important;
+  color:#5f5068!important;
+}
+body.music-mode #musicQuick .stat+ .stat{
+  border-left:1px solid #eadff0!important;
+  border-radius:0!important;
+}
+body.music-mode #musicQuick .sico{
+  width:27px!important;
+  min-width:27px!important;
+  height:27px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:1.18rem!important;
+  color:#7d45b8!important;
+}
+body.music-mode #musicQuick .sico svg{
+  width:22px!important;
+  height:22px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.music-mode #musicQuick .meta{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  line-height:1.05!important;
+  overflow:visible!important;
+}
+body.music-mode #musicQuick .meta b{
+  width:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  font-size:.74rem!important;
+  line-height:1.05!important;
+  color:#6f3d96!important;
+  text-align:center!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+}
+body.music-mode #musicQuick .meta span{
+  width:100%!important;
+  max-width:100%!important;
+  margin-top:2px!important;
+  font-size:.64rem!important;
+  line-height:1.05!important;
+  color:#6b6173!important;
+  text-align:center!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut{
+  background:linear-gradient(180deg,#faf6fd 0%,#f3ebf9 100%)!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut .sico{
+  color:#713bd0!important;
+}
+body.music-mode #musicQuick .music-radio-shortcut b{
+  color:#713bd0!important;
+}
+body.music-mode #musicQueueLabel{
+  font-size:.72rem!important;
+}
+
+/* Plus de doublon de bouton Radio sur la pochette */
+body.music-mode #musicPrevCover{
+  display:none!important;
+}
+
+/* Proportions homogènes du lecteur */
+body.music-mode #musicPlayerbar{
+  min-height:60px!important;
+  height:60px!important;
+  border-radius:20px!important;
+}
+body.music-mode #musicNextTrack{
+  min-height:36px!important;
+  height:36px!important;
+  font-size:.69rem!important;
+}
+body.music-mode #musicQuick{
+  min-height:64px!important;
+}
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:auto auto 60px 36px 58px 64px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:34px auto auto 60px 36px 58px 64px!important;
+}
+
+/* Radio installée via Chrome/PWA : utilise réellement toute la hauteur disponible */
+@media (display-mode: standalone){
+  html,
+  body,
+  body:not(.settings-open),
+  body:not(.settings-open) .app,
+  body:not(.settings-open) #mainPage,
+  body:not(.settings-open) #mainPage .player{
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+  }
+  body.radio-mode:not(.settings-open) .app,
+  body.radio-mode:not(.settings-open) #mainPage{
+    padding-bottom:0!important;
+    margin-bottom:0!important;
+    overflow:hidden!important;
+  }
+  body.radio-mode:not(.settings-open) #mainPage .player{
+    display:grid!important;
+    grid-template-rows:44dvh minmax(0,1fr)!important;
+    overflow:hidden!important;
+  }
+  body.radio-mode:not(.settings-open) #mainPage .cover,
+  body.radio-mode:not(.settings-open) #mainPage .track{
+    min-height:0!important;
+  }
+  body.radio-mode:not(.settings-open) #mainPage .track{
+    height:auto!important;
+    padding-bottom:max(6px,env(safe-area-inset-bottom))!important;
+    align-content:space-between!important;
+  }
+}
+
+/* Même comportement moderne hors standalone si dvh est pris en charge */
+@supports(height:100dvh){
+  body.radio-mode:not(.settings-open),
+  body.radio-mode:not(.settings-open) .app,
+  body.radio-mode:not(.settings-open) #mainPage,
+  body.radio-mode:not(.settings-open) #mainPage .player{
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+  }
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    grid-template-columns:minmax(0,1fr) 50px minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  body.music-mode #musicActions>button{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:46px!important;
+    height:46px!important;
+    min-width:46px!important;
+    min-height:46px!important;
+    font-size:1.28rem!important;
+  }
+  body.music-mode #musicActions .txt{
+    font-size:.67rem!important;
+  }
+  body.music-mode #musicQuick .stats{
+    height:62px!important;
+    min-height:62px!important;
+  }
+  body.music-mode #musicQuick .stat{
+    height:56px!important;
+    min-height:56px!important;
+    column-gap:5px!important;
+    padding:3px 3px!important;
+  }
+  body.music-mode #musicQuick .sico{
+    width:24px!important;
+    min-width:24px!important;
+    font-size:1.08rem!important;
+  }
+  body.music-mode #musicQuick .meta b{
+    font-size:.68rem!important;
+  }
+  body.music-mode #musicQuick .meta span{
+    font-size:.59rem!important;
+  }
+  body.music-mode:not(.music-has-playlist) .track{
+    grid-template-rows:auto auto 58px 34px 56px 62px!important;
+  }
+  body.music-mode.music-has-playlist .track{
+    grid-template-rows:34px auto auto 58px 34px 56px 62px!important;
+  }
+}
