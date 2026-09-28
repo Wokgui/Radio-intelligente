@@ -525,7 +525,7 @@
 
   function updateMusicStats(){
     if($('musicCount'))$('musicCount').textContent=tracks.length;
-    if($('musicQueueLabel'))$('musicQueueLabel').textContent='Listes de lecture';
+    if($('musicQueueLabel'))$('musicQueueLabel').textContent='Listes de';
     if($('musicCountLabel'))$('musicCountLabel').textContent=tracks.length>1?'morceaux':'morceau';
     const track=currentTrack();
     if($('musicFavorite')){
@@ -555,6 +555,13 @@
     if($('musicPlayCover')){
       $('musicPlayCover').textContent=playing?'❚❚':'▶';
       $('musicPlayCover').setAttribute('aria-label',playing?'Pause':'Lecture');
+    }
+    if($('musicMainPlay')){
+      $('musicMainPlay').classList.toggle('playing',playing);
+      $('musicMainPlay').setAttribute('aria-label',playing?'Pause':'Lecture');
+      $('musicMainPlay').innerHTML=playing
+        ? '<svg class="pause-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg>'
+        : '<svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
     }
     if($('musicCt'))$('musicCt').textContent=fmtTime(audio.currentTime||0);
     if($('musicTt'))$('musicTt').textContent=fmtTime(audio.duration||0);
@@ -1032,13 +1039,17 @@
     bar.className='playerbar music-playerbar';
     bar.setAttribute('aria-label','Lecteur de musique');
     bar.innerHTML=
-      '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"></path><path d="M20 7h-7M20 12h-7M20 17h-7"></path></svg></button>'+
-      '<button id="musicMiniPrev" class="icon-btn" type="button" aria-label="Morceau précédent" title="Morceau précédent">⏮</button>'+
-      '<span id="musicCt" class="time">0:00</span>'+
-      '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
-      '<span id="musicTt" class="time">0:00</span>'+
-      '<button id="musicMiniNext" class="icon-btn" type="button" aria-label="Morceau suivant" title="Morceau suivant">⏭</button>'+
-      '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6 6 6-6 6"></path><path d="M4 7h7M4 12h7M4 17h7"></path></svg></button>';
+      '<div class="music-transport-row">'+
+        '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6 3 12l6 6"></path><path d="M20 7h-7M20 12h-7M20 17h-7"></path></svg></button>'+
+        '<button id="musicMiniPrev" class="icon-btn music-track-nav" type="button" aria-label="Morceau précédent" title="Morceau précédent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="m18 6-9 6 9 6z"></path></svg></button>'+
+        '<button id="musicMainPlay" class="music-main-play" type="button" aria-label="Lecture"><svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button>'+
+        '<button id="musicMiniNext" class="icon-btn music-track-nav" type="button" aria-label="Morceau suivant" title="Morceau suivant"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M6 6v12l9-6z"></path></svg></button>'+
+        '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6 6 6-6 6"></path><path d="M4 7h7M4 12h7M4 17h7"></path></svg></button>'+
+      '</div>'+
+      '<div class="music-progress-row">'+
+        '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
+        '<div class="music-time-row"><span id="musicCt" class="time">0:00</span><span id="musicTt" class="time">0:00</span></div>'+
+      '</div>';
     track.appendChild(bar);
 
     const nextLine=document.createElement('div');
@@ -1051,9 +1062,9 @@
     actions.id='musicActions';
     actions.className='alt music-alt';
     actions.innerHTML=
-      '<button id="musicShuffle" type="button"><span class="ico">⇄</span><span class="txt">Lecture aléatoire</span></button>'+
+      '<button id="musicShuffle" type="button"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3c5 0 5 10 10 10h3"></path><path d="m17 14 3 3-3 3"></path><path d="M4 17h3c2.1 0 3.4-1.8 4.6-3.8"></path><path d="M13.7 9C14.9 7.8 16 7 18 7h2"></path><path d="m17 4 3 3-3 3"></path></svg></span><span class="txt">Lecture aléatoire</span></button>'+
       '<button id="musicSettingsGear" class="music-settings-inline" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>'+
-      '<button id="musicRepeat" type="button"><span class="ico">↻</span><span class="txt">Répétition désactivée</span></button>';
+      '<button id="musicRepeat" type="button"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a4 4 0 0 1 4 4"></path><path d="m17 4 3 3-3 3"></path><path d="M17 17H7a4 4 0 0 1-4-4"></path><path d="m7 20-3-3 3-3"></path></svg></span><span class="txt">Répétition désactivée</span></button>';
     track.appendChild(actions);
 
     const quick=document.createElement('div');
@@ -1063,7 +1074,7 @@
       '<div class="stats">'+
         '<button class="stat music-count-shortcut" id="musicCountTile" type="button" aria-label="Ouvrir les morceaux"><span class="sico">♫</span><span class="meta"><b id="musicCount">0</b><span id="musicCountLabel">morceaux</span></span></button>'+
         '<button class="stat music-radio-shortcut" id="musicRadioOpen" type="button" aria-label="Revenir à Radio intelligente"><span class="sico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 16 0"></path><path d="M7 9a5 5 0 0 1 10 0"></path><circle cx="12" cy="9" r="1.5"></circle><path d="M12 10.5V20"></path></svg></span><span class="meta"><b>Radio</b><span>intelligente</span></span></button>'+
-        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico">☷</span><span class="meta"><b id="musicQueueLabel">Listes</b><span>de lecture</span></span></button>'+
+        '<button class="stat music-playlists-shortcut" id="musicQueueTile" type="button" aria-label="Ouvrir les listes de lecture"><span class="sico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="7" r="1.2"></circle><circle cx="5" cy="12" r="1.2"></circle><circle cx="5" cy="17" r="1.2"></circle><path d="M9 7h10M9 12h10M9 17h10"></path></svg></span><span class="meta"><b id="musicQueueLabel">Listes de</b><span>lecture</span></span></button>'+
       '</div>';
     track.appendChild(quick);
 
@@ -1124,6 +1135,7 @@
     document.querySelectorAll('#experienceSwitch button').forEach(btn=>btn.addEventListener('click',()=>applyMode(btn.dataset.surface,true)));
     $('musicPrevCover').onclick=previousTrack;
     $('musicPlayCover').onclick=()=>togglePlay();
+    $('musicMainPlay').onclick=()=>togglePlay();
     $('musicPlaylistPrev').onclick=()=>switchPlaylist(-1);
     $('musicMiniPrev').onclick=previousTrack;
     $('musicMiniNext').onclick=()=>nextTrack(false);
