@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Radio intelligente",
-  "short_name": "Radio",
-  "description": "Radio musicale intelligente qui apprend de vos choix.",
+  "name": "Ma musique · Radio intelligente",
+  "short_name": "Ma musique",
+  "description": "Lecteur de musique local et radio intelligente qui apprend de vos choix.",
   "lang": "fr-FR",
   "start_url": "/",
   "scope": "/",
@@ -11,7 +11,10 @@
   "background_color": "#ffffff",
   "theme_color": "#6f4fc8",
   "prefer_related_applications": false,
-  "categories": ["music", "entertainment"],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
   "icons": [
     {
       "src": "/icon-192.png?v=43",
