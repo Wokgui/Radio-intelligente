@@ -112,13 +112,13 @@
       return existing;
     }
     const original = {};
-    ['translate', 'width', 'height', 'font-size', 'display', 'color', 'background-color', 'border-color', 'z-index', 'position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
       };
     });
-    const entry = { selector: selector, element: element, original: original };
+    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null };
     registry.set(selector, entry);
     return entry;
   }
@@ -136,7 +136,18 @@
       height: Math.max(1, Math.round(rect.height)),
       resized: false,
       fontSize: parseFloat(getComputedStyle(element).fontSize) || 16,
+      fontFamily: getComputedStyle(element).fontFamily || 'system-ui',
+      fontWeight: getComputedStyle(element).fontWeight || '400',
+      fontStyle: getComputedStyle(element).fontStyle || 'normal',
+      textDecoration: getComputedStyle(element).textDecorationLine || 'none',
+      textAlign: getComputedStyle(element).textAlign || 'left',
+      letterSpacing: getComputedStyle(element).letterSpacing || 'normal',
+      lineHeight: getComputedStyle(element).lineHeight || 'normal',
       fontAdjusted: false,
+      textContent: element.children.length === 0 ? element.textContent : '',
+      textAdjusted: false,
+      textEditable: element.children.length === 0 && String(element.textContent || '').trim().length > 0,
+      locked: false,
       color: getComputedStyle(element).color || '#000000',
       backgroundColor: getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
       borderColor: getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
