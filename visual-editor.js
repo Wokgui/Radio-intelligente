@@ -143,7 +143,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform','padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','top','right','bottom','left','object-fit'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -191,6 +191,8 @@
       layoutAdjusted: false,
       layout: {},
       tokenStyles: {},
+      advancedAdjusted: false,
+      advancedStyles: {},
       accessibilityAdjusted: false,
       accessibilityLabel: element.getAttribute('aria-label') || '',
       animationAdjusted: false,
@@ -677,6 +679,12 @@
       if(state.tokenStyles&&state.tokenStyles[prop])setInline(element,prop,state.tokenStyles[prop]);
       else if(!((prop==='min-width'||prop==='min-height'||prop==='max-width')&&state.resized))restoreOriginalProp(state.selector,prop);
     });
+    const advancedProps=['padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','opacity','transform','position','top','right','bottom','left','object-fit'];
+    advancedProps.forEach(function(prop){
+      if(state.advancedAdjusted&&state.advancedStyles&&Object.prototype.hasOwnProperty.call(state.advancedStyles,prop))setInline(element,prop,state.advancedStyles[prop]);
+      else if(!(prop==='position'&&state.zAdjusted))restoreOriginalProp(state.selector,prop);
+    });
+
     if(state.accessibilityAdjusted)element.setAttribute('aria-label',state.accessibilityLabel||'Action');
     else {
       const regAria=registry.get(state.selector);
@@ -850,6 +858,8 @@
         layoutAdjusted: !!state.layoutAdjusted,
         layout: Object.assign({}, state.layout || {}),
         tokenStyles: Object.assign({}, state.tokenStyles || {}),
+        advancedAdjusted: !!state.advancedAdjusted,
+        advancedStyles: Object.assign({}, state.advancedStyles || {}),
         accessibilityAdjusted: !!state.accessibilityAdjusted,
         accessibilityLabel: state.accessibilityLabel || '',
         animationAdjusted: !!state.animationAdjusted,
@@ -936,6 +946,8 @@
         layoutAdjusted: !!saved.layoutAdjusted,
         layout: Object.assign({}, saved.layout || {}),
         tokenStyles: Object.assign({}, saved.tokenStyles || {}),
+        advancedAdjusted: !!saved.advancedAdjusted,
+        advancedStyles: Object.assign({}, saved.advancedStyles || {}),
         accessibilityAdjusted: !!saved.accessibilityAdjusted,
         accessibilityLabel: saved.accessibilityLabel || '',
         animationAdjusted: !!saved.animationAdjusted,
@@ -1076,6 +1088,12 @@
         if (state.tokenStyles) {
           Object.keys(state.tokenStyles).forEach(function(prop){
             if(state.tokenStyles[prop])declarations.push('  '+prop+': '+state.tokenStyles[prop]+' !important;');
+          });
+        }
+        if (state.advancedAdjusted && state.advancedStyles) {
+          Object.keys(state.advancedStyles).forEach(function(prop){
+            const value=state.advancedStyles[prop];
+            if(value!==undefined&&value!==null&&value!=='')declarations.push('  '+prop+': '+value+' !important;');
           });
         }
         if (state.animationAdjusted && state.animation) {
