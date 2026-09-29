@@ -820,12 +820,15 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
       </div>
       <label class="checkline"><input id="systemDarkMode" type="checkbox"> Simuler le thème sombre</label>
+      <div class="field" style="margin-top:8px"><label>Clavier Android</label><select id="systemKeyboard">
+        <option value="0">Fermé</option><option value="220">Petit · 220 px</option><option value="280">Normal · 280 px</option><option value="340">Grand · 340 px</option>
+      </select></div>
       <p>Teste les interfaces avec les réglages système qui font souvent apparaître les textes coupés ou les chevauchements.</p>
     </section>
 
     <section class="card">
       <h2>Vérifier l’interface <small>audit automatique</small></h2>
-      <button class="btn primary" id="auditBtn" style="width:100%">Analyser l’écran actuel</button>
+      <div class="toolbar"><button class="btn primary wide" id="auditBtn">Analyser l’écran actuel</button><button class="btn wide" id="auditFixBtn">Corriger automatiquement</button></div>
       <div class="audit-summary" id="auditSummary"></div>
       <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
     </section>
