@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows pour applications web, PWA et interfaces HTML",
+  "description": "Éditeur visuel universel Windows responsive avec multi-écrans, calques, Flex/Grid, audit et comparaison Android",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
