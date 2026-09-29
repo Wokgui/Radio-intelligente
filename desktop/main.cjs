@@ -1030,7 +1030,21 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
     if(fs.existsSync(file)){backupPath=file+'.ais-backup-'+stamp;fs.copyFileSync(file,backupPath)}
     fs.mkdirSync(path.dirname(file),{recursive:true});
     fs.writeFileSync(file,String(payload.after||''),'utf8');
-    return {ok:true,file,backupPath,created:!before};
+    let htmlBackupPath='';
+    if(path.basename(file)==='app-interface-studio.direct.css'&&local.html&&fs.existsSync(local.html)){
+      let html=fs.readFileSync(local.html,'utf8');
+      const marker='data-app-interface-studio="direct"';
+      if(!html.includes(marker)){
+        const stamp2=new Date().toISOString().replace(/[:.]/g,'-');
+        htmlBackupPath=local.html+'.ais-backup-'+stamp2;
+        fs.copyFileSync(local.html,htmlBackupPath);
+        const href='./'+path.relative(path.dirname(local.html),file).replace(/\\/g,'/');
+        const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
+        html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,'  '+link+'\n</head>'):link+'\n'+html;
+        fs.writeFileSync(local.html,html,'utf8');
+      }
+    }
+    return {ok:true,file,backupPath,htmlBackupPath,created:!before};
   }catch(error){return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error)}}
 });
 
