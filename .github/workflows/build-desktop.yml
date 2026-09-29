@@ -1,0 +1,81 @@
+name: Build Windows editor
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'visual-editor.html'
+      - 'visual-editor.js'
+      - 'visual-editor.css'
+      - '.github/workflows/build-desktop.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'visual-editor.html'
+      - 'visual-editor.js'
+      - 'visual-editor.css'
+      - 'visual-elements.js'
+      - 'visual-elements.json'
+      - 'index.html'
+      - 'radio-v51.css'
+      - 'radio-v51.js'
+      - 'radio-v51-core.js'
+      - 'music-player.css'
+      - 'music-player.js'
+      - 'cloud-backup.js'
+      - 'vendor/**'
+      - '.github/workflows/build-desktop.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: desktop/package.json
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Syntax checks
+        working-directory: desktop
+        run: npm run check
+
+      - name: Build Windows app
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Radio-Interface-Studio-Windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish stable Windows download
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "radio-interface-studio-v1.0.0"
+          $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $file.FullName --clobber
+          } else {
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "Radio Interface Studio v1.0.0" --notes "Éditeur Windows portable pour modifier visuellement l’interface de Radio intelligente et exporter un projet réutilisable dans ChatGPT."
+          }

@@ -112,13 +112,13 @@
       return existing;
     }
     const original = {};
-    ['translate', 'width', 'height', 'font-size', 'display', 'color', 'background-color', 'border-color', 'z-index', 'position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
       };
     });
-    const entry = { selector: selector, element: element, original: original };
+    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null };
     registry.set(selector, entry);
     return entry;
   }
@@ -136,7 +136,18 @@
       height: Math.max(1, Math.round(rect.height)),
       resized: false,
       fontSize: parseFloat(getComputedStyle(element).fontSize) || 16,
+      fontFamily: getComputedStyle(element).fontFamily || 'system-ui',
+      fontWeight: getComputedStyle(element).fontWeight || '400',
+      fontStyle: getComputedStyle(element).fontStyle || 'normal',
+      textDecoration: getComputedStyle(element).textDecorationLine || 'none',
+      textAlign: getComputedStyle(element).textAlign || 'left',
+      letterSpacing: getComputedStyle(element).letterSpacing || 'normal',
+      lineHeight: getComputedStyle(element).lineHeight || 'normal',
       fontAdjusted: false,
+      textContent: element.children.length === 0 ? element.textContent : '',
+      textAdjusted: false,
+      textEditable: element.children.length === 0 && String(element.textContent || '').trim().length > 0,
+      locked: false,
       color: getComputedStyle(element).color || '#000000',
       backgroundColor: getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
       borderColor: getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
@@ -174,24 +185,49 @@
     if (!element || !state) return;
 
     if (state.deleted) {
-      setInline(element, 'display', 'none');
+      setInline(element, 'visibility', 'hidden');
+      setInline(element, 'pointer-events', 'none');
       if (update !== false) updateOverlay();
       return;
     }
-    restoreOriginalProp(state.selector, 'display');
+    restoreOriginalProp(state.selector, 'visibility');
+    restoreOriginalProp(state.selector, 'pointer-events');
 
     setInline(element, 'translate', (state.dx || state.dy) ? state.dx + 'px ' + state.dy + 'px' : null);
 
     if (state.resized) {
       setInline(element, 'width', Math.max(1, state.width) + 'px');
       setInline(element, 'height', Math.max(1, state.height) + 'px');
+      setInline(element, 'min-width', '0px');
+      setInline(element, 'min-height', '0px');
+      setInline(element, 'max-width', 'none');
+      setInline(element, 'max-height', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+      setInline(element, 'flex', 'none');
     } else {
-      restoreOriginalProp(state.selector, 'width');
-      restoreOriginalProp(state.selector, 'height');
+      ['width','height','min-width','min-height','max-width','max-height','box-sizing','flex'].forEach(function(prop){
+        restoreOriginalProp(state.selector, prop);
+      });
     }
 
-    if (state.fontAdjusted) setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
-    else restoreOriginalProp(state.selector, 'font-size');
+    if (state.fontAdjusted) {
+      setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
+      setInline(element, 'font-family', state.fontFamily);
+      setInline(element, 'font-weight', state.fontWeight);
+      setInline(element, 'font-style', state.fontStyle);
+      setInline(element, 'text-decoration', state.textDecoration);
+      setInline(element, 'text-align', state.textAlign);
+      setInline(element, 'letter-spacing', state.letterSpacing);
+      setInline(element, 'line-height', state.lineHeight);
+    } else {
+      ['font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height'].forEach(function(prop){
+        restoreOriginalProp(state.selector, prop);
+      });
+    }
+
+    const reg = registry.get(state.selector);
+    if (state.textAdjusted && state.textEditable) element.textContent = state.textContent;
+    else if (reg && reg.originalText !== null && state.textEditable) element.textContent = reg.originalText;
 
     if (state.colorAdjusted) setInline(element, 'color', state.color);
     else restoreOriginalProp(state.selector, 'color');
@@ -218,6 +254,7 @@
       if (item.value) entry.element.style.setProperty(prop, item.value, item.priority);
       else entry.element.style.removeProperty(prop);
     });
+    if (entry.originalText !== null) entry.element.textContent = entry.originalText;
   }
 
   function hideGuides() {
@@ -336,7 +373,18 @@
         height: state.height,
         resized: state.resized,
         fontSize: state.fontSize,
+        fontFamily: state.fontFamily,
+        fontWeight: state.fontWeight,
+        fontStyle: state.fontStyle,
+        textDecoration: state.textDecoration,
+        textAlign: state.textAlign,
+        letterSpacing: state.letterSpacing,
+        lineHeight: state.lineHeight,
         fontAdjusted: state.fontAdjusted,
+        textContent: state.textContent,
+        textAdjusted: state.textAdjusted,
+        textEditable: state.textEditable,
+        locked: state.locked,
         color: state.color,
         backgroundColor: state.backgroundColor,
         borderColor: state.borderColor,
@@ -397,7 +445,18 @@
         height: Math.max(1, saved.height || 1),
         resized: !!saved.resized,
         fontSize: saved.fontSize || parseFloat(getComputedStyle(element).fontSize) || 16,
+        fontFamily: saved.fontFamily || getComputedStyle(element).fontFamily || 'system-ui',
+        fontWeight: saved.fontWeight || getComputedStyle(element).fontWeight || '400',
+        fontStyle: saved.fontStyle || getComputedStyle(element).fontStyle || 'normal',
+        textDecoration: saved.textDecoration || getComputedStyle(element).textDecorationLine || 'none',
+        textAlign: saved.textAlign || getComputedStyle(element).textAlign || 'left',
+        letterSpacing: saved.letterSpacing || getComputedStyle(element).letterSpacing || 'normal',
+        lineHeight: saved.lineHeight || getComputedStyle(element).lineHeight || 'normal',
         fontAdjusted: !!saved.fontAdjusted,
+        textContent: saved.textContent !== undefined ? String(saved.textContent) : (element.children.length === 0 ? element.textContent : ''),
+        textAdjusted: !!saved.textAdjusted,
+        textEditable: saved.textEditable !== undefined ? !!saved.textEditable : (element.children.length === 0 && String(element.textContent || '').trim().length > 0),
+        locked: !!saved.locked,
         color: saved.color || getComputedStyle(element).color || '#000000',
         backgroundColor: saved.backgroundColor || getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
         borderColor: saved.borderColor || getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
@@ -449,14 +508,30 @@
     touched.forEach(function (state) {
       const declarations = [];
       if (state.deleted) {
-        declarations.push('  display: none !important;');
+        declarations.push('  visibility: hidden !important;');
+        declarations.push('  pointer-events: none !important;');
       } else {
         if (state.dx || state.dy) declarations.push('  translate: ' + state.dx + 'px ' + state.dy + 'px !important;');
         if (state.resized) {
           declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
           declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
+          declarations.push('  min-width: 0 !important;');
+          declarations.push('  min-height: 0 !important;');
+          declarations.push('  max-width: none !important;');
+          declarations.push('  max-height: none !important;');
+          declarations.push('  box-sizing: border-box !important;');
+          declarations.push('  flex: none !important;');
         }
-        if (state.fontAdjusted) declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
+        if (state.fontAdjusted) {
+          declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
+          declarations.push('  font-family: ' + state.fontFamily + ' !important;');
+          declarations.push('  font-weight: ' + state.fontWeight + ' !important;');
+          declarations.push('  font-style: ' + state.fontStyle + ' !important;');
+          declarations.push('  text-decoration: ' + state.textDecoration + ' !important;');
+          declarations.push('  text-align: ' + state.textAlign + ' !important;');
+          declarations.push('  letter-spacing: ' + state.letterSpacing + ' !important;');
+          declarations.push('  line-height: ' + state.lineHeight + ' !important;');
+        }
         if (state.colorAdjusted) declarations.push('  color: ' + state.color + ' !important;');
         if (state.backgroundAdjusted) declarations.push('  background-color: ' + state.backgroundColor + ' !important;');
         if (state.borderAdjusted) declarations.push('  border-color: ' + state.borderColor + ' !important;');
@@ -486,6 +561,17 @@
       width: Math.round(rect.width),
       height: Math.round(rect.height),
       fontSize: Math.round(state.fontSize * 10) / 10,
+      fontFamily: state.fontFamily,
+      fontWeight: state.fontWeight,
+      fontStyle: state.fontStyle,
+      textDecoration: state.textDecoration,
+      textAlign: state.textAlign,
+      letterSpacing: state.letterSpacing,
+      lineHeight: state.lineHeight,
+      textContent: state.textContent,
+      textEditable: state.textEditable,
+      locked: state.locked,
+      parentSelector: selected.parentElement ? selectorFor(selected.parentElement) : '',
       color: state.color,
       backgroundColor: state.backgroundColor,
       borderColor: state.borderColor,
@@ -528,6 +614,9 @@
 
   function select(element) {
     if (!element || isEditorNode(element)) return;
+    if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
+      element = element.closest('svg');
+    }
     selected = element;
     remember(element);
     hideGuides();
@@ -537,6 +626,7 @@
   function adjustMove(dx, dy, commit) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.dx = snapGrid(state.dx + dx);
     state.dy = snapGrid(state.dy + dy);
     applyState(selected, state, false);
@@ -548,6 +638,7 @@
   function adjustSize(dw, dh, commit, proportional) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.resized = true;
 
     const square = proportional || Math.abs(state.width - state.height) <= Math.max(4, Math.min(state.width, state.height) * 0.12);
@@ -575,15 +666,158 @@
   function adjustFont(delta, commit) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.fontAdjusted = true;
     state.fontSize = Math.max(4, Math.round((state.fontSize + delta) * 10) / 10);
     applyState(selected, state);
     if (commit !== false) commitHistory();
   }
 
+  function setExactSize(width, height, keepRatio) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    let w = Math.max(1, Number(width) || rect.width);
+    let h = Math.max(1, Number(height) || rect.height);
+    if (keepRatio) {
+      const ratio = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
+      if (Number(width) && !Number(height)) h = w / ratio;
+      else if (Number(height) && !Number(width)) w = h * ratio;
+    }
+    state.resized = true;
+    state.width = snapGrid(w);
+    state.height = snapGrid(h);
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function setExactPosition(x, y) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    if (Number.isFinite(Number(x))) state.dx = snapGrid(state.dx + Number(x) - rect.left);
+    if (Number.isFinite(Number(y))) state.dy = snapGrid(state.dy + Number(y) - rect.top);
+    applyState(selected, state);
+    updateOverlay();
+    commitHistory();
+  }
+
+  function alignSelected(mode) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    const parent = selected.parentElement;
+    const parentRect = parent ? parent.getBoundingClientRect() : {left:0,top:0,width:innerWidth,height:innerHeight};
+    let dx = 0, dy = 0;
+    if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
+    if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
+    if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+    if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    if (mode === 'parent-both') {
+      dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+      dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    }
+    state.dx = snapGrid(state.dx + dx);
+    state.dy = snapGrid(state.dy + dy);
+    applyState(selected, state, false);
+    hideGuides();
+    if (mode === 'screen-x') showVerticalGuide(innerWidth / 2, 'Centre écran');
+    if (mode === 'screen-y') showHorizontalGuide(innerHeight / 2, 'Milieu écran');
+    if (mode === 'parent-x' || mode === 'parent-both') showVerticalGuide(parentRect.left + parentRect.width / 2, 'Centre du parent');
+    if (mode === 'parent-y' || mode === 'parent-both') showHorizontalGuide(parentRect.top + parentRect.height / 2, 'Milieu du parent');
+    updateOverlay();
+    commitHistory();
+  }
+
+  function setTextProperty(kind, value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state.textEditable) return;
+    state.fontAdjusted = true;
+    if (kind === 'family') state.fontFamily = String(value || 'system-ui');
+    if (kind === 'size') state.fontSize = Math.max(4, Number(value) || state.fontSize);
+    if (kind === 'weight') state.fontWeight = String(value || '400');
+    if (kind === 'style') state.fontStyle = String(value || 'normal');
+    if (kind === 'decoration') state.textDecoration = String(value || 'none');
+    if (kind === 'align') state.textAlign = String(value || 'left');
+    if (kind === 'letter-spacing') state.letterSpacing = String(value || 'normal');
+    if (kind === 'line-height') state.lineHeight = String(value || 'normal');
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function setTextContent(value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state.textEditable) return;
+    state.textContent = String(value == null ? '' : value);
+    state.textAdjusted = true;
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function toggleLock(value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    state.locked = value === undefined ? !state.locked : !!value;
+    updateOverlay();
+    commitHistory();
+  }
+
+  function measureSpacing() {
+    if (!active || !selected) return;
+    const rect = selected.getBoundingClientRect();
+    const parent = selected.parentElement;
+    const parentRect = parent ? parent.getBoundingClientRect() : {left:0,right:innerWidth,top:0,bottom:innerHeight};
+    const peers = parent ? Array.from(parent.children).filter(function(el){
+      if (el === selected || !el.getBoundingClientRect || isEditorNode(el)) return false;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+    }) : [];
+    let left = null, right = null, top = null, bottom = null;
+    peers.forEach(function(el){
+      const r = el.getBoundingClientRect();
+      const verticalOverlap = Math.min(rect.bottom,r.bottom) - Math.max(rect.top,r.top) > 0;
+      const horizontalOverlap = Math.min(rect.right,r.right) - Math.max(rect.left,r.left) > 0;
+      if (verticalOverlap && r.right <= rect.left) {
+        const gap = rect.left - r.right;
+        if (!left || gap < left.gap) left = {gap:gap, selector:selectorFor(el)};
+      }
+      if (verticalOverlap && r.left >= rect.right) {
+        const gap = r.left - rect.right;
+        if (!right || gap < right.gap) right = {gap:gap, selector:selectorFor(el)};
+      }
+      if (horizontalOverlap && r.bottom <= rect.top) {
+        const gap = rect.top - r.bottom;
+        if (!top || gap < top.gap) top = {gap:gap, selector:selectorFor(el)};
+      }
+      if (horizontalOverlap && r.top >= rect.bottom) {
+        const gap = r.top - rect.bottom;
+        if (!bottom || gap < bottom.gap) bottom = {gap:gap, selector:selectorFor(el)};
+      }
+    });
+    emit('spacing', {
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
+      parent: {
+        left: Math.round(rect.left - parentRect.left),
+        right: Math.round(parentRect.right - rect.right),
+        top: Math.round(rect.top - parentRect.top),
+        bottom: Math.round(parentRect.bottom - rect.bottom)
+      }
+    });
+  }
+
   function setVisualStyle(kind, value) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     if (kind === 'color') {
       state.color = String(value || '');
       state.colorAdjusted = true;
@@ -603,6 +837,7 @@
   function adjustZ(delta) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.zAdjusted = true;
     state.zIndex = (Number(state.zIndex) || 0) + delta;
     applyState(selected, state);
@@ -612,6 +847,7 @@
   function setZ(value) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.zAdjusted = true;
     state.zIndex = Number(value) || 0;
     applyState(selected, state);
@@ -628,6 +864,27 @@
     hideGuides();
     updateOverlay();
     commitHistory();
+  }
+
+  function exportProject() {
+    return {
+      format: 'radio-layout-project',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      snapshot: snapshot(),
+      css: cssText()
+    };
+  }
+
+  function importProject(project) {
+    if (!project || project.format !== 'radio-layout-project') return false;
+    const snap = project.snapshot || project;
+    if (!snap || !Array.isArray(snap.items)) return false;
+    loadSnapshot(snap);
+    commitHistory();
+    emit('project-imported', { ok: true, count: snap.items.length });
+    return true;
   }
 
   async function copyCss() {
@@ -691,6 +948,7 @@
     event.stopImmediatePropagation();
     select(event.target);
     const state = remember(selected);
+    if (state.locked) return;
     drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: state.dx, dy: state.dy };
   }, true);
 
@@ -721,6 +979,7 @@
       event.preventDefault();
       event.stopPropagation();
       const state = remember(selected);
+      if (state.locked) return;
       const rect = selected.getBoundingClientRect();
       resizeDrag = {
         pointerId: event.pointerId,
@@ -830,6 +1089,13 @@
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, true, !!payload.proportional);
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
+    if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
+    if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
+    if (data.type === 'align') alignSelected(String(payload.mode || ''));
+    if (data.type === 'text-style') setTextProperty(String(payload.kind || ''), payload.value);
+    if (data.type === 'text-content') setTextContent(payload.value);
+    if (data.type === 'lock') toggleLock(payload.value);
+    if (data.type === 'measure-spacing') measureSpacing();
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -852,6 +1118,8 @@
       }
     }
     if (data.type === 'get-css') emit('css', { css: cssText() });
+    if (data.type === 'get-project') emit('project', { project: exportProject() });
+    if (data.type === 'load-project') importProject(payload.project);
     if (data.type === 'download-css') downloadCss();
     if (data.type === 'copy-css') copyCss();
   });
@@ -868,6 +1136,8 @@
     enable: enable,
     disable: disable,
     css: cssText,
+    exportProject: exportProject,
+    importProject: importProject,
     reset: restoreAll,
     undo: undo,
     redo: redo,
@@ -875,6 +1145,13 @@
     move: adjustMove,
     resize: adjustSize,
     fontSize: adjustFont,
+    setExactSize: setExactSize,
+    setExactPosition: setExactPosition,
+    align: alignSelected,
+    setTextProperty: setTextProperty,
+    setTextContent: setTextContent,
+    toggleLock: toggleLock,
+    measureSpacing: measureSpacing,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,

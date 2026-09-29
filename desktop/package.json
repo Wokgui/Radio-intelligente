@@ -1,0 +1,68 @@
+{
+  "name": "radio-interface-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Éditeur visuel Windows pour Radio intelligente",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js",
+    "dist:win": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "31.7.7",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "fr.wokgui.radiointerfacestudio",
+    "productName": "Radio Interface Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "webapp",
+        "filter": [
+          "index.html",
+          "visual-editor.html",
+          "visual-editor.js",
+          "visual-editor.css",
+          "visual-elements.js",
+          "visual-elements.json",
+          "radio-v51.css",
+          "radio-v51.js",
+          "radio-v51-core.js",
+          "music-player.css",
+          "music-player.js",
+          "cloud-backup.js",
+          "manifest.webmanifest",
+          "cover-default.png",
+          "icon-192.png",
+          "icon-512.png",
+          "icon-maskable-192.png",
+          "apple-touch-icon.png",
+          "favicon-32.png",
+          "silence.wav",
+          "vendor/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "artifactName": "Radio-Interface-Studio-${version}-portable-${arch}.${ext}"
+  }
+}
