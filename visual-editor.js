@@ -185,24 +185,49 @@
     if (!element || !state) return;
 
     if (state.deleted) {
-      setInline(element, 'display', 'none');
+      setInline(element, 'visibility', 'hidden');
+      setInline(element, 'pointer-events', 'none');
       if (update !== false) updateOverlay();
       return;
     }
-    restoreOriginalProp(state.selector, 'display');
+    restoreOriginalProp(state.selector, 'visibility');
+    restoreOriginalProp(state.selector, 'pointer-events');
 
     setInline(element, 'translate', (state.dx || state.dy) ? state.dx + 'px ' + state.dy + 'px' : null);
 
     if (state.resized) {
       setInline(element, 'width', Math.max(1, state.width) + 'px');
       setInline(element, 'height', Math.max(1, state.height) + 'px');
+      setInline(element, 'min-width', '0px');
+      setInline(element, 'min-height', '0px');
+      setInline(element, 'max-width', 'none');
+      setInline(element, 'max-height', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+      setInline(element, 'flex', 'none');
     } else {
-      restoreOriginalProp(state.selector, 'width');
-      restoreOriginalProp(state.selector, 'height');
+      ['width','height','min-width','min-height','max-width','max-height','box-sizing','flex'].forEach(function(prop){
+        restoreOriginalProp(state.selector, prop);
+      });
     }
 
-    if (state.fontAdjusted) setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
-    else restoreOriginalProp(state.selector, 'font-size');
+    if (state.fontAdjusted) {
+      setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
+      setInline(element, 'font-family', state.fontFamily);
+      setInline(element, 'font-weight', state.fontWeight);
+      setInline(element, 'font-style', state.fontStyle);
+      setInline(element, 'text-decoration', state.textDecoration);
+      setInline(element, 'text-align', state.textAlign);
+      setInline(element, 'letter-spacing', state.letterSpacing);
+      setInline(element, 'line-height', state.lineHeight);
+    } else {
+      ['font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height'].forEach(function(prop){
+        restoreOriginalProp(state.selector, prop);
+      });
+    }
+
+    const reg = registry.get(state.selector);
+    if (state.textAdjusted && state.textEditable) element.textContent = state.textContent;
+    else if (reg && reg.originalText !== null && state.textEditable) element.textContent = reg.originalText;
 
     if (state.colorAdjusted) setInline(element, 'color', state.color);
     else restoreOriginalProp(state.selector, 'color');
@@ -229,6 +254,7 @@
       if (item.value) entry.element.style.setProperty(prop, item.value, item.priority);
       else entry.element.style.removeProperty(prop);
     });
+    if (entry.originalText !== null) entry.element.textContent = entry.originalText;
   }
 
   function hideGuides() {
