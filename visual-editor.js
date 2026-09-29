@@ -414,12 +414,9 @@
     restoreOriginalProp(state.selector, 'visibility');
     restoreOriginalProp(state.selector, 'pointer-events');
 
-    if (state.responsive && state.responsive.enabled) applyResponsive(element, state);
-    const totalDx = (state.dx || 0) + (state.responsiveDx || 0);
-    const totalDy = (state.dy || 0) + (state.responsiveDy || 0);
-    setInline(element, 'translate', (totalDx || totalDy) ? totalDx + 'px ' + totalDy + 'px' : null);
+    const responsiveActive = !!(state.responsive && state.responsive.enabled);
 
-    if (state.resized && !(state.responsive && state.responsive.enabled && state.responsive.widthMode !== 'auto' && state.responsive.widthMode !== 'fixed')) {
+    if (state.resized) {
       setInline(element, 'width', Math.max(1, state.width) + 'px');
       setInline(element, 'height', Math.max(1, state.height) + 'px');
       setInline(element, 'min-width', '0px');
@@ -428,18 +425,21 @@
       setInline(element, 'max-height', 'none');
       setInline(element, 'box-sizing', 'border-box');
       setInline(element, 'flex', 'none');
-    } else if (!(state.responsive && state.responsive.enabled && (state.responsive.widthMode !== 'auto' || state.responsive.heightMode !== 'auto'))) {
+    } else {
       ['width','height','min-width','min-height','max-width','max-height','box-sizing','flex'].forEach(function(prop){
         restoreOriginalProp(state.selector, prop);
       });
     }
 
-    if (state.responsive && state.responsive.enabled) {
-      applyResponsive(element, state);
-      const responsiveTotalDx = (state.dx || 0) + (state.responsiveDx || 0);
-      const responsiveTotalDy = (state.dy || 0) + (state.responsiveDy || 0);
-      setInline(element, 'translate', (responsiveTotalDx || responsiveTotalDy) ? responsiveTotalDx + 'px ' + responsiveTotalDy + 'px' : null);
+    if (responsiveActive) applyResponsive(element, state);
+    else {
+      state.responsiveDx = 0;
+      state.responsiveDy = 0;
     }
+
+    const totalDx = (state.dx || 0) + (state.responsiveDx || 0);
+    const totalDy = (state.dy || 0) + (state.responsiveDy || 0);
+    setInline(element, 'translate', (totalDx || totalDy) ? totalDx + 'px ' + totalDy + 'px' : null);
 
     if (state.fontAdjusted) {
       setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
@@ -759,12 +759,17 @@
         const exportDy = (state.dy || 0) + (state.responsiveDy || 0);
         if (exportDx || exportDy) declarations.push('  translate: ' + exportDx + 'px ' + exportDy + 'px !important;');
         if (state.resized) {
-          declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
-          declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
-          declarations.push('  min-width: 0 !important;');
-          declarations.push('  min-height: 0 !important;');
-          declarations.push('  max-width: none !important;');
-          declarations.push('  max-height: none !important;');
+          const responsiveActive = !!(state.responsive && state.responsive.enabled);
+          if (!responsiveActive || state.responsive.widthMode === 'auto' || state.responsive.widthMode === 'fixed') {
+            declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
+            declarations.push('  min-width: 0 !important;');
+            declarations.push('  max-width: none !important;');
+          }
+          if (!responsiveActive || state.responsive.heightMode === 'auto' || state.responsive.heightMode === 'fixed') {
+            declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
+            declarations.push('  min-height: 0 !important;');
+            declarations.push('  max-height: none !important;');
+          }
           declarations.push('  box-sizing: border-box !important;');
           declarations.push('  flex: none !important;');
         }
@@ -1405,7 +1410,6 @@
     if (data.type === 'copy-css') copyCss();
   });
 
-  window.addEventListener('resize', updateOverlay);
   window.addEventListener('scroll', updateOverlay, true);
   launcher.addEventListener('click', enable);
   toolbar.querySelector('.ve-copy').addEventListener('click', copyCss);
