@@ -1304,6 +1304,7 @@
       fontAdjusted:!!state.fontAdjusted,color:state.color,backgroundColor:state.backgroundColor,borderColor:state.borderColor,
       colorAdjusted:!!state.colorAdjusted,backgroundAdjusted:!!state.backgroundAdjusted,borderAdjusted:!!state.borderAdjusted,
       zIndex:state.zIndex,zAdjusted:!!state.zAdjusted,layoutAdjusted:!!state.layoutAdjusted,layout:Object.assign({},state.layout||{}),
+      tokenStyles:Object.assign({},state.tokenStyles||{}),accessibilityAdjusted:!!state.accessibilityAdjusted,accessibilityLabel:state.accessibilityLabel||'',
       animationAdjusted:!!state.animationAdjusted,animation:Object.assign({},state.animation||{}),
       responsive:cloneResponsive(state.responsive)
     };
@@ -1318,6 +1319,7 @@
     state.fontAdjusted=!!saved.fontAdjusted;state.color=saved.color;state.backgroundColor=saved.backgroundColor;state.borderColor=saved.borderColor;
     state.colorAdjusted=!!saved.colorAdjusted;state.backgroundAdjusted=!!saved.backgroundAdjusted;state.borderAdjusted=!!saved.borderAdjusted;
     state.zIndex=saved.zIndex;state.zAdjusted=!!saved.zAdjusted;state.layoutAdjusted=!!saved.layoutAdjusted;state.layout=Object.assign({},saved.layout||{});
+    state.tokenStyles=Object.assign({},saved.tokenStyles||{});state.accessibilityAdjusted=!!saved.accessibilityAdjusted;state.accessibilityLabel=saved.accessibilityLabel||'';
     state.animationAdjusted=!!saved.animationAdjusted;state.animation=Object.assign({property:'all',duration:180,easing:'ease',delay:0},saved.animation||{});
     state.responsive=cloneResponsive(saved.responsive);
     applyState(element,state,false);
