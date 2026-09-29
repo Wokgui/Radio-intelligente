@@ -373,7 +373,18 @@
         height: state.height,
         resized: state.resized,
         fontSize: state.fontSize,
+        fontFamily: state.fontFamily,
+        fontWeight: state.fontWeight,
+        fontStyle: state.fontStyle,
+        textDecoration: state.textDecoration,
+        textAlign: state.textAlign,
+        letterSpacing: state.letterSpacing,
+        lineHeight: state.lineHeight,
         fontAdjusted: state.fontAdjusted,
+        textContent: state.textContent,
+        textAdjusted: state.textAdjusted,
+        textEditable: state.textEditable,
+        locked: state.locked,
         color: state.color,
         backgroundColor: state.backgroundColor,
         borderColor: state.borderColor,
@@ -434,7 +445,18 @@
         height: Math.max(1, saved.height || 1),
         resized: !!saved.resized,
         fontSize: saved.fontSize || parseFloat(getComputedStyle(element).fontSize) || 16,
+        fontFamily: saved.fontFamily || getComputedStyle(element).fontFamily || 'system-ui',
+        fontWeight: saved.fontWeight || getComputedStyle(element).fontWeight || '400',
+        fontStyle: saved.fontStyle || getComputedStyle(element).fontStyle || 'normal',
+        textDecoration: saved.textDecoration || getComputedStyle(element).textDecorationLine || 'none',
+        textAlign: saved.textAlign || getComputedStyle(element).textAlign || 'left',
+        letterSpacing: saved.letterSpacing || getComputedStyle(element).letterSpacing || 'normal',
+        lineHeight: saved.lineHeight || getComputedStyle(element).lineHeight || 'normal',
         fontAdjusted: !!saved.fontAdjusted,
+        textContent: saved.textContent !== undefined ? String(saved.textContent) : (element.children.length === 0 ? element.textContent : ''),
+        textAdjusted: !!saved.textAdjusted,
+        textEditable: saved.textEditable !== undefined ? !!saved.textEditable : (element.children.length === 0 && String(element.textContent || '').trim().length > 0),
+        locked: !!saved.locked,
         color: saved.color || getComputedStyle(element).color || '#000000',
         backgroundColor: saved.backgroundColor || getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
         borderColor: saved.borderColor || getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
@@ -486,14 +508,24 @@
     touched.forEach(function (state) {
       const declarations = [];
       if (state.deleted) {
-        declarations.push('  display: none !important;');
+        declarations.push('  visibility: hidden !important;');
+        declarations.push('  pointer-events: none !important;');
       } else {
         if (state.dx || state.dy) declarations.push('  translate: ' + state.dx + 'px ' + state.dy + 'px !important;');
         if (state.resized) {
           declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
           declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
         }
-        if (state.fontAdjusted) declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
+        if (state.fontAdjusted) {
+          declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
+          declarations.push('  font-family: ' + state.fontFamily + ' !important;');
+          declarations.push('  font-weight: ' + state.fontWeight + ' !important;');
+          declarations.push('  font-style: ' + state.fontStyle + ' !important;');
+          declarations.push('  text-decoration: ' + state.textDecoration + ' !important;');
+          declarations.push('  text-align: ' + state.textAlign + ' !important;');
+          declarations.push('  letter-spacing: ' + state.letterSpacing + ' !important;');
+          declarations.push('  line-height: ' + state.lineHeight + ' !important;');
+        }
         if (state.colorAdjusted) declarations.push('  color: ' + state.color + ' !important;');
         if (state.backgroundAdjusted) declarations.push('  background-color: ' + state.backgroundColor + ' !important;');
         if (state.borderAdjusted) declarations.push('  border-color: ' + state.borderColor + ' !important;');
@@ -523,6 +555,17 @@
       width: Math.round(rect.width),
       height: Math.round(rect.height),
       fontSize: Math.round(state.fontSize * 10) / 10,
+      fontFamily: state.fontFamily,
+      fontWeight: state.fontWeight,
+      fontStyle: state.fontStyle,
+      textDecoration: state.textDecoration,
+      textAlign: state.textAlign,
+      letterSpacing: state.letterSpacing,
+      lineHeight: state.lineHeight,
+      textContent: state.textContent,
+      textEditable: state.textEditable,
+      locked: state.locked,
+      parentSelector: selected.parentElement ? selectorFor(selected.parentElement) : '',
       color: state.color,
       backgroundColor: state.backgroundColor,
       borderColor: state.borderColor,
