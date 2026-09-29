@@ -8,6 +8,7 @@ let studioBaseUrl = '';
 let targetServer;
 let targetBaseUrl = '';
 let mainWindow;
+const injectedFrames = new Set();
 
 const MIME = {
   '.html':'text/html; charset=utf-8',
@@ -118,7 +119,7 @@ function editorAssets(){
 }
 
 async function injectEditorIntoFrame(frame){
-  if(!frame || frame === mainWindow.webContents.mainFrame)return;
+  if(!frame || !mainWindow || frame === mainWindow.webContents.mainFrame)return false;
   try{
     const assets=editorAssets();
     const cssJson=JSON.stringify(assets.css);
@@ -131,7 +132,18 @@ async function injectEditorIntoFrame(frame){
       "})();"
     );
     await frame.executeJavaScript(assets.js);
-  }catch(_){}
+    injectedFrames.add(frame.routingId);
+    return true;
+  }catch(error){
+    try{
+      mainWindow.webContents.send('editor:inject-status',{
+        ok:false,
+        url:frame.url||'',
+        error:String(error&&error.message||error)
+      });
+    }catch(_){}
+    return false;
+  }
 }
 
 function configureEmbedding(){
@@ -146,6 +158,19 @@ function configureEmbedding(){
     });
     callback({cancel:false,responseHeaders:headers});
   });
+}
+
+async function injectIntoAllChildFrames(){
+  if(!mainWindow)return 0;
+  let frames=[];
+  try{
+    frames = mainWindow.webContents.mainFrame.frames || [];
+  }catch(_){}
+  let count=0;
+  for(const frame of frames){
+    if(await injectEditorIntoFrame(frame))count++;
+  }
+  return count;
 }
 
 function projectPrompt(project){
@@ -195,7 +220,23 @@ function createWindow(){
     if(isMainFrame)return;
     try{
       const frame=webFrameMain.fromId(frameProcessId,frameRoutingId);
-      if(frame && frame.parent === mainWindow.webContents.mainFrame) injectEditorIntoFrame(frame);
+      if(frame) injectEditorIntoFrame(frame);
+    }catch(_){}
+  });
+
+  mainWindow.webContents.on('did-frame-navigate',(_event,_url,_httpResponseCode,_httpStatusText,isMainFrame,frameProcessId,frameRoutingId)=>{
+    if(isMainFrame)return;
+    try{
+      const frame=webFrameMain.fromId(frameProcessId,frameRoutingId);
+      if(frame) setTimeout(()=>injectEditorIntoFrame(frame),60);
+    }catch(_){}
+  });
+
+  mainWindow.webContents.on('did-navigate-in-page',(_event,_url,isMainFrame,frameProcessId,frameRoutingId)=>{
+    if(isMainFrame)return;
+    try{
+      const frame=webFrameMain.fromId(frameProcessId,frameRoutingId);
+      if(frame) setTimeout(()=>injectEditorIntoFrame(frame),60);
     }catch(_){}
   });
 
@@ -275,6 +316,11 @@ ipcMain.handle('source:restore',async (_event,source)=>{
   }catch(error){
     return {ok:false,error:String(error&&error.message||error)};
   }
+});
+
+ipcMain.handle('source:inject-editor',async ()=>{
+  const count=await injectIntoAllChildFrames();
+  return {ok:count>0,count};
 });
 
 ipcMain.handle('layout:save-project',async (_event,project)=>{
