@@ -90,6 +90,16 @@ iframe{display:block;width:100%;height:100%;border:0;background:white}
 .pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .center{grid-column:2;grid-row:2;background:#f1ebf8;color:#7c3aed}.pad .right{grid-column:3;grid-row:2}.pad .down{grid-column:2;grid-row:3}
 .size-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
 .size-grid button{min-height:36px}
+.edit-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.edit-actions button{min-height:36px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:850}
+.edit-actions button:disabled{opacity:.38;cursor:default}
+.edit-actions .danger{color:#a12848;background:#fff6f8;border-color:#efccd6}
+.color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.color-control{display:grid;gap:5px;font-size:.66rem;color:var(--muted)}
+.color-control input{width:100%;height:38px;padding:2px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.z-grid{display:grid;grid-template-columns:1fr 72px 1fr;gap:6px;margin-top:10px;align-items:center}
+.z-grid button,.z-grid input{min-height:36px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:850;text-align:center}
+.chatgpt-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#eee7f8;color:#60329d;font-size:.68rem;font-weight:850}
 .row{display:flex;gap:7px;flex-wrap:wrap}
 .row .btn{flex:1}
 .code{
@@ -179,6 +189,13 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
         <div class="metric"><b id="mw">—</b><small>Largeur</small></div>
         <div class="metric"><b id="mh">—</b><small>Hauteur</small></div>
       </div>
+
+      <div class="edit-actions">
+        <button id="undoEdit" disabled>↶ Annuler</button>
+        <button id="redoEdit" disabled>↷ Rétablir</button>
+        <button id="deleteEdit" class="danger">⌫ Supprimer</button>
+      </div>
+
       <div class="pad">
         <button class="up" data-move="0,-1">↑</button>
         <button class="left" data-move="-1,0">←</button>
@@ -186,13 +203,32 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
         <button class="right" data-move="1,0">→</button>
         <button class="down" data-move="0,1">↓</button>
       </div>
+
       <div class="size-grid">
         <button data-size="-1,0">Largeur −</button>
         <button data-size="1,0">Largeur +</button>
         <button data-size="0,-1">Hauteur −</button>
         <button data-size="0,1">Hauteur +</button>
+        <button data-scale="-1">Réduire cercle / bloc</button>
+        <button data-scale="1">Agrandir cercle / bloc</button>
+        <button data-font="-1">Icône / texte −</button>
+        <button data-font="1">Icône / texte +</button>
       </div>
-      <p>Clavier : <kbd>← ↑ ↓ →</kbd> = 1 px. <kbd>Ctrl</kbd> + flèche = 10 px. <kbd>Maj</kbd> + flèche = taille.</p>
+
+      <div class="z-grid">
+        <button id="sendBack">Plan −</button>
+        <input id="zIndex" type="number" value="0" aria-label="Plan z-index">
+        <button id="bringFront">Plan +</button>
+      </div>
+
+      <div class="color-grid">
+        <label class="color-control">Texte / icône<input id="colorText" type="color" value="#000000"></label>
+        <label class="color-control">Fond<input id="colorBg" type="color" value="#ffffff"></label>
+        <label class="color-control">Bordure<input id="colorBorder" type="color" value="#dddddd"></label>
+      </div>
+
+      <p>Poignées aux 4 coins : redimensionnement direct. Les cercles restent proportionnels. Les guides roses indiquent centre, milieu et alignements avec les autres objets.</p>
+      <p>Clavier PC : <kbd>← ↑ ↓ →</kbd> déplacer · <kbd>Ctrl</kbd> + flèche = 10 px · <kbd>Maj</kbd> + flèche = taille · <kbd>Suppr</kbd> masquer · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> annuler/rétablir.</p>
     </section>
 
     <section class="card">
@@ -203,6 +239,13 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
         <button class="btn" id="downloadBtn">Exporter .css</button>
       </div>
       <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Éléments créés avec ChatGPT</h2>
+      <span class="chatgpt-badge">Registre synchronisé avec le projet</span>
+      <p>Tu peux me demander dans ChatGPT : « ajoute un bouton rond ici », « ajoute un texte », « ajoute une icône », etc. Je l’ajoute au registre du projet ; après déploiement/rechargement, l’objet apparaît dans cette interface et devient modifiable comme les autres.</p>
+      <div class="status" id="customElementsStatus">Chargement du registre…</div>
     </section>
 
     <section class="card">
@@ -229,11 +272,28 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
   const selector=document.getElementById('selector');
   const cssOut=document.getElementById('cssOut');
   const status=document.getElementById('status');
+  const undoBtn=document.getElementById('undoEdit');
+  const redoBtn=document.getElementById('redoEdit');
+  const deleteBtn=document.getElementById('deleteEdit');
+  const zIndex=document.getElementById('zIndex');
+  const colorText=document.getElementById('colorText');
+  const colorBg=document.getElementById('colorBg');
+  const colorBorder=document.getElementById('colorBorder');
+  const customStatus=document.getElementById('customElementsStatus');
   const metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
+  let hasSelection=false;
 
   function post(type,payload){
     if(!frame.contentWindow)return;
     frame.contentWindow.postMessage({source:'radio-layout-host',type:type,payload:payload||{}},location.origin);
+  }
+
+  function rgbToHex(value,fallback){
+    if(!value)return fallback;
+    if(/^#[0-9a-f]{6}$/i.test(value))return value;
+    const m=String(value).match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
+    if(!m)return fallback;
+    return '#'+[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,'0')).join('');
   }
 
   function setDevice(){
@@ -248,13 +308,36 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
     stage.style.height=(31+h*z+20)+'px';
   }
 
-  function switchToMusic(){
-    post('activate-element',{id:'radioMusicOpen'});
+  function switchToMusic(){post('activate-element',{id:'radioMusicOpen'})}
+  function switchToRadio(){post('activate-element',{id:'musicRadioOpen'})}
+
+  function sendKeyboard(event){
+    const tag=(event.target&&event.target.tagName)||'';
+    if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+    const key=event.key;
+    const modifier=event.ctrlKey||event.metaKey;
+    const relevant=key.startsWith('Arrow')||key==='Delete'||key==='Backspace'||
+      (modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
+    if(!relevant)return;
+    event.preventDefault();
+    if(modifier&&key.toLowerCase()==='z'){post(event.shiftKey?'redo':'undo');return}
+    if(modifier&&key.toLowerCase()==='y'){post('redo');return}
+    if(key==='Delete'||key==='Backspace'){post('delete');return}
+    const amount=modifier?10:1;
+    if(event.shiftKey){
+      if(key==='ArrowLeft')post('resize',{dw:-amount,dh:0});
+      if(key==='ArrowRight')post('resize',{dw:amount,dh:0});
+      if(key==='ArrowUp')post('resize',{dw:0,dh:-amount});
+      if(key==='ArrowDown')post('resize',{dw:0,dh:amount});
+    }else{
+      if(key==='ArrowLeft')post('move',{dx:-amount,dy:0});
+      if(key==='ArrowRight')post('move',{dx:amount,dy:0});
+      if(key==='ArrowUp')post('move',{dx:0,dy:-amount});
+      if(key==='ArrowDown')post('move',{dx:0,dy:amount});
+    }
   }
 
-  function switchToRadio(){
-    post('activate-element',{id:'musicRadioOpen'});
-  }
+  window.addEventListener('keydown',sendKeyboard,true);
 
   window.addEventListener('message',function(event){
     if(event.origin!==location.origin)return;
@@ -266,12 +349,24 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
       post('enable');
       status.textContent='Éditeur prêt.';
     }
+    if(data.type==='history'){
+      undoBtn.disabled=!p.canUndo;
+      redoBtn.disabled=!p.canRedo;
+    }
     if(data.type==='state'){
+      hasSelection=!!p.selected;
       selector.textContent=p.selected?p.selector:'Clique un élément dans l’aperçu.';
       metrics.x.textContent=p.selected?p.x:'—';
       metrics.y.textContent=p.selected?p.y:'—';
       metrics.w.textContent=p.selected?p.width:'—';
       metrics.h.textContent=p.selected?p.height:'—';
+      deleteBtn.disabled=!p.selected;
+      if(p.selected){
+        zIndex.value=Number(p.zIndex)||0;
+        colorText.value=rgbToHex(p.color,'#000000');
+        colorBg.value=rgbToHex(p.backgroundColor,'#ffffff');
+        colorBorder.value=rgbToHex(p.borderColor,'#dddddd');
+      }
       if(typeof p.css==='string')cssOut.value=p.css;
     }
     if(data.type==='css'&&typeof p.css==='string'){
@@ -297,7 +392,15 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
       }catch(_){}
       if(tries>60){clearInterval(timer);status.textContent='Éditeur non détecté. Recharge la page.'}
     },100);
+    setTimeout(refreshCustomElementsCount,350);
   });
+
+  function refreshCustomElementsCount(){
+    try{
+      const count=frame.contentWindow.document.querySelectorAll('[data-chatgpt-element]').length;
+      customStatus.textContent=count?count+' élément'+(count>1?'s':'')+' ChatGPT chargé'+(count>1?'s':'')+'.':'Aucun élément ChatGPT ajouté pour le moment.';
+    }catch(_){customStatus.textContent='Registre disponible après chargement de l’aperçu.'}
+  }
 
   document.querySelectorAll('[data-move]').forEach(function(btn){
     btn.addEventListener('click',function(){
@@ -305,6 +408,7 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
       post('move',{dx:v[0]*s,dy:v[1]*s});
     });
   });
+
   document.querySelectorAll('[data-size]').forEach(function(btn){
     btn.addEventListener('click',function(){
       const v=btn.dataset.size.split(',').map(Number),s=Number(step.value);
@@ -312,10 +416,32 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
     });
   });
 
+  document.querySelectorAll('[data-scale]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      const s=Number(step.value)*Number(btn.dataset.scale);
+      post('resize',{dw:s,dh:s,proportional:true});
+    });
+  });
+
+  document.querySelectorAll('[data-font]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      post('font-size',{delta:Number(btn.dataset.font)*Number(step.value)});
+    });
+  });
+
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
   preset.addEventListener('change',setDevice);
   zoom.addEventListener('change',setDevice);
+  undoBtn.addEventListener('click',function(){post('undo')});
+  redoBtn.addEventListener('click',function(){post('redo')});
+  deleteBtn.addEventListener('click',function(){post('delete')});
   document.getElementById('resetBtn').addEventListener('click',function(){post('reset')});
+  document.getElementById('bringFront').addEventListener('click',function(){post('z-change',{delta:1})});
+  document.getElementById('sendBack').addEventListener('click',function(){post('z-change',{delta:-1})});
+  zIndex.addEventListener('change',function(){if(hasSelection)post('z-set',{value:Number(zIndex.value)||0})});
+  colorText.addEventListener('input',function(){if(hasSelection)post('style',{kind:'color',value:colorText.value})});
+  colorBg.addEventListener('input',function(){if(hasSelection)post('style',{kind:'background',value:colorBg.value})});
+  colorBorder.addEventListener('input',function(){if(hasSelection)post('style',{kind:'border',value:colorBorder.value})});
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
   document.getElementById('downloadBtn').addEventListener('click',function(){post('download-css')});
   document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
