@@ -111,3 +111,21 @@ body.ve-active .ve-toolbar * {
     transform: translateX(-50%);
   }
 }
+
+
+body.ve-hosted .ve-launcher,
+body.ve-hosted .ve-toolbar {
+  display: none !important;
+}
+
+body.ve-hosted.ve-active {
+  cursor: crosshair !important;
+}
+
+body.ve-hosted.ve-active .ve-selection {
+  border-color: #7c3aed;
+  background:
+    linear-gradient(90deg, transparent calc(50% - .5px), #7c3aed66 calc(50% - .5px), #7c3aed66 calc(50% + .5px), transparent calc(50% + .5px)),
+    linear-gradient(transparent calc(50% - .5px), #7c3aed66 calc(50% - .5px), #7c3aed66 calc(50% + .5px), transparent calc(50% + .5px)),
+    #b14cff10;
+}
