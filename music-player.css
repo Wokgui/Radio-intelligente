@@ -3173,3 +3173,236 @@ body.radio-mode .radio-music-open svg{
     height:30px!important;
   }
 }
+
+
+
+/* v105 — retouches après test Android */
+
+/* MA MUSIQUE : une seule tuile claire avec 3 zones nettes et parfaitement alignées. */
+body.music-mode #musicActions{
+  width:100%!important;
+  height:56px!important;
+  min-height:56px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 58px minmax(0,1fr)!important;
+  grid-template-rows:56px!important;
+  align-items:center!important;
+  gap:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #ded1e9!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#fefcff 0%,#f7f0fb 100%)!important;
+  box-shadow:0 6px 17px rgba(92,63,117,.07)!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  width:100%!important;
+  height:54px!important;
+  min-height:54px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+  padding:0 10px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicSettingsGear{
+  position:relative!important;
+  width:58px!important;
+  height:54px!important;
+  min-width:58px!important;
+  min-height:54px!important;
+  display:grid!important;
+  place-items:center!important;
+  justify-self:center!important;
+  align-self:center!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#713bd0!important;
+  font-size:1.58rem!important;
+}
+body.music-mode #musicSettingsGear::before,
+body.music-mode #musicSettingsGear::after{
+  content:''!important;
+  position:absolute!important;
+  top:10px!important;
+  bottom:10px!important;
+  width:1px!important;
+  background:#dfd1e9!important;
+}
+body.music-mode #musicSettingsGear::before{left:0!important;}
+body.music-mode #musicSettingsGear::after{right:0!important;}
+body.music-mode #musicActions .ico{
+  position:static!important;
+  flex:0 0 30px!important;
+  width:30px!important;
+  min-width:30px!important;
+  height:30px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0!important;
+  color:#8050a8!important;
+  align-self:center!important;
+}
+body.music-mode #musicActions .ico svg{
+  width:28px!important;
+  height:28px!important;
+  display:block!important;
+}
+body.music-mode #musicActions .txt{
+  width:66px!important;
+  min-width:0!important;
+  max-width:66px!important;
+  margin:0!important;
+  display:block!important;
+  font-size:.84rem!important;
+  line-height:1.02!important;
+  font-weight:850!important;
+  text-align:center!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  align-self:center!important;
+}
+/* Avec cette largeur, "Lecture aléatoire" et "Répéter la file" passent bien sur 2 lignes. */
+
+/* Icône Morceaux à la même présence visuelle que Radio et Listes. */
+body.music-mode #musicCountTile .sico{
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  font-size:1.82rem!important;
+  line-height:1!important;
+  display:grid!important;
+  place-items:center!important;
+}
+
+/* RADIO INTELLIGENTE : davantage d'air entre lecture, Oui/Non et les 4 choix. */
+body.radio-mode .track{
+  padding-top:30px!important;
+  row-gap:10px!important;
+  grid-template-rows:
+    minmax(2px,.55fr)
+    auto
+    auto
+    minmax(2px,.55fr)
+    54px
+    68px
+    96px
+    60px!important;
+}
+body.radio-mode #title{
+  transform:translateY(-4px)!important;
+}
+body.radio-mode #artist{
+  transform:translateY(-4px)!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  margin-bottom:1px!important;
+}
+body.radio-mode .primary{
+  margin:1px 0!important;
+}
+body.radio-mode .track>.alt:not(.music-alt){
+  margin:1px 0!important;
+  grid-template-rows:96px!important;
+}
+body.radio-mode .track>.alt:not(.music-alt) button{
+  height:96px!important;
+  min-height:96px!important;
+}
+
+/* Le bouton Ma musique remplit verticalement le bandeau : bord haut et bas alignés. */
+body.radio-mode .radio-music-open{
+  width:60px!important;
+  height:60px!important;
+  min-width:60px!important;
+  min-height:60px!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  border-radius:50%!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:33px!important;
+  height:33px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    height:54px!important;
+    min-height:54px!important;
+    grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr)!important;
+    grid-template-rows:54px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:52px!important;
+    min-height:52px!important;
+    gap:8px!important;
+    padding:0 8px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:56px!important;
+    min-width:56px!important;
+    height:52px!important;
+    min-height:52px!important;
+    font-size:1.50rem!important;
+  }
+  body.music-mode #musicActions .ico{
+    flex-basis:28px!important;
+    width:28px!important;
+    min-width:28px!important;
+    height:28px!important;
+  }
+  body.music-mode #musicActions .ico svg{
+    width:26px!important;
+    height:26px!important;
+  }
+  body.music-mode #musicActions .txt{
+    width:62px!important;
+    max-width:62px!important;
+    font-size:.80rem!important;
+  }
+  body.music-mode #musicCountTile .sico{
+    font-size:1.72rem!important;
+  }
+
+  body.radio-mode .track{
+    padding-top:28px!important;
+    row-gap:9px!important;
+    grid-template-rows:
+      minmax(2px,.5fr)
+      auto
+      auto
+      minmax(2px,.5fr)
+      52px
+      66px
+      92px
+      58px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    grid-template-rows:92px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt) button{
+    height:92px!important;
+    min-height:92px!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:58px!important;
+    height:58px!important;
+    min-width:58px!important;
+    min-height:58px!important;
+  }
+  body.radio-mode .radio-music-open svg{
+    width:32px!important;
+    height:32px!important;
+  }
+}
