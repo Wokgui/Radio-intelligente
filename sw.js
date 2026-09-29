@@ -20,7 +20,7 @@ const APP_SHELL = [
   '/visual-elements.js?v=1',
   '/visual-elements.json',
   '/visual-editor.css?v=2',
-  '/visual-editor.js?v=2'
+  '/visual-editor.js?v=3'
 ];
 
 self.addEventListener('install', event => {
