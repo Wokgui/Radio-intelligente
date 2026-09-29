@@ -112,7 +112,7 @@
       return existing;
     }
     const original = {};
-    ['translate', 'width', 'height', 'font-size', 'display'].forEach(function (prop) {
+    ['translate', 'width', 'height', 'font-size', 'display', 'color', 'background-color', 'border-color', 'z-index'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -137,6 +137,14 @@
       resized: false,
       fontSize: parseFloat(getComputedStyle(element).fontSize) || 16,
       fontAdjusted: false,
+      color: getComputedStyle(element).color || '#000000',
+      backgroundColor: getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
+      borderColor: getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
+      colorAdjusted: false,
+      backgroundAdjusted: false,
+      borderAdjusted: false,
+      zIndex: parseInt(getComputedStyle(element).zIndex,10) || 0,
+      zAdjusted: false,
       deleted: false
     };
     touched.set(element, state);
@@ -184,6 +192,20 @@
 
     if (state.fontAdjusted) setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
     else restoreOriginalProp(state.selector, 'font-size');
+
+    if (state.colorAdjusted) setInline(element, 'color', state.color);
+    else restoreOriginalProp(state.selector, 'color');
+    if (state.backgroundAdjusted) setInline(element, 'background-color', state.backgroundColor);
+    else restoreOriginalProp(state.selector, 'background-color');
+    if (state.borderAdjusted) setInline(element, 'border-color', state.borderColor);
+    else restoreOriginalProp(state.selector, 'border-color');
+    if (state.zAdjusted) {
+      setInline(element, 'z-index', String(state.zIndex));
+      const position = getComputedStyle(element).position;
+      if (position === 'static') element.style.setProperty('position', 'relative', 'important');
+    } else {
+      restoreOriginalProp(state.selector, 'z-index');
+    }
 
     if (update !== false) updateOverlay();
   }
@@ -314,6 +336,14 @@
         resized: state.resized,
         fontSize: state.fontSize,
         fontAdjusted: state.fontAdjusted,
+        color: state.color,
+        backgroundColor: state.backgroundColor,
+        borderColor: state.borderColor,
+        colorAdjusted: state.colorAdjusted,
+        backgroundAdjusted: state.backgroundAdjusted,
+        borderAdjusted: state.borderAdjusted,
+        zIndex: state.zIndex,
+        zAdjusted: state.zAdjusted,
         deleted: state.deleted
       });
     });
@@ -367,6 +397,14 @@
         resized: !!saved.resized,
         fontSize: saved.fontSize || parseFloat(getComputedStyle(element).fontSize) || 16,
         fontAdjusted: !!saved.fontAdjusted,
+        color: saved.color || getComputedStyle(element).color || '#000000',
+        backgroundColor: saved.backgroundColor || getComputedStyle(element).backgroundColor || 'rgba(0,0,0,0)',
+        borderColor: saved.borderColor || getComputedStyle(element).borderColor || 'rgba(0,0,0,0)',
+        colorAdjusted: !!saved.colorAdjusted,
+        backgroundAdjusted: !!saved.backgroundAdjusted,
+        borderAdjusted: !!saved.borderAdjusted,
+        zIndex: Number(saved.zIndex) || 0,
+        zAdjusted: !!saved.zAdjusted,
         deleted: !!saved.deleted
       };
       touched.set(element, state);
@@ -418,6 +456,13 @@
           declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
         }
         if (state.fontAdjusted) declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
+        if (state.colorAdjusted) declarations.push('  color: ' + state.color + ' !important;');
+        if (state.backgroundAdjusted) declarations.push('  background-color: ' + state.backgroundColor + ' !important;');
+        if (state.borderAdjusted) declarations.push('  border-color: ' + state.borderColor + ' !important;');
+        if (state.zAdjusted) {
+          declarations.push('  position: relative !important;');
+          declarations.push('  z-index: ' + state.zIndex + ' !important;');
+        }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
     });
@@ -440,6 +485,10 @@
       width: Math.round(rect.width),
       height: Math.round(rect.height),
       fontSize: Math.round(state.fontSize * 10) / 10,
+      color: state.color,
+      backgroundColor: state.backgroundColor,
+      borderColor: state.borderColor,
+      zIndex: state.zIndex,
       dx: state.dx,
       dy: state.dy,
       css: cssText(),
@@ -529,6 +578,43 @@
     state.fontSize = Math.max(4, Math.round((state.fontSize + delta) * 10) / 10);
     applyState(selected, state);
     if (commit !== false) commitHistory();
+  }
+
+  function setVisualStyle(kind, value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (kind === 'color') {
+      state.color = String(value || '');
+      state.colorAdjusted = true;
+    }
+    if (kind === 'background') {
+      state.backgroundColor = String(value || '');
+      state.backgroundAdjusted = true;
+    }
+    if (kind === 'border') {
+      state.borderColor = String(value || '');
+      state.borderAdjusted = true;
+    }
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function adjustZ(delta) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    state.zAdjusted = true;
+    state.zIndex = (Number(state.zIndex) || 0) + delta;
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function setZ(value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    state.zAdjusted = true;
+    state.zIndex = Number(value) || 0;
+    applyState(selected, state);
+    commitHistory();
   }
 
   function deleteSelected() {
@@ -743,6 +829,9 @@
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, true, !!payload.proportional);
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
+    if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
+    if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
+    if (data.type === 'z-set') setZ(payload.value);
     if (data.type === 'grid') {
       grid = Math.max(1, Number(payload.grid) || 1);
       updateOverlay();
@@ -785,6 +874,9 @@
     move: adjustMove,
     resize: adjustSize,
     fontSize: adjustFont,
+    setVisualStyle: setVisualStyle,
+    adjustZ: adjustZ,
+    setZ: setZ,
     state: currentPayload
   };
 
