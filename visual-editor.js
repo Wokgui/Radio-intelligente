@@ -872,7 +872,7 @@
 
   function exportProject() {
     return {
-      format: 'radio-layout-project',
+      format: 'app-layout-project',
       version: 1,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -882,7 +882,7 @@
   }
 
   function importProject(project) {
-    if (!project || project.format !== 'radio-layout-project') return false;
+    if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
