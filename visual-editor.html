@@ -44,7 +44,9 @@ header{
 .brand-logo svg{display:block;width:100%;height:100%}
 .brand strong{display:block;font-size:1.05rem;letter-spacing:-.015em}
 .brand small{display:block;color:var(--muted);font-size:.69rem;margin-top:3px;font-weight:650}
-.mode-switch{display:flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--soft)}
+.mode-switch{display:flex;gap:5px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--soft)}
+.mode-switch .btn{min-height:34px;padding:0 10px;border-radius:9px;font-size:.7rem}
+.mode-switch .btn.active{background:linear-gradient(135deg,#efe8ff,#f7ecff);border-color:#bca7df;color:#6530b5;box-shadow:inset 0 0 0 1px #fff}
 .top-actions{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .btn{
   min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:11px;
@@ -94,7 +96,32 @@ main{
 .safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
 .safe-outline.visible{display:block}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
+.android-status,.android-nav{display:none;position:absolute;left:0;right:0;z-index:6;pointer-events:none;color:#fff}
+.device{--android-status:28px;--android-nav:24px;--android-status-color:#6f42c1;--android-nav-color:#000}
+.android-status{top:0;height:var(--android-status);background:var(--android-status-color);align-items:center;justify-content:space-between;padding:0 8px;font-size:9px;font-weight:800}
+.android-status .icons{display:flex;gap:5px;font-size:8px}
+.android-nav{bottom:0;height:var(--android-nav);background:var(--android-nav-color);align-items:center;justify-content:center}
+.android-nav::after{content:"";width:92px;height:4px;border-radius:999px;background:#fff;opacity:.92}
+.device.android-exact .android-status,.device.android-exact .android-nav{display:flex}
+.device.android-exact iframe{position:absolute;left:0;right:0;top:var(--android-status);height:calc(100% - var(--android-status) - var(--android-nav))}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
+
+.preview-exit{display:none;position:fixed;z-index:2000;right:16px;top:16px;padding:8px 11px;border:1px solid #ffffff55;border-radius:999px;background:#21182fd9;color:#fff;font-size:.72rem;font-weight:800;box-shadow:0 8px 24px #0004}
+body.preview-mode,body.android-mode{background:#111;overflow:hidden}
+body.preview-mode header,body.android-mode header,
+body.preview-mode .side,body.android-mode .side{display:none!important}
+body.preview-mode main,body.android-mode main{display:block;height:100vh;padding:0;overflow:hidden}
+body.preview-mode .workspace,body.android-mode .workspace{
+  width:100vw;height:100vh;min-height:0;padding:0;border:0;border-radius:0;box-shadow:none;background:#111;
+  display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+body.preview-mode .stage,body.android-mode .stage{padding:0}
+body.preview-mode .ruler-x,body.preview-mode .ruler-y,body.preview-mode .ruler-corner,
+body.android-mode .ruler-x,body.android-mode .ruler-y,body.android-mode .ruler-corner{display:none}
+body.preview-mode .device,body.android-mode .device{border:0;border-radius:0;box-shadow:none}
+body.preview-mode .safe-outline,body.android-mode .safe-outline{display:none!important}
+body.preview-mode .device:before,body.android-mode .device:before{display:none!important}
+body.preview-mode .preview-exit,body.android-mode .preview-exit{display:block}
 .side{
   height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;
   display:flex;flex-direction:column;gap:0;padding:6px;
@@ -202,6 +229,17 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
 .source-choice:hover{transform:translateY(-2px);border-color:#baa4d6;background:#fff;box-shadow:0 12px 26px rgba(55,36,88,.1)}
 .source-choice b{display:block;margin-bottom:6px;color:#6030ad;font-size:.8rem}
 .source-choice span{display:block;font-size:.67rem;color:var(--muted);line-height:1.35}
+.device-kind-wrap{margin-bottom:16px;padding:12px;border:1px solid var(--line);border-radius:15px;background:#faf8fc}
+.device-kind-title{font-size:.72rem;color:#5c4a6f;font-weight:850;margin-bottom:8px}
+.device-kind-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.device-kind{
+  min-height:70px;padding:8px;border:1px solid var(--line);border-radius:11px;background:#fff;color:#5c4a6f;
+  display:grid;place-items:center;text-align:center;gap:3px;font-size:.67rem;font-weight:800
+}
+.device-kind b{font-size:1.1rem;line-height:1}
+.device-kind.active{border-color:#a98dd8;background:#f1eaff;color:#6530b5;box-shadow:inset 0 0 0 1px #fff}
+.custom-device-fields{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.custom-device-fields.visible{display:grid}
 .native-note{margin-top:12px;padding:10px;border-radius:10px;background:#f5f2f8;color:#6f6478;font-size:.69rem;line-height:1.4}
 #textCard.disabled{opacity:.54}
 #textCard.disabled .text-controls{pointer-events:none}
@@ -255,10 +293,17 @@ body.desktop .desktop-badge{display:inline-flex}
     <button class="btn primary desktop-only" id="changeSourceBtn">Ouvrir une application</button>
   </div>
 
+  <div class="mode-switch" id="modeSwitch">
+    <button class="btn active" data-preview-mode="edit">Édition</button>
+    <button class="btn" data-preview-mode="preview">Aperçu plein écran</button>
+    <button class="btn" data-preview-mode="android">Android exact</button>
+  </div>
+
   <div class="top-actions">
     <button class="btn desktop-only" id="openProjectBtn">Ouvrir</button>
     <button class="btn desktop-only" id="saveProjectBtn">Enregistrer</button>
     <button class="btn primary desktop-only" id="exportChatGPTBtn">Exporter pour ChatGPT</button>
+    <button class="btn desktop-only" id="openAsAppBtn">Ouvrir comme appli</button>
     <button class="btn" id="settingsBtn">⚙ Paramètres</button>
     <button class="btn" id="reloadBtn">Recharger</button>
   </div>
@@ -280,6 +325,20 @@ body.desktop .desktop-badge{display:inline-flex}
         <span>Choisis la source à modifier visuellement.</span>
       </div>
       <button class="source-close" id="sourceCloseBtn" type="button">×</button>
+    </div>
+    <div class="device-kind-wrap">
+      <div class="device-kind-title">1. Choisis d’abord le type d’écran à reproduire</div>
+      <div class="device-kind-grid" id="deviceKindGrid">
+        <button class="device-kind active" type="button" data-device-kind="smartphone"><b>▯</b><span>Smartphone</span></button>
+        <button class="device-kind" type="button" data-device-kind="tablet"><b>▭</b><span>Tablette</span></button>
+        <button class="device-kind" type="button" data-device-kind="tv"><b>▰</b><span>Télé / TV</span></button>
+        <button class="device-kind" type="button" data-device-kind="desktop"><b>▱</b><span>Bureau</span></button>
+        <button class="device-kind" type="button" data-device-kind="custom"><b>⌗</b><span>Autre</span></button>
+      </div>
+      <div class="custom-device-fields" id="customDeviceFields">
+        <label class="field"><span>Largeur logique</span><input id="customDeviceWidth" type="number" min="240" value="412"></label>
+        <label class="field"><span>Hauteur logique</span><input id="customDeviceHeight" type="number" min="240" value="915"></label>
+      </div>
     </div>
     <label class="source-url">
       <span>URL d’une application web / PWA</span>
@@ -336,6 +395,8 @@ body.desktop .desktop-badge{display:inline-flex}
   </div>
 </div>
 
+<div class="preview-exit" id="previewExit">Échap · retour à l’édition</div>
+
 <main>
   <section class="workspace">
     <div class="stage" id="stage">
@@ -343,7 +404,9 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="ruler-x" id="rulerX"></div>
       <div class="ruler-y" id="rulerY"></div>
       <div class="device" id="device">
+        <div class="android-status" id="androidStatus"><span id="androidClock">12:00</span><span class="icons">● ◒ ▰</span></div>
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
+        <div class="android-nav" id="androidNav"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
       </div>
     </div>
@@ -359,9 +422,14 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="390x844">390 × 844</option>
           <option value="360x800">Téléphone compact · 360 × 800</option>
           <option value="768x1024">Tablette · 768 × 1024</option>
+          <option value="1280x720">Télé / TV HD · 1280 × 720</option>
+          <option value="1920x1080">Télé / TV Full HD · 1920 × 1080</option>
           <option value="1024x768">Bureau compact · 1024 × 768</option>
           <option value="1366x768">Bureau · 1366 × 768</option>
+          <option value="1440x900">Bureau large · 1440 × 900</option>
+          <option value="custom">Autre / personnalisé</option>
         </select></div>
+        <div class="field" id="customScreenSize" style="display:none"><label>Dimensions personnalisées</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px"><input id="screenCustomW" type="number" min="240" value="412"><input id="screenCustomH" type="number" min="240" value="915"></div></div>
         <div class="field"><label>Zoom PC</label><select id="zoom">
           <option value="1">100 %</option><option value=".9">90 %</option><option value=".8">80 %</option><option value=".7">70 %</option>
         </select></div>
@@ -606,12 +674,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var uiAnimations=document.getElementById('uiAnimations');
   var defaultResponsivePref=document.getElementById('defaultResponsivePref');
   var rememberPanels=document.getElementById('rememberPanels');
+  var deviceKindGrid=document.getElementById('deviceKindGrid');
+  var customDeviceFields=document.getElementById('customDeviceFields');
+  var customDeviceWidth=document.getElementById('customDeviceWidth');
+  var customDeviceHeight=document.getElementById('customDeviceHeight');
+  var customScreenSize=document.getElementById('customScreenSize');
+  var screenCustomW=document.getElementById('screenCustomW');
+  var screenCustomH=document.getElementById('screenCustomH');
+  var previewExit=document.getElementById('previewExit');
 
   var hasSelection=false;
   var lastState=null;
   var projectResolver=null;
   var currentSource=null;
   var readyWaiters=[];
+  var currentPreviewMode='edit';
+  var selectedDeviceKind='smartphone';
 
   function post(type,payload){
     if(!frame.contentWindow)return;
@@ -686,6 +764,116 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+
+  function currentDeviceSize(){
+    if(preset.value==='custom'){
+      return {
+        width:Math.max(240,Number(screenCustomW.value)||Number(customDeviceWidth.value)||412),
+        height:Math.max(240,Number(screenCustomH.value)||Number(customDeviceHeight.value)||915)
+      };
+    }
+    var bits=String(preset.value||'412x915').split('x');
+    return {width:Number(bits[0])||412,height:Number(bits[1])||915};
+  }
+
+  function isRadioSource(){
+    var text=String((currentSource&&currentSource.label)||'')+' '+String((currentSource&&currentSource.url)||'');
+    return /radio-intelligente|radio intelligente/i.test(text);
+  }
+
+  function androidInsets(){
+    var size=currentDeviceSize();
+    if(selectedDeviceKind==='tv')return {top:0,right:0,bottom:0,left:0};
+    if(selectedDeviceKind==='tablet'||size.width>=700)return {top:24,right:0,bottom:24,left:0};
+    return {top:28,right:0,bottom:24,left:0};
+  }
+
+  function previewProfile(){
+    var s=currentPreviewMode==='android'?androidInsets():safeAreaValues();
+    return {
+      topInset:s.top||0,rightInset:s.right||0,bottomInset:s.bottom||0,leftInset:s.left||0,
+      statusBarColor:isRadioSource()?'#6f42c1':'#111111',
+      navigationBarColor:'#000000',
+      backgroundColor:'#ffffff'
+    };
+  }
+
+  function applyDeviceKind(kind){
+    selectedDeviceKind=kind||'smartphone';
+    document.querySelectorAll('[data-device-kind]').forEach(function(btn){
+      btn.classList.toggle('active',btn.dataset.deviceKind===selectedDeviceKind);
+    });
+    customDeviceFields.classList.toggle('visible',selectedDeviceKind==='custom');
+
+    if(selectedDeviceKind==='smartphone')preset.value='412x915';
+    if(selectedDeviceKind==='tablet')preset.value='768x1024';
+    if(selectedDeviceKind==='tv')preset.value='1920x1080';
+    if(selectedDeviceKind==='desktop')preset.value='1366x768';
+    if(selectedDeviceKind==='custom'){
+      preset.value='custom';
+      screenCustomW.value=customDeviceWidth.value||412;
+      screenCustomH.value=customDeviceHeight.value||915;
+    }
+    safeProfile.value=(selectedDeviceKind==='smartphone')?'auto':'none';
+    setDevice();
+  }
+
+  function inferDeviceKind(){
+    if(preset.value==='custom')return 'custom';
+    var size=currentDeviceSize();
+    if(size.width>=1200&&size.height<=1080)return preset.value==='1366x768'||preset.value==='1440x900'?'desktop':'tv';
+    if(size.width>=700)return 'tablet';
+    return 'smartphone';
+  }
+
+  async function setPreviewMode(mode){
+    mode=(mode==='preview'||mode==='android')?mode:'edit';
+    currentPreviewMode=mode;
+    document.body.classList.toggle('preview-mode',mode==='preview');
+    document.body.classList.toggle('android-mode',mode==='android');
+    device.classList.toggle('android-exact',mode==='android');
+    document.querySelectorAll('[data-preview-mode]').forEach(function(btn){
+      btn.classList.toggle('active',btn.dataset.previewMode===mode);
+    });
+
+    if(mode==='android'){
+      var a=androidInsets();
+      device.style.setProperty('--android-status',a.top+'px');
+      device.style.setProperty('--android-nav',a.bottom+'px');
+      device.style.setProperty('--android-status-color',isRadioSource()?'#6f42c1':'#111111');
+      device.style.setProperty('--android-nav-color','#000000');
+    }
+
+    if(mode==='edit')post('enable');
+    else post('disable');
+
+    if(desktop&&desktop.setPreviewMode){
+      await desktop.setPreviewMode({
+        mode:mode,
+        source:currentSource,
+        profile:previewProfile()
+      });
+    }
+    setDevice();
+  }
+
+  async function openAsApp(){
+    if(!desktop||!desktop.openAsApp||!currentSource){
+      setStatus('Ouvre d’abord une application.',true);return;
+    }
+    var size=currentDeviceSize();
+    var useAndroid=selectedDeviceKind==='smartphone'||selectedDeviceKind==='tablet';
+    var result=await desktop.openAsApp({
+      source:currentSource,
+      width:size.width,
+      height:size.height,
+      androidExact:useAndroid,
+      profile:useAndroid?Object.assign({},previewProfile(),androidInsets()):previewProfile()
+    });
+    if(result&&result.ok)setStatus('Fenêtre application ouverte en '+result.width+' × '+result.height+(result.androidExact?' · Android exact':'')+'.');
+    else if(result&&result.error)setStatus(result.error,true);
+  }
+
   function rgbToHex(value,fallback){
     if(!value)return fallback;
     if(/^#[0-9a-f]{6}$/i.test(value))return value;
@@ -695,15 +883,20 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   function resolvedSafeProfile(){
+    if(currentPreviewMode==='android')return 'android-hole';
     if(safeProfile.value!=='auto')return safeProfile.value;
-    var bits=preset.value.split('x');
-    var w=Number(bits[0]);
-    if(w>=700)return 'none';
+    var size=currentDeviceSize();
+    if(size.width>=700)return 'none';
     if(preset.value==='390x844')return 'iphone-island';
     return 'android-hole';
   }
 
   function safeAreaValues(){
+    if(currentPreviewMode==='android'){
+      /* Le WebView natif est déjà dimensionné entre les barres système :
+         ne pas appliquer une deuxième fois ces insets à son contenu. */
+      return {profile:'android-exact',top:0,right:0,bottom:0,left:0,notch:'none'};
+    }
     var profile=resolvedSafeProfile();
     if(profile==='android-hole')return {profile:profile,top:28,right:0,bottom:24,left:0,notch:'hole'};
     if(profile==='iphone-island')return {profile:profile,top:59,right:0,bottom:34,left:0,notch:'island'};
@@ -720,19 +913,38 @@ body.desktop .desktop-badge{display:inline-flex}
     safeOutline.style.bottom=s.bottom+'px';
     safeOutline.style.left=s.left+'px';
     post('safe-area',s);
+    if(desktop&&desktop.setPreviewMode&&currentPreviewMode!=='edit'){
+      desktop.setPreviewMode({mode:currentPreviewMode,source:currentSource,profile:previewProfile()});
+    }
   }
 
   function setDevice(){
-    var bits=preset.value.split('x');
-    var w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
+    var size=currentDeviceSize();
+    var w=size.width,h=size.height;
+    customScreenSize.style.display=preset.value==='custom'?'grid':'none';
+    var z=Number(zoom.value);
+    if(currentPreviewMode!=='edit'){
+      z=Math.min(window.innerWidth/w,window.innerHeight/h);
+      if(!Number.isFinite(z)||z<=0)z=1;
+    }
     device.style.width=w+'px';
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
     device.classList.toggle('wide',w>=700);
     rulerX.style.width=w+'px';
     rulerY.style.height=h+'px';
-    stage.style.width=(31+w*z+20)+'px';
-    stage.style.height=(31+h*z+20)+'px';
+    if(currentPreviewMode==='edit'){
+      stage.style.width=(31+w*z+20)+'px';
+      stage.style.height=(31+h*z+20)+'px';
+    }else{
+      stage.style.width=(w*z)+'px';
+      stage.style.height=(h*z)+'px';
+    }
+    if(currentPreviewMode==='android'){
+      var a=androidInsets();
+      device.style.setProperty('--android-status',a.top+'px');
+      device.style.setProperty('--android-nav',a.bottom+'px');
+    }
     applySafeArea();
   }
 
@@ -874,7 +1086,8 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:'2.3.0'};
+    project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
+    project.studio={name:'App Interface Studio',version:'2.4.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -894,6 +1107,15 @@ body.desktop .desktop-badge{display:inline-flex}
         if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
         await loadSource(restored.source);
       }
+      if(project.preview){
+        selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
+        if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
+        if(project.preview.size&&preset.value==='custom'){
+          screenCustomW.value=project.preview.size.width||412;screenCustomH.value=project.preview.size.height||915;
+        }
+        if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
+        setDevice();
+      }
       if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
         var profile=String(project.viewport.safeArea.profile);
         if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
@@ -910,7 +1132,8 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:'2.3.0'};
+    project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
+    project.studio={name:'App Interface Studio',version:'2.4.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -970,7 +1193,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('grid',{grid:Number(grid.value)});
       post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
       applySafeArea();
-      post('enable');
+      post(currentPreviewMode==='edit'?'enable':'disable');
       post('get-css');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
@@ -1004,9 +1227,18 @@ body.desktop .desktop-badge{display:inline-flex}
     setStatus('Application chargée. Initialisation de l’éditeur…');
   });
 
-  preset.addEventListener('change',setDevice);
+  preset.addEventListener('change',function(){
+    selectedDeviceKind=inferDeviceKind();
+    document.querySelectorAll('[data-device-kind]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.deviceKind===selectedDeviceKind)});
+    customDeviceFields.classList.toggle('visible',selectedDeviceKind==='custom');
+    setDevice();
+  });
   zoom.addEventListener('change',setDevice);
   safeProfile.addEventListener('change',applySafeArea);
+  screenCustomW.addEventListener('input',function(){customDeviceWidth.value=screenCustomW.value;setDevice()});
+  screenCustomH.addEventListener('input',function(){customDeviceHeight.value=screenCustomH.value;setDevice()});
+  customDeviceWidth.addEventListener('input',function(){screenCustomW.value=customDeviceWidth.value;if(selectedDeviceKind==='custom')setDevice()});
+  customDeviceHeight.addEventListener('input',function(){screenCustomH.value=customDeviceHeight.value;if(selectedDeviceKind==='custom')setDevice()});
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
 
   document.getElementById('reloadBtn').addEventListener('click',function(){
@@ -1120,6 +1352,7 @@ body.desktop .desktop-badge{display:inline-flex}
   async function loadSource(source){
     if(!source||!source.url)return false;
     currentSource=source;
+    await setPreviewMode('edit');
     document.getElementById('sourceName').textContent=source.label||source.url||'Application';
     document.getElementById('sourceModal').hidden=true;
     selector.textContent='Chargement de l’application…';
@@ -1162,6 +1395,33 @@ body.desktop .desktop-badge{display:inline-flex}
     if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
   }
 
+  document.querySelectorAll('[data-device-kind]').forEach(function(btn){
+    btn.addEventListener('click',function(){applyDeviceKind(btn.dataset.deviceKind)});
+  });
+
+  document.querySelectorAll('[data-preview-mode]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      if(!currentSource){setStatus('Ouvre d’abord une application.',true);return}
+      setPreviewMode(btn.dataset.previewMode);
+    });
+  });
+
+  document.getElementById('openAsAppBtn').addEventListener('click',openAsApp);
+  previewExit.addEventListener('click',function(){setPreviewMode('edit')});
+  window.addEventListener('keydown',function(event){
+    if(event.key==='Escape'&&currentPreviewMode!=='edit'){
+      event.preventDefault();event.stopImmediatePropagation();setPreviewMode('edit');
+    }
+  },true);
+  window.addEventListener('resize',function(){if(currentPreviewMode!=='edit')setDevice()});
+
+  function refreshAndroidClock(){
+    var d=new Date();
+    var el=document.getElementById('androidClock');
+    if(el)el.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  refreshAndroidClock();setInterval(refreshAndroidClock,30000);
+
   loadPrefs();
   applyPrefs();
   initializeCards();
@@ -1201,6 +1461,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('openFolderBtn').addEventListener('click',chooseFolder);
   document.getElementById('openHtmlBtn').addEventListener('click',chooseHtml);
   document.getElementById('openDemoBtn').addEventListener('click',chooseDemo);
+
+  applyDeviceKind('smartphone');
 
   if(desktop&&desktop.isDesktop){
     sourceModal.hidden=false;
