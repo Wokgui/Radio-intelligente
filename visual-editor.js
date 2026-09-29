@@ -661,6 +661,147 @@
     if (commit !== false) commitHistory();
   }
 
+  function setExactSize(width, height, keepRatio) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    let w = Math.max(1, Number(width) || rect.width);
+    let h = Math.max(1, Number(height) || rect.height);
+    if (keepRatio) {
+      const ratio = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
+      if (Number(width) && !Number(height)) h = w / ratio;
+      else if (Number(height) && !Number(width)) w = h * ratio;
+    }
+    state.resized = true;
+    state.width = snapGrid(w);
+    state.height = snapGrid(h);
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function setExactPosition(x, y) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    if (Number.isFinite(Number(x))) state.dx = snapGrid(state.dx + Number(x) - rect.left);
+    if (Number.isFinite(Number(y))) state.dy = snapGrid(state.dy + Number(y) - rect.top);
+    applyState(selected, state);
+    updateOverlay();
+    commitHistory();
+  }
+
+  function alignSelected(mode) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (state.locked) return;
+    const rect = selected.getBoundingClientRect();
+    const parent = selected.parentElement;
+    const parentRect = parent ? parent.getBoundingClientRect() : {left:0,top:0,width:innerWidth,height:innerHeight};
+    let dx = 0, dy = 0;
+    if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
+    if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
+    if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+    if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    if (mode === 'parent-both') {
+      dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+      dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    }
+    state.dx = snapGrid(state.dx + dx);
+    state.dy = snapGrid(state.dy + dy);
+    applyState(selected, state, false);
+    hideGuides();
+    if (mode === 'screen-x') showVerticalGuide(innerWidth / 2, 'Centre écran');
+    if (mode === 'screen-y') showHorizontalGuide(innerHeight / 2, 'Milieu écran');
+    if (mode === 'parent-x' || mode === 'parent-both') showVerticalGuide(parentRect.left + parentRect.width / 2, 'Centre du parent');
+    if (mode === 'parent-y' || mode === 'parent-both') showHorizontalGuide(parentRect.top + parentRect.height / 2, 'Milieu du parent');
+    updateOverlay();
+    commitHistory();
+  }
+
+  function setTextProperty(kind, value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state.textEditable) return;
+    state.fontAdjusted = true;
+    if (kind === 'family') state.fontFamily = String(value || 'system-ui');
+    if (kind === 'size') state.fontSize = Math.max(4, Number(value) || state.fontSize);
+    if (kind === 'weight') state.fontWeight = String(value || '400');
+    if (kind === 'style') state.fontStyle = String(value || 'normal');
+    if (kind === 'decoration') state.textDecoration = String(value || 'none');
+    if (kind === 'align') state.textAlign = String(value || 'left');
+    if (kind === 'letter-spacing') state.letterSpacing = String(value || 'normal');
+    if (kind === 'line-height') state.lineHeight = String(value || 'normal');
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function setTextContent(value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state.textEditable) return;
+    state.textContent = String(value == null ? '' : value);
+    state.textAdjusted = true;
+    applyState(selected, state);
+    commitHistory();
+  }
+
+  function toggleLock(value) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    state.locked = value === undefined ? !state.locked : !!value;
+    updateOverlay();
+    commitHistory();
+  }
+
+  function measureSpacing() {
+    if (!active || !selected) return;
+    const rect = selected.getBoundingClientRect();
+    const parent = selected.parentElement;
+    const parentRect = parent ? parent.getBoundingClientRect() : {left:0,right:innerWidth,top:0,bottom:innerHeight};
+    const peers = parent ? Array.from(parent.children).filter(function(el){
+      if (el === selected || !el.getBoundingClientRect || isEditorNode(el)) return false;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+    }) : [];
+    let left = null, right = null, top = null, bottom = null;
+    peers.forEach(function(el){
+      const r = el.getBoundingClientRect();
+      const verticalOverlap = Math.min(rect.bottom,r.bottom) - Math.max(rect.top,r.top) > 0;
+      const horizontalOverlap = Math.min(rect.right,r.right) - Math.max(rect.left,r.left) > 0;
+      if (verticalOverlap && r.right <= rect.left) {
+        const gap = rect.left - r.right;
+        if (!left || gap < left.gap) left = {gap:gap, selector:selectorFor(el)};
+      }
+      if (verticalOverlap && r.left >= rect.right) {
+        const gap = r.left - rect.right;
+        if (!right || gap < right.gap) right = {gap:gap, selector:selectorFor(el)};
+      }
+      if (horizontalOverlap && r.bottom <= rect.top) {
+        const gap = rect.top - r.bottom;
+        if (!top || gap < top.gap) top = {gap:gap, selector:selectorFor(el)};
+      }
+      if (horizontalOverlap && r.top >= rect.bottom) {
+        const gap = r.top - rect.bottom;
+        if (!bottom || gap < bottom.gap) bottom = {gap:gap, selector:selectorFor(el)};
+      }
+    });
+    emit('spacing', {
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
+      parent: {
+        left: Math.round(rect.left - parentRect.left),
+        right: Math.round(parentRect.right - rect.right),
+        top: Math.round(rect.top - parentRect.top),
+        bottom: Math.round(parentRect.bottom - rect.bottom)
+      }
+    });
+  }
+
   function setVisualStyle(kind, value) {
     if (!active || !selected) return;
     const state = remember(selected);
@@ -910,6 +1051,13 @@
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, true, !!payload.proportional);
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
+    if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
+    if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
+    if (data.type === 'align') alignSelected(String(payload.mode || ''));
+    if (data.type === 'text-style') setTextProperty(String(payload.kind || ''), payload.value);
+    if (data.type === 'text-content') setTextContent(payload.value);
+    if (data.type === 'lock') toggleLock(payload.value);
+    if (data.type === 'measure-spacing') measureSpacing();
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -955,6 +1103,13 @@
     move: adjustMove,
     resize: adjustSize,
     fontSize: adjustFont,
+    setExactSize: setExactSize,
+    setExactPosition: setExactPosition,
+    align: alignSelected,
+    setTextProperty: setTextProperty,
+    setTextContent: setTextContent,
+    toggleLock: toggleLock,
+    measureSpacing: measureSpacing,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,
