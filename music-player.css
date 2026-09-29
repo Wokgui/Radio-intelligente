@@ -4529,3 +4529,84 @@ body.radio-mode .radio-music-open svg{
     max-height:50px!important;
   }
 }
+
+
+/* v110 — finitions lecteur normal */
+
+/* Roue exactement centrée, sans barres latérales. */
+body.music-mode #musicActions{
+  position:relative!important;
+}
+body.music-mode #musicSettingsGear{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  max-width:58px!important;
+  max-height:58px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:50%!important;
+  z-index:3!important;
+}
+body.music-mode #musicSettingsGear::before,
+body.music-mode #musicSettingsGear::after{
+  display:none!important;
+  content:none!important;
+}
+body.music-mode #musicSettingsGear>svg{
+  width:38px!important;
+  height:38px!important;
+  transform:none!important;
+  margin:0!important;
+}
+
+/* Les zones gauche/droite gardent une vraie séparation sans traits autour de la roue. */
+body.music-mode #musicShuffle{
+  padding-right:42px!important;
+}
+body.music-mode #musicRepeat{
+  padding-left:42px!important;
+}
+body.music-mode #musicShuffle::after,
+body.music-mode #musicRepeat::before{
+  display:none!important;
+}
+
+/* Bandeau inférieur remonté au-dessus de la barre Android. */
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:minmax(112px,1fr) 64px 14px 172px 36px minmax(8px,.18fr) 58px 20px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:34px minmax(100px,1fr) 64px 14px 172px 36px minmax(8px,.18fr) 58px 20px!important;
+}
+body.music-mode:not(.music-has-playlist) #musicQuick{grid-row:7!important}
+body.music-mode.music-has-playlist #musicQuick{grid-row:8!important}
+
+@media(max-width:420px){
+  body.music-mode #musicSettingsGear{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    max-width:56px!important;
+    max-height:56px!important;
+  }
+  body.music-mode #musicSettingsGear>svg{
+    width:36px!important;
+    height:36px!important;
+  }
+  body.music-mode #musicShuffle{padding-right:39px!important}
+  body.music-mode #musicRepeat{padding-left:39px!important}
+
+  body.music-mode:not(.music-has-playlist) .track{
+    grid-template-rows:minmax(104px,1fr) 62px 12px 166px 34px minmax(6px,.15fr) 56px 18px!important;
+  }
+  body.music-mode.music-has-playlist .track{
+    grid-template-rows:32px minmax(94px,1fr) 62px 12px 166px 34px minmax(6px,.15fr) 56px 18px!important;
+  }
+}
