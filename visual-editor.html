@@ -1365,6 +1365,16 @@ body.desktop .desktop-badge{display:inline-flex}
 
     updateResponsiveControls(p);
     updateLayoutControls(p.parentLayout);
+    if(p.tokens)syncTokenInputs(p.tokens);
+    if(p.animation){
+      document.getElementById('animationProperty').value=p.animation.property||'all';
+      document.getElementById('animationDuration').value=Number(p.animation.duration)||0;
+      var easingOptions=Array.from(document.getElementById('animationEasing').options);
+      if(easingOptions.some(function(o){return o.value===p.animation.easing}))document.getElementById('animationEasing').value=p.animation.easing;
+    }
+    if(p.interactiveState)document.getElementById('interactiveState').value=p.interactiveState;
+    document.getElementById('prototypeTarget').value=p.prototypeTarget||'';
+    if(p.componentName)document.getElementById('componentName').value=p.componentName;
     if(selectionCount>1){
       responsiveSummary.textContent='Sélection multiple : déplace le groupe avec la souris ou les flèches. Les propriétés individuelles restent attachées à l’objet principal.';
     }
@@ -1403,7 +1413,7 @@ body.desktop .desktop-badge{display:inline-flex}
   function renderAudit(payload){
     payload=payload||{};
     var summary=payload.summary||{};
-    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span>';
+    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>';
     auditList.innerHTML='';
     var issues=payload.issues||[];
     if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
@@ -1461,7 +1471,8 @@ body.desktop .desktop-badge{display:inline-flex}
     postTo(rec.iframe,'environment-set',{
       fontScale:Number(document.getElementById('systemFontScale').value)||1,
       displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-      darkMode:document.getElementById('systemDarkMode').checked
+      darkMode:document.getElementById('systemDarkMode').checked,
+      keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
     });
     postTo(rec.iframe,'disable');
   }
