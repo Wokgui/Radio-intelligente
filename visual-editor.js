@@ -1396,6 +1396,7 @@
 
     hideGuides();
     updateOverlay();
+    emitLayers();
   }
 
   function adjustMove(dx, dy, commit) {
@@ -1691,14 +1692,17 @@
     hideGuides();
     updateOverlay();
     commitHistory();
+    emitLayers();
   }
 
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
-      viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea) },
+      viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
+      editingBreakpoint: editingBreakpoint,
+      environment: Object.assign({}, environment),
       snapshot: snapshot(),
       css: cssText()
     };
@@ -1707,6 +1711,8 @@
   function importProject(project) {
     if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
     if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
+    if (project.editingBreakpoint) setEditingBreakpoint(project.editingBreakpoint);
+    if (project.environment) applyEnvironment(project.environment);
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -1952,6 +1958,7 @@
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
     if (data.type === 'keyboard-commit') flushKeyboardCommit();
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
+    if (data.type === 'breakpoint-edit') setEditingBreakpoint(payload.breakpoint);
     if (data.type === 'responsive-capture') captureResponsiveRules();
     if (data.type === 'safe-area') setSafeArea(payload);
     if (data.type === 'preferences') {
@@ -1965,6 +1972,14 @@
     if (data.type === 'text-content') setTextContent(payload.value);
     if (data.type === 'lock') toggleLock(payload.value);
     if (data.type === 'measure-spacing') measureSpacing();
+    if (data.type === 'get-layers') emitLayers();
+    if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
+    if (data.type === 'layer-lock') setLayerLock(payload.selector, payload.value);
+    if (data.type === 'layer-hidden') setLayerHidden(payload.selector, payload.value);
+    if (data.type === 'parent-layout') setParentLayout(payload);
+    if (data.type === 'distribute') distributeSelection(String(payload.mode || ''), payload.gap);
+    if (data.type === 'audit') auditInterface();
+    if (data.type === 'environment-set') applyEnvironment(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -2020,6 +2035,11 @@
     setTextContent: setTextContent,
     toggleLock: toggleLock,
     measureSpacing: measureSpacing,
+    emitLayers: emitLayers,
+    setParentLayout: setParentLayout,
+    distributeSelection: distributeSelection,
+    auditInterface: auditInterface,
+    applyEnvironment: applyEnvironment,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,
