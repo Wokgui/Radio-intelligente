@@ -669,6 +669,16 @@
       layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
     }
 
+    const animationProps = ['transition-property','transition-duration','transition-timing-function','transition-delay'];
+    if (state.animationAdjusted && state.animation) {
+      setInline(element,'transition-property',state.animation.property || 'all');
+      setInline(element,'transition-duration',Math.max(0,Number(state.animation.duration)||0)+'ms');
+      setInline(element,'transition-timing-function',state.animation.easing || 'ease');
+      setInline(element,'transition-delay',Math.max(0,Number(state.animation.delay)||0)+'ms');
+    } else {
+      animationProps.forEach(function(prop){restoreOriginalProp(state.selector,prop)});
+    }
+
     if (update !== false) updateOverlay();
   }
 
@@ -822,6 +832,11 @@
         deleted: state.deleted,
         layoutAdjusted: !!state.layoutAdjusted,
         layout: Object.assign({}, state.layout || {}),
+        animationAdjusted: !!state.animationAdjusted,
+        animation: Object.assign({}, state.animation || {}),
+        prototypeTarget: state.prototypeTarget || '',
+        componentName: state.componentName || '',
+        componentInstance: !!state.componentInstance,
         responsiveDx: state.responsiveDx || 0,
         responsiveDy: state.responsiveDy || 0,
         responsive: cloneResponsive(state.responsive)
@@ -900,6 +915,11 @@
         deleted: !!saved.deleted,
         layoutAdjusted: !!saved.layoutAdjusted,
         layout: Object.assign({}, saved.layout || {}),
+        animationAdjusted: !!saved.animationAdjusted,
+        animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
+        prototypeTarget: saved.prototypeTarget || '',
+        componentName: saved.componentName || '',
+        componentInstance: !!saved.componentInstance,
         responsiveDx: Number(saved.responsiveDx) || 0,
         responsiveDy: Number(saved.responsiveDy) || 0,
         responsive: cloneResponsive(saved.responsive)
@@ -1023,6 +1043,12 @@
             const value = state.layout[prop];
             if (value !== undefined && value !== null && value !== '') declarations.push('  ' + prop + ': ' + value + ' !important;');
           });
+        }
+        if (state.animationAdjusted && state.animation) {
+          declarations.push('  transition-property: ' + (state.animation.property || 'all') + ' !important;');
+          declarations.push('  transition-duration: ' + Math.max(0,Number(state.animation.duration)||0) + 'ms !important;');
+          declarations.push('  transition-timing-function: ' + (state.animation.easing || 'ease') + ' !important;');
+          declarations.push('  transition-delay: ' + Math.max(0,Number(state.animation.delay)||0) + 'ms !important;');
         }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
