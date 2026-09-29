@@ -768,6 +768,47 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="prototype-status" id="prototypeStatus" style="margin-top:7px">En mode Aperçu, cliquer l’objet déclenchera sa cible.</div>
     </section>
 
+
+    <section class="card">
+      <h2>Tests de contenu <small>cas extrêmes</small></h2>
+      <div class="pro-grid">
+        <button class="tool" data-stress="long-text">Textes très longs</button>
+        <button class="tool" data-stress="no-images">Images absentes</button>
+        <button class="tool" data-stress="empty">Contenu vide</button>
+        <button class="tool" data-stress="many-items">Beaucoup d’éléments</button>
+      </div>
+      <button class="btn" id="resetStressBtn" style="width:100%;margin-top:7px">Revenir au contenu normal</button>
+    </section>
+
+    <section class="card">
+      <h2>Historique visuel <small>points de contrôle</small></h2>
+      <div class="field"><label>Nom de la version</label><input id="versionName" type="text" placeholder="Avant refonte du lecteur"></div>
+      <button class="btn primary" id="saveNamedVersionBtn" style="width:100%;margin-top:7px">Créer un point de contrôle</button>
+      <div class="version-list" id="versionList"><div class="hint">Aucun point de contrôle.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Captures et régression <small>comparaison visuelle</small></h2>
+      <div class="toolbar">
+        <button class="btn wide" id="batchCaptureBtn">Capturer tous les formats</button>
+        <button class="btn wide" id="saveBaselineBtn">Définir référence</button>
+      </div>
+      <button class="btn" id="compareRegressionBtn" style="width:100%;margin-top:7px">Comparer à la référence</button>
+      <div class="compare-status" id="regressionStatus">Aucune référence visuelle.</div>
+      <img class="regression-preview" id="regressionDiff" alt="Différence visuelle">
+    </section>
+
+    <section class="card desktop-only">
+      <h2>GitHub <small>branche et Pull Request</small></h2>
+      <div class="field"><label>Branche</label><input id="gitBranch" type="text" value="app-interface-studio/ui-update"></div>
+      <div class="field" style="margin-top:7px"><label>Titre du commit / PR</label><input id="gitTitle" type="text" value="Mettre à jour l’interface"></div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="gitStatusBtn">Vérifier Git</button>
+        <button class="btn primary wide" id="gitPublishBtn">Publier branche et PR</button>
+      </div>
+      <div class="compare-status" id="gitStatusText">Disponible pour une application ouverte depuis un dossier Git local.</div>
+    </section>
+
     <section class="card">
       <h2>Simulation système <small>Android / accessibilité</small></h2>
       <div class="fields">
