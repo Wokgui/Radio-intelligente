@@ -595,10 +595,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     let prUrl='';
     if(commandExists('gh')){
       try{
-        prUrl=execFileSync('gh',['pr','create','--repo',root,'--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
-      }catch(_){
-        try{prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim()}catch(__){}
-      }
+        prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
+      }catch(_){}
     }
     return {ok:true,branch,staged,prUrl};
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
