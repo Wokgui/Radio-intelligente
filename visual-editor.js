@@ -112,7 +112,7 @@
       return existing;
     }
     const original = {};
-    ['translate', 'width', 'height', 'font-size', 'display', 'color', 'background-color', 'border-color', 'z-index'].forEach(function (prop) {
+    ['translate', 'width', 'height', 'font-size', 'display', 'color', 'background-color', 'border-color', 'z-index', 'position'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -205,6 +205,7 @@
       if (position === 'static') element.style.setProperty('position', 'relative', 'important');
     } else {
       restoreOriginalProp(state.selector, 'z-index');
+      restoreOriginalProp(state.selector, 'position');
     }
 
     if (update !== false) updateOverlay();
