@@ -1016,7 +1016,11 @@
     if(radioQuick){
       const oldShortcut=radioQuick.querySelector('#radioMusicOpen');
       if(oldShortcut)oldShortcut.remove();
-      radioQuick.appendChild(navButton);
+      const radioStats=radioQuick.querySelector('.stats');
+      const statItems=radioStats?radioStats.querySelectorAll('.stat'):[];
+      if(radioStats&&statItems.length>1)radioStats.insertBefore(navButton,statItems[1]);
+      else if(radioStats)radioStats.appendChild(navButton);
+      else radioQuick.appendChild(navButton);
     }
 
     const prevCover=document.createElement('button');
@@ -1036,14 +1040,25 @@
     playCover.textContent='▶';
     cover.appendChild(playCover);
 
+    const titleNode=$('title');
+    const artistNode=$('artist');
+    let heading=$('trackHeading');
+    if(!heading&&titleNode&&artistNode){
+      heading=document.createElement('div');
+      heading.id='trackHeading';
+      heading.className='track-heading';
+      titleNode.parentNode.insertBefore(heading,titleNode);
+      heading.appendChild(titleNode);
+      heading.appendChild(artistNode);
+    }
+
     const emptyImport=document.createElement('button');
     emptyImport.id='musicEmptyImport';
     emptyImport.className='music-empty-import';
     emptyImport.type='button';
     emptyImport.setAttribute('aria-label','Ajouter des morceaux');
     emptyImport.innerHTML='<span class="music-empty-import-icon" aria-hidden="true">＋</span><span>Ajouter des morceaux</span>';
-    const artistNode=$('artist');
-    if(artistNode&&artistNode.parentNode===track)artistNode.insertAdjacentElement('afterend',emptyImport);
+    if(heading&&heading.parentNode===track)heading.insertAdjacentElement('afterend',emptyImport);
     else track.insertBefore(emptyImport,track.firstChild);
 
     const bar=document.createElement('div');
@@ -1052,11 +1067,11 @@
     bar.setAttribute('aria-label','Lecteur de musique');
     bar.innerHTML=
       '<div class="music-transport-row">'+
-        '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6 3 12l6 6"></path><path d="M20 7h-7M20 12h-7M20 17h-7"></path></svg></button>'+
+        '<button id="musicPlaylistPrev" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture précédente" title="Liste précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5"></path><path d="M5 12h8a6 6 0 1 1 0 12"></path></svg></button>'+
         '<button id="musicMiniPrev" class="icon-btn music-track-nav" type="button" aria-label="Morceau précédent" title="Morceau précédent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="m18 6-9 6 9 6z"></path></svg></button>'+
         '<button id="musicMainPlay" class="music-main-play" type="button" aria-label="Lecture"><svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button>'+
         '<button id="musicMiniNext" class="icon-btn music-track-nav" type="button" aria-label="Morceau suivant" title="Morceau suivant"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M6 6v12l9-6z"></path></svg></button>'+
-        '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6 6 6-6 6"></path><path d="M4 7h7M4 12h7M4 17h7"></path></svg></button>'+
+        '<button id="musicPlaylistNext" class="icon-btn music-list-nav" type="button" aria-label="Liste de lecture suivante" title="Liste suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 7 5 5-5 5"></path><path d="M19 12h-8a6 6 0 1 0 0 12"></path></svg></button>'+
       '</div>'+
       '<div class="music-progress-row">'+
         '<div class="seek-wrap"><input id="musicSeek" class="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Position"></div>'+
