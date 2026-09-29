@@ -485,40 +485,54 @@
     if (!active || !selected) return;
     const state = remember(selected);
     if (!state || state.locked) return;
+    const bp = String(payload.breakpoint || editingBreakpoint || 'base');
+    if (bp !== 'base' && ['phone','tablet','desktop'].indexOf(bp) < 0) return;
+
     const wasEnabled = !!state.responsive.enabled;
     if (payload.enabled === true && !wasEnabled) {
       state.responsive.enabled = true;
       captureResponsiveFromCurrent(selected, state, false);
     }
 
+    const target = editableResponsive(state, bp);
     const currentRect = selected.getBoundingClientRect();
     const bounds = responsiveBounds(selected, state);
-    if (payload.hAnchor && payload.hAnchor !== state.responsive.hAnchor) {
-      state.responsive.marginLeft = Math.round(currentRect.left - bounds.left);
-      state.responsive.marginRight = Math.round(bounds.right - currentRect.right);
-      state.responsive.centerOffsetX = Math.round((currentRect.left + currentRect.width / 2) - (bounds.left + bounds.width / 2));
+
+    if (payload.hAnchor && payload.hAnchor !== target.hAnchor) {
+      target.marginLeft = Math.round(currentRect.left - bounds.left);
+      target.marginRight = Math.round(bounds.right - currentRect.right);
+      target.centerOffsetX = Math.round((currentRect.left + currentRect.width / 2) - (bounds.left + bounds.width / 2));
     }
-    if (payload.vAnchor && payload.vAnchor !== state.responsive.vAnchor) {
-      state.responsive.marginTop = Math.round(currentRect.top - bounds.top);
-      state.responsive.marginBottom = Math.round(bounds.bottom - currentRect.bottom);
-      state.responsive.centerOffsetY = Math.round((currentRect.top + currentRect.height / 2) - (bounds.top + bounds.height / 2));
+    if (payload.vAnchor && payload.vAnchor !== target.vAnchor) {
+      target.marginTop = Math.round(currentRect.top - bounds.top);
+      target.marginBottom = Math.round(bounds.bottom - currentRect.bottom);
+      target.centerOffsetY = Math.round((currentRect.top + currentRect.height / 2) - (bounds.top + bounds.height / 2));
     }
 
     Object.keys(payload || {}).forEach(function (key) {
-      if (key in state.responsive && key !== 'enabled') state.responsive[key] = payload[key];
+      if (key in target && key !== 'enabled' && key !== 'breakpoints') target[key] = payload[key];
     });
-    if (payload.hAnchor === 'stretch') state.responsive.widthMode = 'fill';
-    if (payload.vAnchor === 'stretch') state.responsive.heightMode = 'fill';
-    if (payload.enabled === false) {
+    if (payload.hAnchor === 'stretch') target.widthMode = 'fill';
+    if (payload.vAnchor === 'stretch') target.heightMode = 'fill';
+
+    if (payload.enabled === false && bp === 'base') {
       state.responsive.enabled = false;
       state.responsiveDx = 0;
       state.responsiveDy = 0;
     }
+
     state.responsive = cloneResponsive(state.responsive);
     applyState(selected, state, false);
     updateOverlay();
     commitHistory();
   }
+
+  function setEditingBreakpoint(value) {
+    const bp = String(value || 'base');
+    editingBreakpoint = ['base','phone','tablet','desktop'].indexOf(bp) >= 0 ? bp : 'base';
+    updateOverlay();
+  }
+
 
   function captureResponsiveRules() {
     if (!active || !selected) return;
