@@ -390,6 +390,8 @@
     const state = remember(selected);
     if (!state || state.locked) return;
     state.responsive.enabled = true;
+    if (state.responsive.hAnchor === 'free') state.responsive.hAnchor = 'left';
+    if (state.responsive.vAnchor === 'free') state.responsive.vAnchor = 'top';
     captureResponsiveFromCurrent(selected, state, true);
     applyState(selected, state, false);
     updateOverlay();
@@ -760,8 +762,10 @@
           if (state.responsive.heightMode === 'percent') declarations.push('  height: ' + state.responsive.heightPercent + '% !important;');
           if (state.responsive.heightMode === 'fill') declarations.push('  height: calc(100% - ' + state.responsive.marginTop + 'px - ' + state.responsive.marginBottom + 'px) !important;');
         }
-        const exportDx = (state.dx || 0) + (state.responsiveDx || 0);
-        const exportDy = (state.dy || 0) + (state.responsiveDy || 0);
+        const responsiveExport = !!(state.responsive && state.responsive.enabled);
+        const exportDx = state.dx || 0;
+        const exportDy = state.dy || 0;
+        if (responsiveExport) declarations.push('  /* Les ancrages et marges ci-dessus sont structurels ; la translation calculée de l’aperçu n’est volontairement pas exportée. */');
         if (exportDx || exportDy) declarations.push('  translate: ' + exportDx + 'px ' + exportDy + 'px !important;');
         if (state.resized) {
           const responsiveActive = !!(state.responsive && state.responsive.enabled);
