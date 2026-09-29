@@ -435,6 +435,46 @@ body.desktop .desktop-badge{display:inline-flex}
   <div class="multi-grid" id="multiPreviewGrid"></div>
 </div>
 
+
+<div class="diff-modal" id="sourceDiffModal">
+  <div class="modal-head">
+    <div><strong>Diff source direct</strong><br><span id="sourceDiffFile">Aucun diff préparé.</span></div>
+    <button class="btn primary" id="applyDirectDiffBtn">Appliquer au fichier</button>
+    <button class="btn" id="closeDirectDiffBtn">Fermer</button>
+  </div>
+  <div class="modal-body"><pre class="diff-code" id="sourceDiffCode"></pre></div>
+</div>
+
+<div class="flow-modal" id="flowModal">
+  <div class="modal-head">
+    <div><strong>Flow de navigation</strong><br><span>Pages, composants et liens de prototype.</span></div>
+    <button class="btn" id="refreshFlowBtn">Actualiser</button>
+    <button class="btn" id="closeFlowBtn">Fermer</button>
+  </div>
+  <div class="modal-body"><div class="flow-canvas" id="flowCanvas"></div></div>
+</div>
+
+<div class="matrix-modal" id="matrixModal">
+  <div class="modal-head">
+    <div><strong>Matrice automatique de tests</strong><br><span>Téléphones, tablette, bureau, grandes polices et clavier.</span></div>
+    <button class="btn primary" id="runMatrixBtn">Relancer</button>
+    <button class="btn" id="closeMatrixBtn">Fermer</button>
+  </div>
+  <div class="modal-body">
+    <div class="matrix-status" id="matrixStatus" style="color:#ded5e6">Aucun test lancé.</div>
+    <div class="matrix-list" id="matrixList"></div>
+  </div>
+</div>
+
+<div class="repair-modal" id="repairModal">
+  <div class="modal-head">
+    <div><strong>Réparer l’interface</strong><br><span>Prévisualise chaque correction avant de l’appliquer.</span></div>
+    <button class="btn" id="clearRepairPreviewBtn">Annuler l’aperçu</button>
+    <button class="btn" id="closeRepairBtn">Fermer</button>
+  </div>
+  <div class="modal-body"><div class="repair-list" id="repairList"></div></div>
+</div>
+
 <div class="source-modal" id="settingsModal" hidden>
   <div class="source-dialog">
     <div class="source-dialog-head">
