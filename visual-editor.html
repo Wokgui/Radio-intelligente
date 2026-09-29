@@ -960,6 +960,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var compareStatus=document.getElementById('compareStatus');
   var multiPreviewModal=document.getElementById('multiPreviewModal');
   var multiPreviewGrid=document.getElementById('multiPreviewGrid');
+  var componentList=document.getElementById('componentList');
+  var versionList=document.getElementById('versionList');
+  var regressionStatus=document.getElementById('regressionStatus');
+  var regressionDiff=document.getElementById('regressionDiff');
+  var gitStatusText=document.getElementById('gitStatusText');
 
   var hasSelection=false;
   var lastState=null;
@@ -972,6 +977,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var multiProject=null;
   var multiSyncTimer=null;
   var multiSyncBusy=false;
+  var namedVersions=[];
+  var componentCatalog=[];
+  var regressionBaseline=null;
 
   function postTo(target,type,payload){
     if(!target||!target.contentWindow)return;
