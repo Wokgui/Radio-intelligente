@@ -248,28 +248,12 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
     stage.style.height=(31+h*z+20)+'px';
   }
 
-  function withPausedEditor(fn){
-    try{
-      const win=frame.contentWindow;
-      if(!win||!win.RadioVisualEditor)return;
-      win.RadioVisualEditor.disable();
-      fn(win.document);
-      setTimeout(function(){win.RadioVisualEditor.enable();},80);
-    }catch(_){}
-  }
-
   function switchToMusic(){
-    withPausedEditor(function(doc){
-      const b=doc.getElementById('radioMusicOpen');
-      if(b)b.click();
-    });
+    post('activate-element',{id:'radioMusicOpen'});
   }
 
   function switchToRadio(){
-    withPausedEditor(function(doc){
-      const b=doc.getElementById('musicRadioOpen');
-      if(b)b.click();
-    });
+    post('activate-element',{id:'musicRadioOpen'});
   }
 
   window.addEventListener('message',function(event){
