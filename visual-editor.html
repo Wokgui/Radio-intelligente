@@ -1192,7 +1192,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('grid',{grid:Number(grid.value)});
       post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
       applySafeArea();
-      post('enable');
+      post(currentPreviewMode==='edit'?'enable':'disable');
       post('get-css');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
@@ -1226,9 +1226,18 @@ body.desktop .desktop-badge{display:inline-flex}
     setStatus('Application chargée. Initialisation de l’éditeur…');
   });
 
-  preset.addEventListener('change',setDevice);
+  preset.addEventListener('change',function(){
+    selectedDeviceKind=inferDeviceKind();
+    document.querySelectorAll('[data-device-kind]').forEach(function(btn){btn.classList.toggle('active',btn.dataset.deviceKind===selectedDeviceKind)});
+    customDeviceFields.classList.toggle('visible',selectedDeviceKind==='custom');
+    setDevice();
+  });
   zoom.addEventListener('change',setDevice);
   safeProfile.addEventListener('change',applySafeArea);
+  screenCustomW.addEventListener('input',function(){customDeviceWidth.value=screenCustomW.value;setDevice()});
+  screenCustomH.addEventListener('input',function(){customDeviceHeight.value=screenCustomH.value;setDevice()});
+  customDeviceWidth.addEventListener('input',function(){screenCustomW.value=customDeviceWidth.value;if(selectedDeviceKind==='custom')setDevice()});
+  customDeviceHeight.addEventListener('input',function(){screenCustomH.value=customDeviceHeight.value;if(selectedDeviceKind==='custom')setDevice()});
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
 
   document.getElementById('reloadBtn').addEventListener('click',function(){
@@ -1342,6 +1351,7 @@ body.desktop .desktop-badge{display:inline-flex}
   async function loadSource(source){
     if(!source||!source.url)return false;
     currentSource=source;
+    await setPreviewMode('edit');
     document.getElementById('sourceName').textContent=source.label||source.url||'Application';
     document.getElementById('sourceModal').hidden=true;
     selector.textContent='Chargement de l’application…';
@@ -1384,6 +1394,33 @@ body.desktop .desktop-badge{display:inline-flex}
     if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
   }
 
+  document.querySelectorAll('[data-device-kind]').forEach(function(btn){
+    btn.addEventListener('click',function(){applyDeviceKind(btn.dataset.deviceKind)});
+  });
+
+  document.querySelectorAll('[data-preview-mode]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      if(!currentSource){setStatus('Ouvre d’abord une application.',true);return}
+      setPreviewMode(btn.dataset.previewMode);
+    });
+  });
+
+  document.getElementById('openAsAppBtn').addEventListener('click',openAsApp);
+  previewExit.addEventListener('click',function(){setPreviewMode('edit')});
+  window.addEventListener('keydown',function(event){
+    if(event.key==='Escape'&&currentPreviewMode!=='edit'){
+      event.preventDefault();event.stopImmediatePropagation();setPreviewMode('edit');
+    }
+  },true);
+  window.addEventListener('resize',function(){if(currentPreviewMode!=='edit')setDevice()});
+
+  function refreshAndroidClock(){
+    var d=new Date();
+    var el=document.getElementById('androidClock');
+    if(el)el.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  refreshAndroidClock();setInterval(refreshAndroidClock,30000);
+
   loadPrefs();
   applyPrefs();
   initializeCards();
@@ -1423,6 +1460,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('openFolderBtn').addEventListener('click',chooseFolder);
   document.getElementById('openHtmlBtn').addEventListener('click',chooseHtml);
   document.getElementById('openDemoBtn').addEventListener('click',chooseDemo);
+
+  applyDeviceKind('smartphone');
 
   if(desktop&&desktop.isDesktop){
     sourceModal.hidden=false;
