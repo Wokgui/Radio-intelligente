@@ -97,12 +97,13 @@ main{
 .safe-outline.visible{display:block}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
 .android-status,.android-nav{display:none;position:absolute;left:0;right:0;z-index:6;pointer-events:none;color:#fff}
-.android-status{top:0;height:28px;background:#6f42c1;align-items:center;justify-content:space-between;padding:0 8px;font-size:9px;font-weight:800}
+.device{--android-status:28px;--android-nav:24px;--android-status-color:#6f42c1;--android-nav-color:#000}
+.android-status{top:0;height:var(--android-status);background:var(--android-status-color);align-items:center;justify-content:space-between;padding:0 8px;font-size:9px;font-weight:800}
 .android-status .icons{display:flex;gap:5px;font-size:8px}
-.android-nav{bottom:0;height:24px;background:#000;align-items:center;justify-content:center}
+.android-nav{bottom:0;height:var(--android-nav);background:var(--android-nav-color);align-items:center;justify-content:center}
 .android-nav::after{content:"";width:92px;height:4px;border-radius:999px;background:#fff;opacity:.92}
 .device.android-exact .android-status,.device.android-exact .android-nav{display:flex}
-.device.android-exact iframe{position:absolute;left:0;right:0;top:28px;height:calc(100% - 52px)}
+.device.android-exact iframe{position:absolute;left:0;right:0;top:var(--android-status);height:calc(100% - var(--android-status) - var(--android-nav))}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
 
 .preview-exit{display:none;position:fixed;z-index:2000;right:16px;top:16px;padding:8px 11px;border:1px solid #ffffff55;border-radius:999px;background:#21182fd9;color:#fff;font-size:.72rem;font-weight:800;box-shadow:0 8px 24px #0004}
@@ -673,12 +674,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var uiAnimations=document.getElementById('uiAnimations');
   var defaultResponsivePref=document.getElementById('defaultResponsivePref');
   var rememberPanels=document.getElementById('rememberPanels');
+  var deviceKindGrid=document.getElementById('deviceKindGrid');
+  var customDeviceFields=document.getElementById('customDeviceFields');
+  var customDeviceWidth=document.getElementById('customDeviceWidth');
+  var customDeviceHeight=document.getElementById('customDeviceHeight');
+  var customScreenSize=document.getElementById('customScreenSize');
+  var screenCustomW=document.getElementById('screenCustomW');
+  var screenCustomH=document.getElementById('screenCustomH');
+  var previewExit=document.getElementById('previewExit');
 
   var hasSelection=false;
   var lastState=null;
   var projectResolver=null;
   var currentSource=null;
   var readyWaiters=[];
+  var currentPreviewMode='edit';
+  var selectedDeviceKind='smartphone';
 
   function post(type,payload){
     if(!frame.contentWindow)return;
@@ -753,6 +764,116 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+
+  function currentDeviceSize(){
+    if(preset.value==='custom'){
+      return {
+        width:Math.max(240,Number(screenCustomW.value)||Number(customDeviceWidth.value)||412),
+        height:Math.max(240,Number(screenCustomH.value)||Number(customDeviceHeight.value)||915)
+      };
+    }
+    var bits=String(preset.value||'412x915').split('x');
+    return {width:Number(bits[0])||412,height:Number(bits[1])||915};
+  }
+
+  function isRadioSource(){
+    var text=String((currentSource&&currentSource.label)||'')+' '+String((currentSource&&currentSource.url)||'');
+    return /radio-intelligente|radio intelligente/i.test(text);
+  }
+
+  function androidInsets(){
+    var size=currentDeviceSize();
+    if(selectedDeviceKind==='tv')return {top:0,right:0,bottom:0,left:0};
+    if(selectedDeviceKind==='tablet'||size.width>=700)return {top:24,right:0,bottom:24,left:0};
+    return {top:28,right:0,bottom:24,left:0};
+  }
+
+  function previewProfile(){
+    var s=currentPreviewMode==='android'?androidInsets():safeAreaValues();
+    return {
+      topInset:s.top||0,rightInset:s.right||0,bottomInset:s.bottom||0,leftInset:s.left||0,
+      statusBarColor:isRadioSource()?'#6f42c1':'#111111',
+      navigationBarColor:'#000000',
+      backgroundColor:'#ffffff'
+    };
+  }
+
+  function applyDeviceKind(kind){
+    selectedDeviceKind=kind||'smartphone';
+    document.querySelectorAll('[data-device-kind]').forEach(function(btn){
+      btn.classList.toggle('active',btn.dataset.deviceKind===selectedDeviceKind);
+    });
+    customDeviceFields.classList.toggle('visible',selectedDeviceKind==='custom');
+
+    if(selectedDeviceKind==='smartphone')preset.value='412x915';
+    if(selectedDeviceKind==='tablet')preset.value='768x1024';
+    if(selectedDeviceKind==='tv')preset.value='1920x1080';
+    if(selectedDeviceKind==='desktop')preset.value='1366x768';
+    if(selectedDeviceKind==='custom'){
+      preset.value='custom';
+      screenCustomW.value=customDeviceWidth.value||412;
+      screenCustomH.value=customDeviceHeight.value||915;
+    }
+    safeProfile.value=(selectedDeviceKind==='smartphone')?'auto':'none';
+    setDevice();
+  }
+
+  function inferDeviceKind(){
+    if(preset.value==='custom')return 'custom';
+    var size=currentDeviceSize();
+    if(size.width>=1200&&size.height<=1080)return preset.value==='1366x768'||preset.value==='1440x900'?'desktop':'tv';
+    if(size.width>=700)return 'tablet';
+    return 'smartphone';
+  }
+
+  async function setPreviewMode(mode){
+    mode=(mode==='preview'||mode==='android')?mode:'edit';
+    currentPreviewMode=mode;
+    document.body.classList.toggle('preview-mode',mode==='preview');
+    document.body.classList.toggle('android-mode',mode==='android');
+    device.classList.toggle('android-exact',mode==='android');
+    document.querySelectorAll('[data-preview-mode]').forEach(function(btn){
+      btn.classList.toggle('active',btn.dataset.previewMode===mode);
+    });
+
+    if(mode==='android'){
+      var a=androidInsets();
+      device.style.setProperty('--android-status',a.top+'px');
+      device.style.setProperty('--android-nav',a.bottom+'px');
+      device.style.setProperty('--android-status-color',isRadioSource()?'#6f42c1':'#111111');
+      device.style.setProperty('--android-nav-color','#000000');
+    }
+
+    if(mode==='edit')post('enable');
+    else post('disable');
+
+    if(desktop&&desktop.setPreviewMode){
+      await desktop.setPreviewMode({
+        mode:mode,
+        source:currentSource,
+        profile:previewProfile()
+      });
+    }
+    setDevice();
+  }
+
+  async function openAsApp(){
+    if(!desktop||!desktop.openAsApp||!currentSource){
+      setStatus('Ouvre d’abord une application.',true);return;
+    }
+    var size=currentDeviceSize();
+    var useAndroid=selectedDeviceKind==='smartphone'||selectedDeviceKind==='tablet';
+    var result=await desktop.openAsApp({
+      source:currentSource,
+      width:size.width,
+      height:size.height,
+      androidExact:useAndroid,
+      profile:useAndroid?Object.assign({},previewProfile(),androidInsets()):previewProfile()
+    });
+    if(result&&result.ok)setStatus('Fenêtre application ouverte en '+result.width+' × '+result.height+(result.androidExact?' · Android exact':'')+'.');
+    else if(result&&result.error)setStatus(result.error,true);
+  }
+
   function rgbToHex(value,fallback){
     if(!value)return fallback;
     if(/^#[0-9a-f]{6}$/i.test(value))return value;
@@ -762,15 +883,19 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   function resolvedSafeProfile(){
+    if(currentPreviewMode==='android')return 'android-hole';
     if(safeProfile.value!=='auto')return safeProfile.value;
-    var bits=preset.value.split('x');
-    var w=Number(bits[0]);
-    if(w>=700)return 'none';
+    var size=currentDeviceSize();
+    if(size.width>=700)return 'none';
     if(preset.value==='390x844')return 'iphone-island';
     return 'android-hole';
   }
 
   function safeAreaValues(){
+    if(currentPreviewMode==='android'){
+      var a=androidInsets();
+      return {profile:'android-exact',top:a.top,right:a.right,bottom:a.bottom,left:a.left,notch:'none'};
+    }
     var profile=resolvedSafeProfile();
     if(profile==='android-hole')return {profile:profile,top:28,right:0,bottom:24,left:0,notch:'hole'};
     if(profile==='iphone-island')return {profile:profile,top:59,right:0,bottom:34,left:0,notch:'island'};
@@ -787,19 +912,38 @@ body.desktop .desktop-badge{display:inline-flex}
     safeOutline.style.bottom=s.bottom+'px';
     safeOutline.style.left=s.left+'px';
     post('safe-area',s);
+    if(desktop&&desktop.setPreviewMode&&currentPreviewMode!=='edit'){
+      desktop.setPreviewMode({mode:currentPreviewMode,source:currentSource,profile:previewProfile()});
+    }
   }
 
   function setDevice(){
-    var bits=preset.value.split('x');
-    var w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
+    var size=currentDeviceSize();
+    var w=size.width,h=size.height;
+    customScreenSize.style.display=preset.value==='custom'?'grid':'none';
+    var z=Number(zoom.value);
+    if(currentPreviewMode!=='edit'){
+      z=Math.min(window.innerWidth/w,window.innerHeight/h);
+      if(!Number.isFinite(z)||z<=0)z=1;
+    }
     device.style.width=w+'px';
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
     device.classList.toggle('wide',w>=700);
     rulerX.style.width=w+'px';
     rulerY.style.height=h+'px';
-    stage.style.width=(31+w*z+20)+'px';
-    stage.style.height=(31+h*z+20)+'px';
+    if(currentPreviewMode==='edit'){
+      stage.style.width=(31+w*z+20)+'px';
+      stage.style.height=(31+h*z+20)+'px';
+    }else{
+      stage.style.width=(w*z)+'px';
+      stage.style.height=(h*z)+'px';
+    }
+    if(currentPreviewMode==='android'){
+      var a=androidInsets();
+      device.style.setProperty('--android-status',a.top+'px');
+      device.style.setProperty('--android-nav',a.bottom+'px');
+    }
     applySafeArea();
   }
 
@@ -941,7 +1085,8 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:'2.3.0'};
+    project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
+    project.studio={name:'App Interface Studio',version:'2.4.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -961,6 +1106,15 @@ body.desktop .desktop-badge{display:inline-flex}
         if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
         await loadSource(restored.source);
       }
+      if(project.preview){
+        selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
+        if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
+        if(project.preview.size&&preset.value==='custom'){
+          screenCustomW.value=project.preview.size.width||412;screenCustomH.value=project.preview.size.height||915;
+        }
+        if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
+        setDevice();
+      }
       if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
         var profile=String(project.viewport.safeArea.profile);
         if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
@@ -977,7 +1131,8 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:'2.3.0'};
+    project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
+    project.studio={name:'App Interface Studio',version:'2.4.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
