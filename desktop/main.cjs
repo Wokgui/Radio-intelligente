@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const crypto = require('crypto');
 
 let studioServer;
 let studioBaseUrl = '';
@@ -687,6 +688,365 @@ ipcMain.handle('capture:current-source',async (_event,payload)=>{
   }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
 
+
+function escapeRegex(value){
+  const special='^$.*+?()[]{}|'+String.fromCharCode(92);
+  return String(value||'').split('').map(ch=>special.includes(ch)?String.fromCharCode(92)+ch:ch).join('');
+}
+function detectAndroidProject(root){
+  const manifestCandidates=[
+    path.join(root,'app','src','main','AndroidManifest.xml'),
+    path.join(root,'src','main','AndroidManifest.xml')
+  ];
+  const manifest=manifestCandidates.find(fs.existsSync);
+  if(!manifest)return null;
+  const appRoot=manifest.includes(path.join('app','src'))?path.join(root,'app'):root;
+  const mainRoot=path.join(appRoot,'src','main');
+  const layoutDir=path.join(mainRoot,'res','layout');
+  const xmlLayouts=fs.existsSync(layoutDir)?walkFiles(layoutDir,['.xml'],120):[];
+  const kotlinRoots=[path.join(mainRoot,'java'),path.join(mainRoot,'kotlin')].filter(fs.existsSync);
+  const kotlinFiles=kotlinRoots.flatMap(dir=>walkFiles(dir,['.kt','.java'],250));
+  const composeFiles=kotlinFiles.filter(file=>{
+    try{return /@Composable|setContent\s*\{/.test(fs.readFileSync(file,'utf8'))}catch(_){return false}
+  });
+  return {root,manifest,appRoot,mainRoot,xmlLayouts,kotlinFiles,composeFiles,nativeKind:xmlLayouts.length?'xml':composeFiles.length?'compose':'android'};
+}
+
+function attrValue(attrs,name){
+  const m=String(attrs||'').match(new RegExp(escapeRegex(name)+'\\s*=\\s*"([^"]*)"'));
+  return m?m[1]:'';
+}
+
+function androidId(attrs){
+  return attrValue(attrs,'android:id').replace(/^@\+?id\//,'');
+}
+
+function pxFromAndroid(value,fallback){
+  const m=String(value||'').match(/(-?\d+(?:\.\d+)?)/);
+  return m?Number(m[1]):fallback;
+}
+
+function xmlLayoutToHtml(file){
+  const xml=fs.readFileSync(file,'utf8');
+  const tokenRe=/<\/?[A-Za-z0-9_.$:-]+\b[^>]*>|<!--[\s\S]*?-->/g;
+  const root={tag:'root',children:[]},stack=[root];
+  let m,index=0;
+  while((m=tokenRe.exec(xml))){
+    const token=m[0];if(token.startsWith('<!--')||token.startsWith('<?'))continue;
+    if(/^<\//.test(token)){if(stack.length>1)stack.pop();continue}
+    const tag=(token.match(/^<\s*([A-Za-z0-9_.$:-]+)/)||[])[1];if(!tag)continue;
+    const attrs=token.slice(token.indexOf(tag)+tag.length,token.lastIndexOf('>'));
+    const node={tag,attrs,id:androidId(attrs),children:[],index:index++};
+    stack[stack.length-1].children.push(node);
+    if(!/\/\s*>$/.test(token))stack.push(node);
+  }
+  function esc(v){return String(v||'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
+  function render(node){
+    const short=node.tag.split('.').pop();
+    const width=attrValue(node.attrs,'android:layout_width'),height=attrValue(node.attrs,'android:layout_height');
+    const orientation=attrValue(node.attrs,'android:orientation');
+    const text=attrValue(node.attrs,'android:text').replace(/^@string\//,'');
+    const padding=pxFromAndroid(attrValue(node.attrs,'android:padding'),8);
+    const margin=pxFromAndroid(attrValue(node.attrs,'android:layout_margin'),4);
+    const bg=attrValue(node.attrs,'android:background');
+    const isContainer=/Layout|ViewGroup|ScrollView|RecyclerView/i.test(short);
+    const isButton=/Button/i.test(short);
+    const isInput=/EditText|TextInput/i.test(short);
+    const isImage=/ImageView/i.test(short);
+    let style='box-sizing:border-box;margin:'+margin+'px;padding:'+padding+'px;min-height:'+(height==='wrap_content'?34:pxFromAndroid(height,50))+'px;';
+    if(width==='match_parent')style+='width:100%;';
+    if(height==='match_parent')style+='min-height:100%;';
+    if(isContainer)style+='display:flex;flex-direction:'+(orientation==='horizontal'?'row':'column')+';gap:8px;';
+    if(bg&&/^#/.test(bg))style+='background:'+bg+';';
+    let content='';
+    if(isButton)content='<button style="min-height:44px;padding:8px 14px">'+esc(text||short)+'</button>';
+    else if(isInput)content='<input value="'+esc(text)+'" placeholder="'+esc(short)+'" style="min-height:44px;width:100%">';
+    else if(isImage)content='<div style="min-height:80px;background:#ececf2;display:grid;place-items:center;border-radius:8px">Image</div>';
+    else if(!isContainer)content='<div>'+esc(text||short)+'</div>';
+    content+=node.children.map(render).join('');
+    const key=node.id||('node-'+node.index);
+    return '<div id="native-'+esc(key)+'" data-native-key="'+esc(key)+'" data-native-tag="'+esc(short)+'" style="'+style+'">'+content+'</div>';
+  }
+  return {body:root.children.map(render).join(''),xml,nodes:root.children};
+}
+
+function composeToHtml(file){
+  const code=fs.readFileSync(file,'utf8'),lines=code.split(/\r?\n/),nodes=[];
+  lines.forEach((line,i)=>{
+    const m=line.match(/\b(Text|Button|IconButton|Image|Icon|Column|Row|Box|LazyColumn|LazyRow|TextField)\s*\(/);
+    if(!m)return;
+    const text=(line.match(/"([^"]{1,80})"/)||[])[1]||m[1];
+    nodes.push({tag:m[1],line:i+1,text});
+  });
+  function esc(v){return String(v||'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
+  const body=nodes.map((n,i)=>{
+    const container=/Column|Row|Box|Lazy/.test(n.tag);
+    return '<div id="native-compose-'+i+'" data-native-line="'+n.line+'" data-native-tag="'+n.tag+'" style="margin:6px;padding:10px;min-height:42px;border:1px solid #e0dce8;border-radius:9px;'+(container?'background:#f7f4fb;':'background:#fff;')+'"><small style="color:#7b6d88">'+n.tag+' · ligne '+n.line+'</small><div>'+esc(n.text)+'</div></div>';
+  }).join('');
+  return {body,nodes,code};
+}
+
+async function buildAndroidPreview(android){
+  const key=hashText(android.root).slice(0,12);
+  const dir=path.join(os.tmpdir(),'app-interface-studio-native',key);
+  fs.mkdirSync(dir,{recursive:true});
+  let content='',nativeFile='',nativeNodes=[];
+  if(android.xmlLayouts.length){
+    nativeFile=android.xmlLayouts.find(x=>path.basename(x).toLowerCase()==='activity_main.xml')||android.xmlLayouts[0];
+    const parsed=xmlLayoutToHtml(nativeFile);content=parsed.body;nativeNodes=parsed.nodes;
+  }else if(android.composeFiles.length){
+    nativeFile=android.composeFiles[0];
+    const parsed=composeToHtml(nativeFile);content=parsed.body;nativeNodes=parsed.nodes;
+  }else content='<div style="padding:24px">Projet Android détecté, mais aucun layout XML ou composable simple n’a été trouvé.</div>';
+  const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;min-height:100%;font-family:system-ui;background:#fff;color:#222}body{padding:12px}.native-root{max-width:100%;min-height:100%;display:flex;flex-direction:column;gap:6px}</style></head><body><div class="native-root">'+content+'</div></body></html>';
+  fs.writeFileSync(path.join(dir,'index.html'),html,'utf8');
+  const url=await startLocalTarget(dir,'index.html');
+  return {url,nativeFile,nativeKind:android.nativeKind,nativeNodes};
+}
+
+function flattenAndroidXml(file){
+  const xml=fs.readFileSync(file,'utf8'),nodes=[];
+  const re=/<([A-Za-z0-9_.$:-]+)\b([^>]*)>/g;let m,index=0;
+  while((m=re.exec(xml))){
+    if(m[0].startsWith('</')||m[0].startsWith('<?'))continue;
+    const id=androidId(m[2]);
+    nodes.push({key:id||('node-'+index++),id,tag:m[1].split('.').pop(),file,line:xml.slice(0,m.index).split(/\r?\n/).length,text:attrValue(m[2],'android:text'),width:attrValue(m[2],'android:layout_width'),height:attrValue(m[2],'android:layout_height')});
+  }
+  return nodes;
+}
+
+ipcMain.handle('source:native-tree',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  if(!source||source.type!=='android-project')return {ok:false,error:'Projet Android requis.'};
+  try{
+    const android=detectAndroidProject(source.path);if(!android)return {ok:false,error:'Projet Android introuvable.'};
+    let nodes=[];
+    android.xmlLayouts.slice(0,20).forEach(file=>{nodes=nodes.concat(flattenAndroidXml(file))});
+    android.composeFiles.slice(0,30).forEach(file=>{
+      const parsed=composeToHtml(file);
+      parsed.nodes.forEach((node,i)=>nodes.push({key:'compose-'+path.basename(file)+'-'+i,tag:node.tag,file,line:node.line,text:node.text,compose:true}));
+    });
+    return {ok:true,nativeKind:android.nativeKind,nodes:nodes.slice(0,600),files:{xml:android.xmlLayouts,compose:android.composeFiles}};
+  }catch(error){return {ok:false,error:String(error&&error.message||error)}}
+});
+
+ipcMain.handle('source:prepare-native-edit',async (_event,payload)=>{
+  const source=payload&&payload.source,node=payload&&payload.node,property=String(payload&&payload.property||''),value=String(payload&&payload.value||'');
+  if(!source||source.type!=='android-project'||!node||!node.file)return {ok:false,error:'Sélection Android invalide.'};
+  const file=String(node.file);
+  if(!isPathInside(source.path,file))return {ok:false,error:'Fichier Android hors du projet.'};
+  try{
+    const before=fs.readFileSync(file,'utf8');let after=before;
+    if(node.compose){
+      const lines=before.split(/\r?\n/),idx=Math.max(0,Number(node.line)-1);
+      if(idx>=lines.length)return {ok:false,error:'Ligne Compose introuvable.'};
+      if(property==='text')lines[idx]=lines[idx].replace(/"[^"]*"/,'"'+value.replace(/"/g,'\\\"')+'"');
+      else return {ok:false,error:'Pour Compose, le mode sûr modifie directement le texte. Les autres propriétés restent disponibles dans l’inspecteur avec aperçu du diff.'};
+      after=lines.join('\n');
+    }else{
+      const id=node.id,tag=node.tag;let re;
+      if(id)re=new RegExp('(<[^>]*android:id\\s*=\\s*"@\\+?id/'+escapeRegex(id)+'"[^>]*)(>)');
+      else re=new RegExp('(<(?:[A-Za-z0-9_.$:-]+\\.)?'+escapeRegex(tag)+'\\b[^>]*)(>)');
+      const m=after.match(re);if(!m)return {ok:false,error:'Élément XML introuvable.'};
+      const attrMap={text:'android:text',textSize:'android:textSize',padding:'android:padding',margin:'android:layout_margin',width:'android:layout_width',height:'android:layout_height',background:'android:background',gravity:'android:gravity'};
+      const attr=attrMap[property]||property;let tagText=m[1];
+      const attrRe=new RegExp('\\s'+escapeRegex(attr)+'\\s*=\\s*"[^"]*"');
+      const replacement=' '+attr+'="'+value.replace(/"/g,'&quot;')+'"';
+      tagText=attrRe.test(tagText)?tagText.replace(attrRe,replacement):tagText+replacement;
+      after=after.replace(m[0],tagText+m[2]);
+    }
+    return {ok:true,file,beforeHash:hashText(before),before,after,diff:simpleUnifiedDiff(before,after,path.relative(source.path,file))};
+  }catch(error){return {ok:false,error:'Préparation Android impossible : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('source:apply-native-edit',async (_event,payload)=>{
+  const source=payload&&payload.source,file=String(payload&&payload.file||'');
+  if(!source||source.type!=='android-project'||!isPathInside(source.path,file))return {ok:false,error:'Patch Android invalide.'};
+  try{
+    const before=fs.readFileSync(file,'utf8');
+    if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier Android a changé. Reprépare le diff.'};
+    const backup=file+'.ais-backup-'+new Date().toISOString().replace(/[:.]/g,'-');
+    fs.copyFileSync(file,backup);fs.writeFileSync(file,String(payload.after||''),'utf8');
+    return {ok:true,file,backupPath:backup};
+  }catch(error){return {ok:false,error:String(error&&error.message||error)}}
+});
+
+
+async function auditSourceAtConfig(source,css,cfg){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)throw new Error('Source invalide.');
+  const width=Math.max(240,Number(cfg.width)||412),height=Math.max(260,Number(cfg.height)||915),keyboard=Math.max(0,Number(cfg.keyboard)||0);
+  const win=new BrowserWindow({show:false,width,height:Math.max(240,height-keyboard),useContentSize:true,frame:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}});
+  try{
+    await win.loadURL(target);await new Promise(r=>setTimeout(r,320));
+    let injected='';
+    if(css&&String(css).trim()!=='/* Aucun ajustement. */')injected+=String(css);
+    injected+='\nhtml{-webkit-text-size-adjust:'+Math.round((Number(cfg.fontScale)||1)*100)+'%!important;text-size-adjust:'+Math.round((Number(cfg.fontScale)||1)*100)+'%!important;color-scheme:'+(cfg.dark?'dark':'light')+';}';
+    if(injected)await win.webContents.insertCSS(injected,{cssOrigin:'author'});
+    await new Promise(r=>setTimeout(r,90));
+    const audit=await win.webContents.executeJavaScript("(function(){var issues=[];if(document.documentElement.scrollWidth>innerWidth+2)issues.push({type:'overflow-x',amount:document.documentElement.scrollWidth-innerWidth});var nodes=Array.from(document.body.querySelectorAll('*')).slice(0,900);var clipped=0,small=0;nodes.forEach(function(el){var cs=getComputedStyle(el),r=el.getBoundingClientRect();if(cs.display==='none'||cs.visibility==='hidden'||r.width<1||r.height<1)return;if(el.children.length===0&&String(el.textContent||'').trim()&&(el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2)&&/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY))clipped++;if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)&&(r.width<44||r.height<44))small++;});if(clipped)issues.push({type:'text-clipped',count:clipped});if(small)issues.push({type:'touch-target',count:small});return {issues:issues,scrollWidth:document.documentElement.scrollWidth,viewport:{width:innerWidth,height:innerHeight}};})()");
+    let screenshot=null;
+    if(audit.issues.length){const img=await win.webContents.capturePage();screenshot=img.toDataURL()}
+    return {config:cfg,issues:audit.issues,screenshot,viewport:audit.viewport};
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
+  const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
+  const sizes=[{name:'compact',width:360,height:800},{name:'phone',width:412,height:915},{name:'tablet',width:768,height:1024},{name:'desktop',width:1366,height:768}];
+  const scales=[1,1.3,1.5],configs=[];
+  sizes.forEach(size=>scales.forEach(fontScale=>configs.push({name:size.name,width:size.width,height:size.height,fontScale,dark:false,keyboard:size.width<600&&fontScale>=1.3?280:0})));
+  const results=[];
+  try{
+    for(const cfg of configs)results.push(await auditSourceAtConfig(source,payload.css,cfg));
+    return {ok:true,results,summary:{tested:results.length,failed:results.filter(x=>x.issues.length).length,totalIssues:results.reduce((n,x)=>n+x.issues.length,0)}};
+  }catch(error){return {ok:false,error:'Matrice de tests impossible : '+String(error&&error.message||error),results}}
+});
+
+function hashText(value){
+  return crypto.createHash('sha256').update(String(value||''),'utf8').digest('hex');
+}
+
+function isPathInside(root,file){
+  const relative=path.relative(path.resolve(root),path.resolve(file));
+  return relative!==''&&!relative.startsWith('..')&&!path.isAbsolute(relative);
+}
+
+function walkFiles(root,extensions,maxFiles){
+  const out=[];
+  const wanted=new Set((extensions||[]).map(x=>String(x).toLowerCase()));
+  function walk(dir,depth){
+    if(depth>10||out.length>=(maxFiles||500))return;
+    let entries=[];try{entries=fs.readdirSync(dir,{withFileTypes:true})}catch(_){return}
+    for(const entry of entries){
+      if(out.length>=(maxFiles||500))break;
+      if(entry.name==='node_modules'||entry.name==='.git'||entry.name==='build'||entry.name==='.gradle')continue;
+      const file=path.join(dir,entry.name);
+      if(entry.isDirectory())walk(file,depth+1);
+      else if(!wanted.size||wanted.has(path.extname(entry.name).toLowerCase()))out.push(file);
+    }
+  }
+  walk(root,0);
+  return out;
+}
+
+function simpleUnifiedDiff(oldText,newText,label){
+  const a=String(oldText||'').split(/\r?\n/),b=String(newText||'').split(/\r?\n/);
+  let start=0;
+  while(start<a.length&&start<b.length&&a[start]===b[start])start+=1;
+  let endA=a.length-1,endB=b.length-1;
+  while(endA>=start&&endB>=start&&a[endA]===b[endB]){endA-=1;endB-=1}
+  const from=Math.max(0,start-3),toA=Math.min(a.length-1,endA+3),toB=Math.min(b.length-1,endB+3);
+  const lines=['--- '+label,'+++ '+label,'@@ '+(from+1)+' @@'];
+  for(let i=from;i<=toA;i+=1)lines.push('- '+a[i]);
+  for(let i=from;i<=toB;i+=1)lines.push('+ '+b[i]);
+  return lines.join('\n');
+}
+
+function cssDeclarationsFromRule(css,selector){
+  const text=String(css||'');
+  const re=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
+  const m=text.match(re);
+  if(!m)return null;
+  const out={};
+  String(m[2]||'').split(';').forEach(part=>{
+    const i=part.indexOf(':');
+    if(i<0)return;
+    const key=part.slice(0,i).trim(),value=part.slice(i+1).replace(/!important/g,'').trim();
+    if(key&&value&&!key.startsWith('/*'))out[key]=value;
+  });
+  return out;
+}
+
+function mergeCssRule(content,selector,properties){
+  const direct=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
+  const match=content.match(direct);
+  function declarationBlock(existing){
+    const map={};
+    String(existing||'').split(';').forEach(part=>{
+      const i=part.indexOf(':');if(i<0)return;
+      const key=part.slice(0,i).trim(),value=part.slice(i+1).trim();if(key&&value)map[key]=value;
+    });
+    Object.keys(properties||{}).forEach(key=>{map[key]=String(properties[key]).replace(/\\s*!important\\s*$/,'').trim()});
+    return Object.keys(map).map(key=>'  '+key+': '+map[key]+';').join('\n');
+  }
+  if(match){
+    const whole=match[0],open=whole.indexOf('{'),close=whole.lastIndexOf('}');
+    const replaced=whole.slice(0,open+1)+'\n'+declarationBlock(whole.slice(open+1,close))+'\n'+whole.slice(close);
+    return {content:content.replace(whole,replaced),created:false};
+  }
+  return {content:content+'\n\n'+selector+' {\n'+declarationBlock('')+'\n}\n',created:true};
+}
+
+function directSourceCandidate(source,selector,css){
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Édition source directe disponible uniquement pour une application locale.'};
+  const props=cssDeclarationsFromRule(css,selector);
+  if(!props||!Object.keys(props).length)return {ok:false,error:'Aucune propriété exploitable pour la sélection actuelle.'};
+  const files=walkFiles(local.root,['.css'],350).filter(file=>!file.endsWith('app-interface-studio.generated.css'));
+  let chosen=null,bestScore=-1;
+  for(const file of files){
+    let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){continue}
+    const score=new RegExp(escapeRegex(selector)+'\\s*\\{').test(text)?100:(text.includes(selector)?20:0);
+    if(score>bestScore){bestScore=score;chosen={file,text}}
+  }
+  if(!chosen){
+    const fallback=path.join(path.dirname(local.html),'app-interface-studio.direct.css');
+    chosen={file:fallback,text:fs.existsSync(fallback)?fs.readFileSync(fallback,'utf8'):''};
+  }
+  const merged=mergeCssRule(chosen.text,selector,props);
+  return {
+    ok:true,
+    root:local.root,
+    file:chosen.file,
+    relativePath:path.relative(local.root,chosen.file),
+    selector,
+    properties:props,
+    beforeHash:hashText(chosen.text),
+    before:chosen.text,
+    after:merged.content,
+    created:!fs.existsSync(chosen.file),
+    diff:simpleUnifiedDiff(chosen.text,merged.content,path.relative(local.root,chosen.file))
+  };
+}
+
+ipcMain.handle('source:prepare-direct-edit',async (_event,payload)=>{
+  try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''))}
+  catch(error){return {ok:false,error:'Préparation du diff impossible : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Source locale requise.'};
+  const file=String(payload&&payload.file||'');
+  if(!file||!isPathInside(local.root,file))return {ok:false,error:'Chemin source refusé.'};
+  try{
+    const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+    if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier a changé depuis la préparation du diff. Reprépare la modification.'};
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    let backupPath='';
+    if(fs.existsSync(file)){backupPath=file+'.ais-backup-'+stamp;fs.copyFileSync(file,backupPath)}
+    fs.mkdirSync(path.dirname(file),{recursive:true});
+    fs.writeFileSync(file,String(payload.after||''),'utf8');
+    let htmlBackupPath='';
+    if(path.basename(file)==='app-interface-studio.direct.css'&&local.html&&fs.existsSync(local.html)){
+      let html=fs.readFileSync(local.html,'utf8');
+      const marker='data-app-interface-studio="direct"';
+      if(!html.includes(marker)){
+        const stamp2=new Date().toISOString().replace(/[:.]/g,'-');
+        htmlBackupPath=local.html+'.ais-backup-'+stamp2;
+        fs.copyFileSync(local.html,htmlBackupPath);
+        const href='./'+path.relative(path.dirname(local.html),file).replace(/\\/g,'/');
+        const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
+        html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,'  '+link+'\n</head>'):link+'\n'+html;
+        fs.writeFileSync(local.html,html,'utf8');
+      }
+    }
+    return {ok:true,file,backupPath,htmlBackupPath,created:!before};
+  }catch(error){return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error)}}
+});
+
 ipcMain.handle('source:open-url',async (_event,value)=>{
   const url=normalizeUrl(value);
   if(!url)return {ok:false,error:'Adresse invalide. Utilise une URL http:// ou https://.'};
@@ -703,9 +1063,16 @@ ipcMain.handle('source:pick-folder',async ()=>{
   const root=result.filePaths[0];
   const candidates=['index.html','index.htm','dist/index.html','build/index.html','www/index.html','public/index.html'];
   const entry=candidates.find(name=>fs.existsSync(path.join(root,name)));
-  if(!entry)return {ok:false,error:'Aucun index.html trouvé dans ce dossier (racine, dist, build, www ou public).'};
-  const url=await startLocalTarget(root,entry);
-  return {ok:true,source:{type:'folder',path:root,entry,url,label:path.basename(root)}};
+  if(entry){
+    const url=await startLocalTarget(root,entry);
+    return {ok:true,source:{type:'folder',path:root,entry,url,label:path.basename(root)}};
+  }
+  const android=detectAndroidProject(root);
+  if(android){
+    const preview=await buildAndroidPreview(android);
+    return {ok:true,source:{type:'android-project',path:root,url:preview.url,label:path.basename(root)+' · Android natif',nativeKind:preview.nativeKind,nativeFile:preview.nativeFile}};
+  }
+  return {ok:false,error:'Aucun index.html ni projet Android détecté dans ce dossier.'};
 });
 
 ipcMain.handle('source:pick-html',async ()=>{
@@ -741,6 +1108,12 @@ ipcMain.handle('source:restore',async (_event,source)=>{
       if(!source.path||!fs.existsSync(source.path))return {ok:false,error:'Le dossier source du projet est introuvable.'};
       const url=await startLocalTarget(source.path,source.entry||'index.html');
       return {ok:true,source:{...source,url}};
+    }
+    if(source.type==='android-project'){
+      if(!source.path||!fs.existsSync(source.path))return {ok:false,error:'Le projet Android est introuvable.'};
+      const android=detectAndroidProject(source.path);if(!android)return {ok:false,error:'Structure Android invalide.'};
+      const preview=await buildAndroidPreview(android);
+      return {ok:true,source:{...source,url:preview.url,nativeKind:preview.nativeKind,nativeFile:preview.nativeFile}};
     }
     if(source.type==='html'){
       const file=source.path;

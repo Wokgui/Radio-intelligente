@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec composants, design tokens, prototype, régression visuelle et GitHub",
+  "description": "Éditeur visuel universel Windows avec édition source directe, Android natif, auto-layout, flow, matrice de tests et réparation assistée",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
