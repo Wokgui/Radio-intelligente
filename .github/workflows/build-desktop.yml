@@ -71,11 +71,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "app-interface-studio-v2.2.0"
+          $tag = "app-interface-studio-v2.3.0"
           $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $file.FullName --clobber
           } else {
-            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.2.0" --notes "Ajoute les contraintes responsive, ancrages parent, tailles fluides, marges persistantes, simulation d’encoches et safe areas, restauration des projets responsive et export ChatGPT enrichi."
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.3.0" --notes "Ajoute les paramètres d’interface, la colonne latérale pleine hauteur en accordéons repliés par défaut, la multisélection Maj+clic, une mesure fiable des écarts entre bords et le positionnement adaptatif relatif par défaut."
           }
