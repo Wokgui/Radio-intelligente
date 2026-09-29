@@ -325,6 +325,19 @@
       grid = Math.max(1, Number(payload.grid) || 1);
       updateOverlay();
     }
+    if (data.type === 'activate-element') {
+      const element = document.getElementById(String(payload.id || ''));
+      if (element) {
+        const wasActive = active;
+        active = false;
+        document.body.classList.remove('ve-active');
+        element.click();
+        active = wasActive;
+        if (wasActive) document.body.classList.add('ve-active');
+        selected = null;
+        updateOverlay();
+      }
+    }
     if (data.type === 'get-css') emit('css', { css: cssText() });
     if (data.type === 'download-css') downloadCss();
     if (data.type === 'copy-css') copyCss();
