@@ -129,3 +129,62 @@ body.ve-hosted.ve-active .ve-selection {
     linear-gradient(transparent calc(50% - .5px), #7c3aed66 calc(50% - .5px), #7c3aed66 calc(50% + .5px), transparent calc(50% + .5px)),
     #b14cff10;
 }
+
+
+/* Poignées de redimensionnement et guides d’alignement façon éditeur de mise en page. */
+body.ve-active .ve-selection{
+  overflow:visible!important;
+}
+.ve-handle{
+  position:absolute;
+  width:12px;
+  height:12px;
+  border:2px solid #7c3aed;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 4px #0004;
+  pointer-events:auto;
+  touch-action:none;
+}
+.ve-handle-nw{left:-7px;top:-7px;cursor:nwse-resize}
+.ve-handle-ne{right:-7px;top:-7px;cursor:nesw-resize}
+.ve-handle-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
+.ve-handle-se{right:-7px;bottom:-7px;cursor:nwse-resize}
+
+.ve-guide,
+.ve-guide-label{
+  display:none;
+  position:fixed;
+  z-index:2147483645;
+  pointer-events:none;
+}
+.ve-guide-v{
+  top:0;
+  bottom:0;
+  width:1px;
+  background:#ff3b8d;
+  box-shadow:0 0 0 1px #ffffffaa;
+}
+.ve-guide-h{
+  left:0;
+  right:0;
+  height:1px;
+  background:#ff3b8d;
+  box-shadow:0 0 0 1px #ffffffaa;
+}
+.ve-guide-label{
+  padding:3px 6px;
+  border-radius:6px;
+  background:#ff3b8d;
+  color:#fff;
+  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  white-space:nowrap;
+}
+.ve-guide-v-label{
+  top:8px;
+  transform:translateX(-50%);
+}
+.ve-guide-h-label{
+  left:8px;
+  transform:translateY(-50%);
+}
