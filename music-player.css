@@ -3705,3 +3705,424 @@ body.radio-mode .radio-music-open svg{
     top:88px!important;
   }
 }
+
+
+
+/* v107 — alignement mesuré au pixel près */
+
+/* MA MUSIQUE : bandeau principal réellement centré et séparé. */
+body.music-mode #musicActions{
+  width:100%!important;
+  height:64px!important;
+  min-height:64px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr)!important;
+  grid-template-rows:64px!important;
+  align-items:center!important;
+  gap:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #d9cde4!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#fdfbfe 0%,#f8f2fb 100%)!important;
+  box-shadow:0 6px 16px rgba(92,63,117,.07)!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  position:static!important;
+  transform:none!important;
+  width:100%!important;
+  height:62px!important;
+  min-height:62px!important;
+  margin:0!important;
+  padding:0 12px!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  align-items:center!important;
+  align-content:center!important;
+  column-gap:10px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicSettingsGear{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  justify-self:center!important;
+  align-self:center!important;
+  border:1px solid #d5c4e4!important;
+  border-radius:50%!important;
+  background:linear-gradient(180deg,#fff 0%,#f5ebfb 100%)!important;
+  color:#713bd0!important;
+  box-shadow:0 4px 12px rgba(92,63,117,.11)!important;
+  font-size:1.82rem!important;
+  line-height:1!important;
+  overflow:visible!important;
+}
+body.music-mode #musicSettingsGear::before,
+body.music-mode #musicSettingsGear::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  top:8px!important;
+  width:1px!important;
+  height:34px!important;
+  background:linear-gradient(180deg,transparent 0%,#d6c5e3 18%,#d6c5e3 82%,transparent 100%)!important;
+}
+body.music-mode #musicSettingsGear::before{left:-10px!important}
+body.music-mode #musicSettingsGear::after{right:-10px!important}
+
+body.music-mode #musicActions .ico{
+  position:static!important;
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  margin:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  color:#8050a8!important;
+}
+body.music-mode #musicActions .ico svg{
+  width:30px!important;
+  height:30px!important;
+  display:block!important;
+}
+body.music-mode #musicActions .txt{
+  width:100%!important;
+  max-width:90px!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  display:block!important;
+  align-self:center!important;
+  justify-self:center!important;
+  font-size:.86rem!important;
+  line-height:1.04!important;
+  font-weight:850!important;
+  text-align:center!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+/* MA MUSIQUE : bandeau inférieur, centres verticaux identiques pour icône et texte. */
+body.music-mode #musicQuick,
+body.music-mode #musicQuick .stats{
+  height:58px!important;
+  min-height:58px!important;
+}
+body.music-mode #musicQuick .stats{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:center!important;
+  padding:0 3px!important;
+}
+body.music-mode #musicQuick .stats>.stat{
+  width:100%!important;
+  height:56px!important;
+  min-height:56px!important;
+  margin:0!important;
+  padding:0 7px!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:9px!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico{
+  flex:0 0 34px!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  min-height:34px!important;
+  max-height:34px!important;
+  margin:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  font-size:0!important;
+  line-height:0!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico svg{
+  width:31px!important;
+  min-width:31px!important;
+  max-width:31px!important;
+  height:31px!important;
+  min-height:31px!important;
+  max-height:31px!important;
+  display:block!important;
+  margin:0!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta{
+  flex:0 1 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  gap:2px!important;
+  line-height:1!important;
+  transform:none!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta b{
+  margin:0!important;
+  padding:0!important;
+  font-size:.90rem!important;
+  line-height:1!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta span{
+  margin:0!important;
+  padding:0!important;
+  font-size:.72rem!important;
+  line-height:1!important;
+}
+
+/* RADIO INTELLIGENTE : 12 px exactement entre les trois blocs de commandes. */
+body.radio-mode .track{
+  padding-top:30px!important;
+  gap:0!important;
+  align-content:stretch!important;
+  grid-template-rows:
+    minmax(0,1fr)
+    auto
+    auto
+    minmax(0,1fr)
+    56px
+    12px
+    68px
+    12px
+    96px
+    12px
+    58px!important;
+}
+body.radio-mode #title{
+  grid-row:2!important;
+  align-self:end!important;
+  margin:0!important;
+  transform:none!important;
+}
+body.radio-mode #artist{
+  grid-row:3!important;
+  align-self:start!important;
+  margin:2px 0 0!important;
+  transform:none!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  grid-row:5!important;
+  height:56px!important;
+  min-height:56px!important;
+  margin:0!important;
+}
+body.radio-mode .primary{
+  grid-row:7!important;
+  height:68px!important;
+  min-height:68px!important;
+  margin:0!important;
+}
+body.radio-mode .track>.alt:not(.music-alt){
+  grid-row:9!important;
+  height:96px!important;
+  min-height:96px!important;
+  margin:0!important;
+  grid-template-rows:96px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick){
+  grid-row:11!important;
+  position:relative!important;
+  height:58px!important;
+  min-height:58px!important;
+  margin:0!important;
+  padding:0!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  position:relative!important;
+  height:58px!important;
+  min-height:58px!important;
+}
+
+/* Bouton central : 2 px exacts en haut et en bas dans un bandeau de 58 px. */
+body.radio-mode .radio-music-open{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  width:54px!important;
+  height:54px!important;
+  min-width:54px!important;
+  min-height:54px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  line-height:0!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:31px!important;
+  height:31px!important;
+  display:block!important;
+  margin:0!important;
+}
+
+/* GARDÉS / PASSÉS : titre clairement sous la zone système du S23 Ultra. */
+#settingsPage.history-only>.settings-head{
+  min-height:104px!important;
+  height:104px!important;
+  box-sizing:border-box!important;
+  padding:38px 12px 10px!important;
+  align-items:center!important;
+}
+#settingsPage.history-only>.settings-head h2,
+#settingsPage.history-only>.settings-head .settings-back,
+#settingsPage.history-only>.settings-head .settings-head-spacer{
+  align-self:center!important;
+  margin-top:0!important;
+  margin-bottom:0!important;
+}
+#settingsPage.history-only>.radio-history-card .tabs{
+  top:104px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    height:62px!important;
+    min-height:62px!important;
+    grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr)!important;
+    grid-template-rows:62px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:60px!important;
+    min-height:60px!important;
+    grid-template-columns:32px minmax(0,1fr)!important;
+    padding:0 10px!important;
+    column-gap:9px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:50px!important;
+    height:50px!important;
+    min-width:50px!important;
+    min-height:50px!important;
+    font-size:1.76rem!important;
+  }
+  body.music-mode #musicSettingsGear::before{left:-9px!important}
+  body.music-mode #musicSettingsGear::after{right:-9px!important}
+  body.music-mode #musicActions .ico{
+    width:32px!important;
+    min-width:32px!important;
+    height:32px!important;
+  }
+  body.music-mode #musicActions .ico svg{
+    width:29px!important;
+    height:29px!important;
+  }
+  body.music-mode #musicActions .txt{
+    max-width:84px!important;
+    font-size:.82rem!important;
+  }
+
+  body.radio-mode .track{
+    padding-top:28px!important;
+    grid-template-rows:
+      minmax(0,1fr)
+      auto
+      auto
+      minmax(0,1fr)
+      54px
+      11px
+      66px
+      11px
+      92px
+      11px
+      56px!important;
+  }
+  body.radio-mode .track>.playerbar:not(.music-playerbar){
+    height:54px!important;
+    min-height:54px!important;
+  }
+  body.radio-mode .primary{
+    height:66px!important;
+    min-height:66px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    height:92px!important;
+    min-height:92px!important;
+    grid-template-rows:92px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick),
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:52px!important;
+    height:52px!important;
+    min-width:52px!important;
+    min-height:52px!important;
+  }
+  body.radio-mode .radio-music-open svg{
+    width:30px!important;
+    height:30px!important;
+  }
+
+  #settingsPage.history-only>.settings-head{
+    min-height:102px!important;
+    height:102px!important;
+    padding:37px 12px 9px!important;
+  }
+  #settingsPage.history-only>.radio-history-card .tabs{
+    top:102px!important;
+  }
+}
+
+
+/* v107.1 — empêcher les anciennes règles de réduire la roue centrale */
+body.music-mode #musicActions>#musicSettingsGear{
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+}
+@media(max-width:420px){
+  body.music-mode #musicActions>#musicSettingsGear{
+    width:50px!important;
+    height:50px!important;
+    min-width:50px!important;
+    min-height:50px!important;
+    max-width:50px!important;
+    max-height:50px!important;
+  }
+}
