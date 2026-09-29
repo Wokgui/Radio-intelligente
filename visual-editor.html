@@ -3,129 +3,158 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Éditeur visuel · Radio intelligente</title>
+<title>Radio Interface Studio</title>
 <style>
 :root{
   color-scheme:light;
-  --ink:#21182f;
-  --muted:#71697d;
-  --line:#ded7e8;
-  --accent:#7c3aed;
-  --panel:#ffffff;
-  --desk:#f3f0f7;
+  --ink:#241b31;
+  --muted:#756d80;
+  --line:#ddd6e7;
+  --accent:#7540d6;
+  --accent2:#a95fe7;
+  --panel:#fff;
+  --desk:#f2eff6;
+  --soft:#f8f6fb;
+  --danger:#a52b4e;
+  --ok:#267557;
+  --shadow:0 9px 26px #38254f12;
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;font:600 14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--desk)}
-button,select,input{font:inherit}
+button,select,input,textarea{font:inherit}
 button{cursor:pointer}
+button:disabled{cursor:default;opacity:.42}
 header{
-  position:sticky;top:0;z-index:10;
-  min-height:64px;padding:10px 18px;
-  display:flex;align-items:center;gap:16px;
-  background:#ffffffed;border-bottom:1px solid var(--line);backdrop-filter:blur(14px)
+  position:sticky;top:0;z-index:20;min-height:70px;padding:10px 16px;
+  display:flex;align-items:center;gap:14px;background:#ffffffee;
+  border-bottom:1px solid var(--line);backdrop-filter:blur(18px)
 }
-header strong{font-size:1.05rem}
-header span{color:var(--muted);font-size:.82rem}
-.top-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px;min-width:270px}
+.brand-logo{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,var(--accent),var(--accent2));color:white;font-size:21px;box-shadow:0 8px 20px #7540d638}
+.brand strong{display:block;font-size:1.02rem}
+.brand small{display:block;color:var(--muted);font-size:.71rem;margin-top:2px}
+.mode-switch{display:flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--soft)}
+.top-actions{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .btn{
-  min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:11px;
+  min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;
   background:#fff;color:#4c3d5e;font-weight:800
 }
-.btn.primary{border:0;background:var(--accent);color:white}
+.btn:hover:not(:disabled){border-color:#c7b8d7;background:#fcfaff}
+.btn.primary{border:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white}
+.btn.danger{color:var(--danger);background:#fff7f9;border-color:#efcbd6}
+.btn.active{border-color:#b89adb;background:#f1e9fa;color:#6530b5}
+.desktop-only{display:none}
+body.desktop .desktop-only{display:inline-flex}
 main{
-  min-height:calc(100vh - 64px);
-  display:grid;grid-template-columns:minmax(520px,1fr) 330px;gap:18px;padding:18px
+  min-height:calc(100vh - 70px);
+  display:grid;grid-template-columns:minmax(560px,1fr) 390px;gap:14px;padding:14px
 }
 .workspace{
-  min-width:0;display:flex;align-items:flex-start;justify-content:center;
-  overflow:auto;padding:14px;border:1px solid var(--line);border-radius:18px;background:#eae6ef
+  min-width:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;
+  padding:16px;border:1px solid var(--line);border-radius:18px;
+  background:
+    linear-gradient(90deg,#ddd7e4 1px,transparent 1px),
+    linear-gradient(#ddd7e4 1px,transparent 1px),
+    #ebe7ef;
+  background-size:20px 20px;
+  box-shadow:inset 0 0 0 1px #fff8
 }
 .stage{position:relative;padding:31px 0 0 31px}
 .ruler-x,.ruler-y{
-  position:absolute;background:#f9f8fb;color:#736a80;border:1px solid #d8d2df;
+  position:absolute;background:#fbfafc;color:#736a80;border:1px solid #d8d2df;
   font:700 9px/1 system-ui;overflow:hidden;user-select:none
 }
-.ruler-x{
-  left:31px;top:0;height:25px;
-  background-image:repeating-linear-gradient(90deg,#91889d 0 1px,transparent 1px 10px);
-  background-size:10px 7px;background-repeat:repeat-x;background-position:left bottom
-}
-.ruler-y{
-  left:0;top:31px;width:25px;
-  background-image:repeating-linear-gradient(#91889d 0 1px,transparent 1px 10px);
-  background-size:7px 10px;background-repeat:repeat-y;background-position:right top
-}
-.ruler-corner{position:absolute;left:0;top:0;width:25px;height:25px;border:1px solid #d8d2df;background:#f9f8fb}
+.ruler-x{left:31px;top:0;height:25px;background-image:repeating-linear-gradient(90deg,#91889d 0 1px,transparent 1px 10px);background-size:10px 7px;background-repeat:repeat-x;background-position:left bottom}
+.ruler-y{left:0;top:31px;width:25px;background-image:repeating-linear-gradient(#91889d 0 1px,transparent 1px 10px);background-size:7px 10px;background-repeat:repeat-y;background-position:right top}
+.ruler-corner{position:absolute;left:0;top:0;width:25px;height:25px;border:1px solid #d8d2df;background:#fbfafc}
 .device{
-  position:relative;border:10px solid #1d1a22;border-radius:33px;background:#111;
-  box-shadow:0 22px 60px #251a3633;overflow:hidden;transform-origin:top left
+  position:relative;border:10px solid #201d24;border-radius:33px;background:#111;
+  box-shadow:0 26px 70px #251a363d;overflow:hidden;transform-origin:top left
 }
-.device:before{
-  content:"";position:absolute;z-index:3;top:7px;left:50%;width:78px;height:19px;
-  transform:translateX(-50%);border-radius:999px;background:#161319;pointer-events:none
-}
+.device:before{content:"";position:absolute;z-index:3;top:7px;left:50%;width:78px;height:19px;transform:translateX(-50%);border-radius:999px;background:#161319;pointer-events:none}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
-.side{display:grid;gap:12px;align-content:start}
-.card{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:14px;box-shadow:0 5px 18px #2f244010}
-.card h2{font-size:.9rem;margin:0 0 11px}
-.card p{margin:7px 0;color:var(--muted);font-size:.78rem}
-.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.field{display:grid;gap:5px}
-.field label{font-size:.68rem;color:var(--muted)}
-.field select,.field input{
-  width:100%;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:10px;background:white
+.side{display:grid;gap:10px;align-content:start;max-height:calc(100vh - 98px);overflow:auto;padding-right:2px}
+.card{border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:13px;box-shadow:var(--shadow)}
+.card h2{display:flex;align-items:center;gap:7px;font-size:.87rem;margin:0 0 10px}
+.card h2 small{margin-left:auto;color:var(--muted);font-size:.63rem;font-weight:700}
+.card p{margin:7px 0;color:var(--muted);font-size:.73rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.fields.four{grid-template-columns:repeat(4,1fr)}
+.field{display:grid;gap:4px}
+.field label{font-size:.64rem;color:var(--muted)}
+.field select,.field input,.field textarea{
+  width:100%;min-height:36px;padding:0 8px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink)
 }
+.field textarea{padding:8px;min-height:62px;resize:vertical}
 .selector{
-  min-height:42px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8f6fb;
-  font:700 11px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
+  min-height:38px;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--soft);
+  font:700 10px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
 }
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.metric{padding:8px 5px;border-radius:9px;background:#f5f1f9;text-align:center}
-.metric b{display:block;font-size:.93rem}
-.metric small{color:var(--muted);font-size:.62rem}
-.pad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,38px);gap:5px;justify-content:center}
-.pad button,.size-grid button{
-  border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:900
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+.metric{padding:6px 4px;border-radius:8px;background:#f5f1f9;text-align:center}
+.metric b{display:block;font-size:.85rem}
+.metric small{color:var(--muted);font-size:.58rem}
+.toolbar{display:flex;gap:5px;flex-wrap:wrap}
+.tool{
+  min-height:34px;min-width:34px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#513d67;font-weight:850
 }
-.pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .center{grid-column:2;grid-row:2;background:#f1ebf8;color:#7c3aed}.pad .right{grid-column:3;grid-row:2}.pad .down{grid-column:2;grid-row:3}
-.size-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
-.size-grid button{min-height:36px}
-.edit-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
-.edit-actions button{min-height:36px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:850}
-.edit-actions button:disabled{opacity:.38;cursor:default}
-.edit-actions .danger{color:#a12848;background:#fff6f8;border-color:#efccd6}
-.color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
-.color-control{display:grid;gap:5px;font-size:.66rem;color:var(--muted)}
-.color-control input{width:100%;height:38px;padding:2px;border:1px solid var(--line);border-radius:9px;background:#fff}
-.z-grid{display:grid;grid-template-columns:1fr 72px 1fr;gap:6px;margin-top:10px;align-items:center}
-.z-grid button,.z-grid input{min-height:36px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:850;text-align:center}
-.chatgpt-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#eee7f8;color:#60329d;font-size:.68rem;font-weight:850}
-.row{display:flex;gap:7px;flex-wrap:wrap}
-.row .btn{flex:1}
-.code{
-  width:100%;height:150px;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:10px;
-  background:#17131d;color:#efe8f7;font:600 11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace
-}
-.status{min-height:18px;color:#267557;font-size:.72rem;margin-top:6px}
-kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 11px system-ui}
-@media(max-width:980px){
+.tool.active{background:#eee5fa;border-color:#bda4dc;color:#6630b6}
+.tool.wide{flex:1}
+.geometry{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.geometry .field input{text-align:center}
+.checkline{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:.7rem;color:var(--muted)}
+.checkline input{accent-color:var(--accent)}
+.color-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.color-control{display:grid;gap:4px;font-size:.62rem;color:var(--muted)}
+.color-control input{width:100%;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.align-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.align-grid .tool{font-size:.7rem}
+.spacing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+.space{padding:6px 3px;border-radius:8px;background:#f5f1f9;text-align:center}
+.space b{display:block;font-size:.8rem}
+.space small{font-size:.56rem;color:var(--muted)}
+.status{min-height:18px;color:var(--ok);font-size:.69rem;margin-top:6px}
+.code{width:100%;height:118px;resize:vertical;padding:9px;border:1px solid #2f2837;border-radius:9px;background:#19151f;color:#f0e9f6;font:600 10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
+.hint{padding:8px 9px;border-radius:9px;background:#f7f2fc;color:#684c82;font-size:.68rem;line-height:1.4}
+kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 10px system-ui}
+#textCard.disabled{opacity:.54}
+#textCard.disabled .text-controls{pointer-events:none}
+.desktop-badge{display:none;padding:3px 7px;border-radius:999px;background:#e8f6ef;color:#267557;font-size:.62rem;font-weight:900}
+body.desktop .desktop-badge{display:inline-flex}
+@media(max-width:1100px){
   main{grid-template-columns:1fr}
-  .side{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .side{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .side{grid-template-columns:1fr}
+  header{align-items:flex-start;flex-wrap:wrap}
+  .top-actions{margin-left:0;width:100%}
 }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <strong>Éditeur visuel · Radio intelligente</strong><br>
-    <span>La vue centrale reproduit un écran Android à largeur réelle CSS.</span>
+  <div class="brand">
+    <div class="brand-logo">✥</div>
+    <div>
+      <strong>Radio Interface Studio <span class="desktop-badge">Windows</span></strong>
+      <small>Éditeur visuel de Radio intelligente</small>
+    </div>
   </div>
+
+  <div class="mode-switch">
+    <button class="btn primary" id="radioBtn">Radio</button>
+    <button class="btn" id="musicBtn">Ma musique</button>
+  </div>
+
   <div class="top-actions">
-    <button class="btn primary" id="radioBtn">Radio intelligente</button>
-    <button class="btn" id="musicBtn">Lecteur normal / Ma musique</button>
+    <button class="btn desktop-only" id="openProjectBtn">Ouvrir</button>
+    <button class="btn desktop-only" id="saveProjectBtn">Enregistrer</button>
+    <button class="btn primary desktop-only" id="exportChatGPTBtn">Exporter pour ChatGPT</button>
     <button class="btn" id="reloadBtn">Recharger</button>
   </div>
 </header>
+
 <main>
   <section class="workspace">
     <div class="stage" id="stage">
@@ -140,48 +169,29 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
 
   <aside class="side">
     <section class="card">
-      <h2>Écran et grille</h2>
+      <h2>Écran <small>repères</small></h2>
       <div class="fields">
-        <div class="field">
-          <label>Format</label>
-          <select id="devicePreset">
-            <option value="412x915">Galaxy S23 Ultra · 412 × 915</option>
-            <option value="384x854">Android · 384 × 854</option>
-            <option value="390x844">390 × 844</option>
-            <option value="360x800">360 × 800</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Zoom PC</label>
-          <select id="zoom">
-            <option value="1">100 %</option>
-            <option value=".9">90 %</option>
-            <option value=".8">80 %</option>
-            <option value=".7">70 %</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Accrochage</label>
-          <select id="grid">
-            <option value="1">Libre · 1 px</option>
-            <option value="4">Grille · 4 px</option>
-            <option value="8">Grille · 8 px</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Pas des boutons</label>
-          <select id="step">
-            <option value="1">1 px</option>
-            <option value="5">5 px</option>
-            <option value="10">10 px</option>
-          </select>
-        </div>
+        <div class="field"><label>Format</label><select id="devicePreset">
+          <option value="412x915">Galaxy S23 Ultra · 412 × 915</option>
+          <option value="384x854">Android · 384 × 854</option>
+          <option value="390x844">390 × 844</option>
+          <option value="360x800">360 × 800</option>
+        </select></div>
+        <div class="field"><label>Zoom PC</label><select id="zoom">
+          <option value="1">100 %</option><option value=".9">90 %</option><option value=".8">80 %</option><option value=".7">70 %</option>
+        </select></div>
+        <div class="field"><label>Accrochage</label><select id="grid">
+          <option value="1">Libre · 1 px</option><option value="4">Grille · 4 px</option><option value="8">Grille · 8 px</option>
+        </select></div>
+        <div class="field"><label>Pas boutons</label><select id="step">
+          <option value="1">1 px</option><option value="5">5 px</option><option value="10">10 px</option>
+        </select></div>
       </div>
-      <p>Clique un élément dans le téléphone puis fais-le glisser. Les règles et la grille servent de repères.</p>
+      <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches.</p>
     </section>
 
     <section class="card">
-      <h2>Élément sélectionné</h2>
+      <h2>Sélection <small>géométrie</small></h2>
       <div class="selector" id="selector">Clique un élément dans l’aperçu.</div>
       <div class="metrics">
         <div class="metric"><b id="mx">—</b><small>X</small></div>
@@ -189,99 +199,167 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
         <div class="metric"><b id="mw">—</b><small>Largeur</small></div>
         <div class="metric"><b id="mh">—</b><small>Hauteur</small></div>
       </div>
-
-      <div class="edit-actions">
-        <button id="undoEdit" disabled>↶ Annuler</button>
-        <button id="redoEdit" disabled>↷ Rétablir</button>
-        <button id="deleteEdit" class="danger">⌫ Supprimer</button>
+      <div class="geometry" style="margin-top:8px">
+        <div class="field"><label>X</label><input id="posX" type="number"></div>
+        <div class="field"><label>Y</label><input id="posY" type="number"></div>
+        <div class="field"><label>Largeur</label><input id="sizeW" type="number" min="1"></div>
+        <div class="field"><label>Hauteur</label><input id="sizeH" type="number" min="1"></div>
       </div>
-
-      <div class="pad">
-        <button class="up" data-move="0,-1">↑</button>
-        <button class="left" data-move="-1,0">←</button>
-        <button class="center" title="Réinitialiser tous les ajustements" id="resetBtn">0</button>
-        <button class="right" data-move="1,0">→</button>
-        <button class="down" data-move="0,1">↓</button>
+      <label class="checkline"><input id="keepRatio" type="checkbox"> Conserver les proportions</label>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="tool" id="undoEdit" disabled>↶</button>
+        <button class="tool" id="redoEdit" disabled>↷</button>
+        <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
+        <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
+      <div class="hint" style="margin-top:8px">Poignées aux coins pour redimensionner. <kbd>←↑↓→</kbd> déplacer · <kbd>Maj</kbd> + flèche redimensionner · <kbd>Suppr</kbd> masquer · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>.</div>
+    </section>
 
-      <div class="size-grid">
-        <button data-size="-1,0">Largeur −</button>
-        <button data-size="1,0">Largeur +</button>
-        <button data-size="0,-1">Hauteur −</button>
-        <button data-size="0,1">Hauteur +</button>
-        <button data-scale="-1">Réduire cercle / bloc</button>
-        <button data-scale="1">Agrandir cercle / bloc</button>
-        <button data-font="-1">Icône / texte −</button>
-        <button data-font="1">Icône / texte +</button>
+    <section class="card" id="textCard">
+      <h2>Texte <small>type Word</small></h2>
+      <div class="text-controls">
+        <div class="field"><label>Contenu</label><textarea id="textContent" placeholder="Sélectionne un texte dans l’aperçu."></textarea></div>
+        <div class="fields" style="margin-top:7px">
+          <div class="field"><label>Police</label><select id="fontFamily">
+            <option value="'Segoe UI', sans-serif">Segoe UI</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Calibri, sans-serif">Calibri</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="'Courier New', monospace">Courier New</option>
+          </select></div>
+          <div class="field"><label>Taille</label><input id="fontSize" type="number" min="4" max="120" step=".5"></div>
+        </div>
+        <div class="toolbar" style="margin-top:7px">
+          <button class="tool" id="boldBtn"><b>G</b></button>
+          <button class="tool" id="italicBtn"><i>I</i></button>
+          <button class="tool" id="underlineBtn"><u>S</u></button>
+          <button class="tool" data-text-align="left">↤</button>
+          <button class="tool" data-text-align="center">↔</button>
+          <button class="tool" data-text-align="right">↦</button>
+        </div>
+        <div class="fields" style="margin-top:7px">
+          <div class="field"><label>Interlettrage px</label><input id="letterSpacing" type="number" step=".1"></div>
+          <div class="field"><label>Interligne</label><input id="lineHeight" type="number" min=".5" max="4" step=".05"></div>
+        </div>
       </div>
+      <p id="textHint">Clique directement un libellé ou une icône textuelle pour la modifier.</p>
+    </section>
 
-      <div class="z-grid">
-        <button id="sendBack">Plan −</button>
-        <input id="zIndex" type="number" value="0" aria-label="Plan z-index">
-        <button id="bringFront">Plan +</button>
-      </div>
-
+    <section class="card">
+      <h2>Apparence <small>forme / icône</small></h2>
       <div class="color-grid">
         <label class="color-control">Texte / icône<input id="colorText" type="color" value="#000000"></label>
         <label class="color-control">Fond<input id="colorBg" type="color" value="#ffffff"></label>
         <label class="color-control">Bordure<input id="colorBorder" type="color" value="#dddddd"></label>
       </div>
-
-      <p>Poignées aux 4 coins : redimensionnement direct. Les cercles restent proportionnels. Les guides roses indiquent centre, milieu et alignements avec les autres objets.</p>
-      <p>Clavier PC : <kbd>← ↑ ↓ →</kbd> déplacer · <kbd>Ctrl</kbd> + flèche = 10 px · <kbd>Maj</kbd> + flèche = taille · <kbd>Suppr</kbd> masquer · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> annuler/rétablir.</p>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Plan (z-index)</label><input id="zIndex" type="number" value="0"></div>
+        <div class="field"><label>Ajustement rapide</label><div class="toolbar">
+          <button class="tool" id="sendBack">Plan −</button><button class="tool" id="bringFront">Plan +</button>
+        </div></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" data-font="-1">Icône / texte −</button>
+        <button class="tool wide" data-font="1">Icône / texte +</button>
+      </div>
+      <p>Pour un SVG ou une icône indépendante, clique directement dessus : largeur/hauteur agissent alors sur l’icône elle-même.</p>
     </section>
 
     <section class="card">
-      <h2>CSS produit</h2>
-      <textarea class="code" id="cssOut" spellcheck="false" readonly>/* Aucun déplacement ou redimensionnement. */</textarea>
-      <div class="row" style="margin-top:8px">
-        <button class="btn primary" id="copyBtn">Copier CSS</button>
+      <h2>Alignement <small>1 clic</small></h2>
+      <div class="align-grid">
+        <button class="tool" data-align="screen-x">Centrer ↔ écran</button>
+        <button class="tool" data-align="screen-y">Centrer ↕ écran</button>
+        <button class="tool" data-align="parent-x">Centrer ↔ dans parent</button>
+        <button class="tool" data-align="parent-y">Centrer ↕ dans parent</button>
+        <button class="tool" data-align="parent-both" style="grid-column:1/-1">Centrer parfaitement dans la forme / zone parente</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Espacements <small>mesure</small></h2>
+      <button class="btn" id="measureBtn" style="width:100%">Mesurer autour de la sélection</button>
+      <div class="spacing-grid">
+        <div class="space"><b id="spaceL">—</b><small>gauche</small></div>
+        <div class="space"><b id="spaceT">—</b><small>haut</small></div>
+        <div class="space"><b id="spaceR">—</b><small>droite</small></div>
+        <div class="space"><b id="spaceB">—</b><small>bas</small></div>
+      </div>
+      <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche ; les marges du parent sont aussi calculées.</p>
+    </section>
+
+    <section class="card desktop-only" style="display:none">
+      <h2>Projet PC <small>fichier local</small></h2>
+      <div class="toolbar">
+        <button class="btn wide" id="saveProjectBtn2">Enregistrer projet</button>
+        <button class="btn wide" id="openProjectBtn2">Ouvrir projet</button>
+      </div>
+      <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
+      <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
+      <p>Le fichier projet conserve les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source.</p>
+    </section>
+
+    <section class="card">
+      <h2>CSS produit <small>avancé</small></h2>
+      <textarea class="code" id="cssOut" spellcheck="false" readonly>/* Aucun ajustement. */</textarea>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn" id="copyBtn">Copier CSS</button>
         <button class="btn" id="downloadBtn">Exporter .css</button>
+        <button class="btn" id="resetBtn">Tout réinitialiser</button>
       </div>
       <div class="status" id="status"></div>
     </section>
-
-    <section class="card">
-      <h2>Éléments créés avec ChatGPT</h2>
-      <span class="chatgpt-badge">Registre synchronisé avec le projet</span>
-      <p>Tu peux me demander dans ChatGPT : « ajoute un bouton rond ici », « ajoute un texte », « ajoute une icône », etc. Je l’ajoute au registre du projet ; après déploiement/rechargement, l’objet apparaît dans cette interface et devient modifiable comme les autres.</p>
-      <div class="status" id="customElementsStatus">Chargement du registre…</div>
-    </section>
-
-    <section class="card">
-      <h2>Utilisation</h2>
-      <p>1. Choisis <b>Radio intelligente</b> ou <b>Lecteur normal</b>.</p>
-      <p>2. Clique directement l’objet à modifier dans le téléphone.</p>
-      <p>3. Déplace-le à la souris ou avec les flèches. Utilise la grille pour des espacements réguliers.</p>
-      <p>4. Copie le CSS obtenu et donne-le-moi : je peux ensuite intégrer proprement les valeurs dans l’application au lieu de laisser des corrections temporaires.</p>
-    </section>
   </aside>
 </main>
+
 <script>
 (function(){
   'use strict';
-  const frame=document.getElementById('appFrame');
-  const device=document.getElementById('device');
-  const stage=document.getElementById('stage');
-  const rulerX=document.getElementById('rulerX');
-  const rulerY=document.getElementById('rulerY');
-  const preset=document.getElementById('devicePreset');
-  const zoom=document.getElementById('zoom');
-  const grid=document.getElementById('grid');
-  const step=document.getElementById('step');
-  const selector=document.getElementById('selector');
-  const cssOut=document.getElementById('cssOut');
-  const status=document.getElementById('status');
-  const undoBtn=document.getElementById('undoEdit');
-  const redoBtn=document.getElementById('redoEdit');
-  const deleteBtn=document.getElementById('deleteEdit');
-  const zIndex=document.getElementById('zIndex');
-  const colorText=document.getElementById('colorText');
-  const colorBg=document.getElementById('colorBg');
-  const colorBorder=document.getElementById('colorBorder');
-  const customStatus=document.getElementById('customElementsStatus');
-  const metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
-  let hasSelection=false;
+
+  if(window.RadioDesktop && window.RadioDesktop.isDesktop) document.body.classList.add('desktop');
+
+  var frame=document.getElementById('appFrame');
+  var device=document.getElementById('device');
+  var stage=document.getElementById('stage');
+  var rulerX=document.getElementById('rulerX');
+  var rulerY=document.getElementById('rulerY');
+  var preset=document.getElementById('devicePreset');
+  var zoom=document.getElementById('zoom');
+  var grid=document.getElementById('grid');
+  var step=document.getElementById('step');
+  var selector=document.getElementById('selector');
+  var cssOut=document.getElementById('cssOut');
+  var status=document.getElementById('status');
+  var undoBtn=document.getElementById('undoEdit');
+  var redoBtn=document.getElementById('redoEdit');
+  var deleteBtn=document.getElementById('deleteEdit');
+  var lockBtn=document.getElementById('lockEdit');
+  var zIndex=document.getElementById('zIndex');
+  var colorText=document.getElementById('colorText');
+  var colorBg=document.getElementById('colorBg');
+  var colorBorder=document.getElementById('colorBorder');
+  var textCard=document.getElementById('textCard');
+  var textContent=document.getElementById('textContent');
+  var fontFamily=document.getElementById('fontFamily');
+  var fontSize=document.getElementById('fontSize');
+  var boldBtn=document.getElementById('boldBtn');
+  var italicBtn=document.getElementById('italicBtn');
+  var underlineBtn=document.getElementById('underlineBtn');
+  var letterSpacing=document.getElementById('letterSpacing');
+  var lineHeight=document.getElementById('lineHeight');
+  var posX=document.getElementById('posX');
+  var posY=document.getElementById('posY');
+  var sizeW=document.getElementById('sizeW');
+  var sizeH=document.getElementById('sizeH');
+  var keepRatio=document.getElementById('keepRatio');
+  var metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
+
+  var hasSelection=false;
+  var lastState=null;
+  var projectResolver=null;
 
   function post(type,payload){
     if(!frame.contentWindow)return;
@@ -291,14 +369,14 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
   function rgbToHex(value,fallback){
     if(!value)return fallback;
     if(/^#[0-9a-f]{6}$/i.test(value))return value;
-    const m=String(value).match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
+    var m=String(value).match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
     if(!m)return fallback;
-    return '#'+[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,'0')).join('');
+    return '#'+[m[1],m[2],m[3]].map(function(v){return Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,'0')}).join('');
   }
 
   function setDevice(){
-    const bits=preset.value.split('x');
-    const w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
+    var bits=preset.value.split('x');
+    var w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
     device.style.width=w+'px';
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
@@ -308,22 +386,156 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
     stage.style.height=(31+h*z+20)+'px';
   }
 
-  function switchToMusic(){post('activate-element',{id:'radioMusicOpen'})}
-  function switchToRadio(){post('activate-element',{id:'musicRadioOpen'})}
+  function setStatus(message,error){
+    status.textContent=message||'';
+    status.style.color=error?'#a52b4e':'#267557';
+  }
+
+  function setActive(button,on){
+    if(button)button.classList.toggle('active',!!on);
+  }
+
+  function updateState(p){
+    lastState=p;
+    hasSelection=!!p.selected;
+    selector.textContent=p.selected?p.selector:'Clique un élément dans l’aperçu.';
+    metrics.x.textContent=p.selected?p.x:'—';
+    metrics.y.textContent=p.selected?p.y:'—';
+    metrics.w.textContent=p.selected?p.width:'—';
+    metrics.h.textContent=p.selected?p.height:'—';
+
+    [posX,posY,sizeW,sizeH,zIndex].forEach(function(el){el.disabled=!p.selected});
+    deleteBtn.disabled=!p.selected;
+    lockBtn.disabled=!p.selected;
+
+    if(p.selected){
+      posX.value=Math.round(p.x);
+      posY.value=Math.round(p.y);
+      sizeW.value=Math.round(p.width);
+      sizeH.value=Math.round(p.height);
+      zIndex.value=Number(p.zIndex)||0;
+      colorText.value=rgbToHex(p.color,'#000000');
+      colorBg.value=rgbToHex(p.backgroundColor,'#ffffff');
+      colorBorder.value=rgbToHex(p.borderColor,'#dddddd');
+      lockBtn.textContent=p.locked?'🔒 Déverrouiller':'🔓 Verrouiller';
+
+      var editable=!!p.textEditable;
+      textCard.classList.toggle('disabled',!editable);
+      textContent.disabled=!editable;
+      fontFamily.disabled=!editable;
+      fontSize.disabled=!editable;
+      letterSpacing.disabled=!editable;
+      lineHeight.disabled=!editable;
+      if(editable){
+        textContent.value=p.textContent==null?'':p.textContent;
+        fontSize.value=p.fontSize||16;
+        var options=Array.from(fontFamily.options);
+        var exact=options.find(function(o){return o.value===p.fontFamily});
+        if(exact)fontFamily.value=exact.value;
+        else if(String(p.fontFamily||'').toLowerCase().indexOf('segoe')>=0)fontFamily.selectedIndex=0;
+        setActive(boldBtn,Number(p.fontWeight)>=600 || String(p.fontWeight).toLowerCase()==='bold');
+        setActive(italicBtn,String(p.fontStyle)==='italic');
+        setActive(underlineBtn,String(p.textDecoration||'').indexOf('underline')>=0);
+        document.querySelectorAll('[data-text-align]').forEach(function(b){setActive(b,b.dataset.textAlign===p.textAlign)});
+        var ls=parseFloat(p.letterSpacing); letterSpacing.value=Number.isFinite(ls)?ls:0;
+        var lh=parseFloat(p.lineHeight); lineHeight.value=Number.isFinite(lh)?lh:1.2;
+      }
+    }else{
+      textCard.classList.add('disabled');
+      textContent.value='';
+      [posX,posY,sizeW,sizeH,zIndex].forEach(function(el){el.value=''});
+    }
+
+    if(typeof p.css==='string')cssOut.value=p.css;
+  }
+
+  function requestProject(){
+    return new Promise(function(resolve){
+      projectResolver=resolve;
+      post('get-project');
+      setTimeout(function(){
+        if(projectResolver){
+          projectResolver=null;
+          resolve(null);
+        }
+      },2500);
+    });
+  }
+
+  function projectPrompt(project){
+    return [
+      'Projet : Radio intelligente — modifications réalisées dans Radio Interface Studio.',
+      '',
+      'Applique ces modifications proprement dans le code source de l’application. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Préserve le responsive et les espaces volontaires. Les éléments masqués doivent conserver leur espace afin de ne pas décaler automatiquement le reste de l’interface, sauf indication contraire.',
+      '',
+      'Données exactes du projet :',
+      JSON.stringify(project,null,2)
+    ].join('\n');
+  }
+
+  function downloadText(name,text,type){
+    var blob=new Blob([text],{type:type||'text/plain'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download=name;a.click();
+    setTimeout(function(){URL.revokeObjectURL(url)},1000);
+  }
+
+  async function saveProject(){
+    var project=await requestProject();
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    if(window.RadioDesktop){
+      var result=await window.RadioDesktop.saveProject(project);
+      if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
+    }else{
+      downloadText('radio-interface.radio-layout.json',JSON.stringify(project,null,2),'application/json');
+      setStatus('Projet téléchargé.');
+    }
+  }
+
+  async function openProject(){
+    if(!window.RadioDesktop){setStatus('Ouverture native disponible dans le logiciel Windows.',true);return}
+    var result=await window.RadioDesktop.openProject();
+    if(result&&result.ok){
+      post('load-project',{project:result.project});
+      setStatus('Projet ouvert : '+result.path);
+    }else if(result&&result.error)setStatus(result.error,true);
+  }
+
+  async function exportChatGPT(copyOnly){
+    var project=await requestProject();
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    var text=projectPrompt(project);
+    if(copyOnly){
+      if(window.RadioDesktop)await window.RadioDesktop.copyText(text);
+      else await navigator.clipboard.writeText(text);
+      setStatus('Projet copié : colle-le directement dans ChatGPT.');
+      return;
+    }
+    if(window.RadioDesktop){
+      var result=await window.RadioDesktop.saveChatGPTExport({project:project,text:text});
+      if(result&&result.ok)setStatus('Export ChatGPT enregistré : '+result.path);
+    }else{
+      downloadText('radio-interface-pour-chatgpt.txt',text,'text/plain');
+      setStatus('Export ChatGPT téléchargé.');
+    }
+  }
 
   function sendKeyboard(event){
-    const tag=(event.target&&event.target.tagName)||'';
+    var key=event.key;
+    var modifier=event.ctrlKey||event.metaKey;
+    if(modifier&&key.toLowerCase()==='s'){
+      event.preventDefault();saveProject();return;
+    }
+    var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
-    const key=event.key;
-    const modifier=event.ctrlKey||event.metaKey;
-    const relevant=key.startsWith('Arrow')||key==='Delete'||key==='Backspace'||
-      (modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
+    var relevant=key.indexOf('Arrow')===0||key==='Delete'||key==='Backspace'||(modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
     if(!relevant)return;
     event.preventDefault();
     if(modifier&&key.toLowerCase()==='z'){post(event.shiftKey?'redo':'undo');return}
     if(modifier&&key.toLowerCase()==='y'){post('redo');return}
     if(key==='Delete'||key==='Backspace'){post('delete');return}
-    const amount=modifier?10:1;
+    var amount=modifier?10:1;
     if(event.shiftKey){
       if(key==='ArrowLeft')post('resize',{dw:-amount,dh:0});
       if(key==='ArrowRight')post('resize',{dw:amount,dh:0});
@@ -336,50 +548,48 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
       if(key==='ArrowDown')post('move',{dx:0,dy:amount});
     }
   }
-
   window.addEventListener('keydown',sendKeyboard,true);
 
   window.addEventListener('message',function(event){
     if(event.origin!==location.origin)return;
-    const data=event.data||{};
+    var data=event.data||{};
     if(data.source!=='radio-visual-editor')return;
-    const p=data.payload||{};
+    var p=data.payload||{};
+
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
       post('enable');
-      status.textContent='Éditeur prêt.';
+      post('get-css');
+      setStatus('Éditeur prêt.');
     }
     if(data.type==='history'){
       undoBtn.disabled=!p.canUndo;
       redoBtn.disabled=!p.canRedo;
     }
-    if(data.type==='state'){
-      hasSelection=!!p.selected;
-      selector.textContent=p.selected?p.selector:'Clique un élément dans l’aperçu.';
-      metrics.x.textContent=p.selected?p.x:'—';
-      metrics.y.textContent=p.selected?p.y:'—';
-      metrics.w.textContent=p.selected?p.width:'—';
-      metrics.h.textContent=p.selected?p.height:'—';
-      deleteBtn.disabled=!p.selected;
-      if(p.selected){
-        zIndex.value=Number(p.zIndex)||0;
-        colorText.value=rgbToHex(p.color,'#000000');
-        colorBg.value=rgbToHex(p.backgroundColor,'#ffffff');
-        colorBorder.value=rgbToHex(p.borderColor,'#dddddd');
-      }
-      if(typeof p.css==='string')cssOut.value=p.css;
+    if(data.type==='state')updateState(p);
+    if(data.type==='spacing'){
+      document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
+      document.getElementById('spaceR').textContent=p.right?Math.round(p.right.gap)+' px':'—';
+      document.getElementById('spaceT').textContent=p.top?Math.round(p.top.gap)+' px':'—';
+      document.getElementById('spaceB').textContent=p.bottom?Math.round(p.bottom.gap)+' px':'—';
+      var q=p.parent||{};
+      document.getElementById('spacingDetail').textContent='Marges dans le parent — gauche '+Math.round(q.left||0)+' px · haut '+Math.round(q.top||0)+' px · droite '+Math.round(q.right||0)+' px · bas '+Math.round(q.bottom||0)+' px.';
     }
     if(data.type==='css'&&typeof p.css==='string'){
       cssOut.value=p.css;
-      if(p.copied)status.textContent='CSS copié.';
-      else if(p.downloaded)status.textContent='Fichier CSS exporté.';
+      if(p.copied)setStatus('CSS copié.');
+      else if(p.downloaded)setStatus('Fichier CSS exporté.');
     }
+    if(data.type==='project'&&projectResolver){
+      var resolve=projectResolver;projectResolver=null;resolve(p.project||null);
+    }
+    if(data.type==='project-imported')setStatus('Projet appliqué à l’aperçu.');
   });
 
   frame.addEventListener('load',function(){
-    status.textContent='Chargement de l’interface…';
-    let tries=0;
-    const timer=setInterval(function(){
+    setStatus('Chargement de l’interface…');
+    var tries=0;
+    var timer=setInterval(function(){
       tries++;
       try{
         if(frame.contentWindow.RadioVisualEditor){
@@ -387,66 +597,74 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
           post('grid',{grid:Number(grid.value)});
           post('enable');
           post('get-css');
-          status.textContent='Éditeur prêt.';
+          setStatus('Éditeur prêt.');
         }
       }catch(_){}
-      if(tries>60){clearInterval(timer);status.textContent='Éditeur non détecté. Recharge la page.'}
+      if(tries>60){clearInterval(timer);setStatus('Éditeur non détecté. Recharge la page.',true)}
     },100);
-    setTimeout(refreshCustomElementsCount,350);
   });
 
-  function refreshCustomElementsCount(){
-    try{
-      const count=frame.contentWindow.document.querySelectorAll('[data-chatgpt-element]').length;
-      customStatus.textContent=count?count+' élément'+(count>1?'s':'')+' ChatGPT chargé'+(count>1?'s':'')+'.':'Aucun élément ChatGPT ajouté pour le moment.';
-    }catch(_){customStatus.textContent='Registre disponible après chargement de l’aperçu.'}
-  }
-
-  document.querySelectorAll('[data-move]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      const v=btn.dataset.move.split(',').map(Number),s=Number(step.value);
-      post('move',{dx:v[0]*s,dy:v[1]*s});
-    });
-  });
-
-  document.querySelectorAll('[data-size]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      const v=btn.dataset.size.split(',').map(Number),s=Number(step.value);
-      post('resize',{dw:v[0]*s,dh:v[1]*s});
-    });
-  });
-
-  document.querySelectorAll('[data-scale]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      const s=Number(step.value)*Number(btn.dataset.scale);
-      post('resize',{dw:s,dh:s,proportional:true});
-    });
-  });
-
-  document.querySelectorAll('[data-font]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      post('font-size',{delta:Number(btn.dataset.font)*Number(step.value)});
-    });
-  });
-
-  grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
   preset.addEventListener('change',setDevice);
   zoom.addEventListener('change',setDevice);
+  grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
+
+  document.getElementById('radioBtn').addEventListener('click',function(){post('activate-element',{id:'musicRadioOpen'})});
+  document.getElementById('musicBtn').addEventListener('click',function(){post('activate-element',{id:'radioMusicOpen'})});
+  document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
+
   undoBtn.addEventListener('click',function(){post('undo')});
   redoBtn.addEventListener('click',function(){post('redo')});
   deleteBtn.addEventListener('click',function(){post('delete')});
+  lockBtn.addEventListener('click',function(){post('lock',{value:lastState?!lastState.locked:true})});
   document.getElementById('resetBtn').addEventListener('click',function(){post('reset')});
-  document.getElementById('bringFront').addEventListener('click',function(){post('z-change',{delta:1})});
-  document.getElementById('sendBack').addEventListener('click',function(){post('z-change',{delta:-1})});
-  zIndex.addEventListener('change',function(){if(hasSelection)post('z-set',{value:Number(zIndex.value)||0})});
+
+  posX.addEventListener('change',function(){if(hasSelection)post('set-position',{x:Number(posX.value)})});
+  posY.addEventListener('change',function(){if(hasSelection)post('set-position',{y:Number(posY.value)})});
+  sizeW.addEventListener('change',function(){
+    if(!hasSelection)return;
+    post('set-size',keepRatio.checked?{width:Number(sizeW.value),keepRatio:true}:{width:Number(sizeW.value),height:Number(sizeH.value)});
+  });
+  sizeH.addEventListener('change',function(){
+    if(!hasSelection)return;
+    post('set-size',keepRatio.checked?{height:Number(sizeH.value),keepRatio:true}:{width:Number(sizeW.value),height:Number(sizeH.value)});
+  });
+
   colorText.addEventListener('input',function(){if(hasSelection)post('style',{kind:'color',value:colorText.value})});
   colorBg.addEventListener('input',function(){if(hasSelection)post('style',{kind:'background',value:colorBg.value})});
   colorBorder.addEventListener('input',function(){if(hasSelection)post('style',{kind:'border',value:colorBorder.value})});
+  zIndex.addEventListener('change',function(){if(hasSelection)post('z-set',{value:Number(zIndex.value)||0})});
+  document.getElementById('bringFront').addEventListener('click',function(){post('z-change',{delta:1})});
+  document.getElementById('sendBack').addEventListener('click',function(){post('z-change',{delta:-1})});
+
+  document.querySelectorAll('[data-font]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('font-size',{delta:Number(btn.dataset.font)*Number(step.value)})});
+  });
+
+  textContent.addEventListener('change',function(){post('text-content',{value:textContent.value})});
+  fontFamily.addEventListener('change',function(){post('text-style',{kind:'family',value:fontFamily.value})});
+  fontSize.addEventListener('change',function(){post('text-style',{kind:'size',value:Number(fontSize.value)})});
+  boldBtn.addEventListener('click',function(){post('text-style',{kind:'weight',value:(lastState&&(Number(lastState.fontWeight)>=600||String(lastState.fontWeight).toLowerCase()==='bold'))?'400':'700'})});
+  italicBtn.addEventListener('click',function(){post('text-style',{kind:'style',value:(lastState&&lastState.fontStyle==='italic')?'normal':'italic'})});
+  underlineBtn.addEventListener('click',function(){post('text-style',{kind:'decoration',value:(lastState&&String(lastState.textDecoration||'').indexOf('underline')>=0)?'none':'underline'})});
+  document.querySelectorAll('[data-text-align]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('text-style',{kind:'align',value:btn.dataset.textAlign})});
+  });
+  letterSpacing.addEventListener('change',function(){post('text-style',{kind:'letter-spacing',value:Number(letterSpacing.value)+'px'})});
+  lineHeight.addEventListener('change',function(){post('text-style',{kind:'line-height',value:String(Number(lineHeight.value)||1.2)})});
+
+  document.querySelectorAll('[data-align]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('align',{mode:btn.dataset.align})});
+  });
+  document.getElementById('measureBtn').addEventListener('click',function(){post('measure-spacing')});
+
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
   document.getElementById('downloadBtn').addEventListener('click',function(){post('download-css')});
-  document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
-  document.getElementById('musicBtn').addEventListener('click',switchToMusic);
-  document.getElementById('radioBtn').addEventListener('click',switchToRadio);
+
+  ['saveProjectBtn','saveProjectBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',saveProject)});
+  ['openProjectBtn','openProjectBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',openProject)});
+  ['exportChatGPTBtn','exportChatGPTBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){exportChatGPT(false)})});
+  var copyChat=document.getElementById('copyChatGPTBtn');
+  if(copyChat)copyChat.addEventListener('click',function(){exportChatGPT(true)});
 
   setDevice();
 })();
