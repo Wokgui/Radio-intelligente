@@ -1164,44 +1164,67 @@
     commitHistory();
   }
 
+  function intervalGap(a1, a2, b1, b2) {
+    if (a2 < b1) return b1 - a2;
+    if (b2 < a1) return a1 - b2;
+    return 0;
+  }
+
+  function measurementCandidates() {
+    const selectedItems = selectionElements();
+    const selectedLookup = new Set(selectedItems);
+    const scope = selected && (selected.closest('.track,.cover,.music-player,.player,.app-page,[data-page],main,section') || document.body);
+    return Array.from((scope || document.body).querySelectorAll('*')).filter(function (el) {
+      if (!el || selectedLookup.has(el) || isEditorNode(el) || !el.getBoundingClientRect) return false;
+      if (selectedItems.some(function (sel) { return sel.contains(el) || el.contains(sel); })) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return false;
+      if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return false;
+      return true;
+    });
+  }
+
   function measureSpacing() {
     if (!active || !selected) return;
-    const rect = selected.getBoundingClientRect();
+    const rect = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
     const parent = selected.parentElement;
     const parentRect = parent ? parent.getBoundingClientRect() : {left:0,right:innerWidth,top:0,bottom:innerHeight};
-    const peers = parent ? Array.from(parent.children).filter(function(el){
-      if (el === selected || !el.getBoundingClientRect || isEditorNode(el)) return false;
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
-    }) : [];
+    const candidates = measurementCandidates();
+
     let left = null, right = null, top = null, bottom = null;
-    peers.forEach(function(el){
+
+    function consider(current, gap, crossGap, el) {
+      const score = Math.max(0, gap) + Math.max(0, crossGap) * 0.35;
+      const next = {gap:Math.max(0,gap), crossGap:Math.max(0,crossGap), score:score, selector:selectorFor(el)};
+      if (!current || next.score < current.score || (next.score === current.score && next.gap < current.gap)) return next;
+      return current;
+    }
+
+    candidates.forEach(function (el) {
       const r = el.getBoundingClientRect();
-      const verticalOverlap = Math.min(rect.bottom,r.bottom) - Math.max(rect.top,r.top) > 0;
-      const horizontalOverlap = Math.min(rect.right,r.right) - Math.max(rect.left,r.left) > 0;
-      if (verticalOverlap && r.right <= rect.left) {
-        const gap = rect.left - r.right;
-        if (!left || gap < left.gap) left = {gap:gap, selector:selectorFor(el)};
+
+      if (r.right <= rect.left) {
+        left = consider(left, rect.left - r.right, intervalGap(rect.top, rect.bottom, r.top, r.bottom), el);
       }
-      if (verticalOverlap && r.left >= rect.right) {
-        const gap = r.left - rect.right;
-        if (!right || gap < right.gap) right = {gap:gap, selector:selectorFor(el)};
+      if (r.left >= rect.right) {
+        right = consider(right, r.left - rect.right, intervalGap(rect.top, rect.bottom, r.top, r.bottom), el);
       }
-      if (horizontalOverlap && r.bottom <= rect.top) {
-        const gap = rect.top - r.bottom;
-        if (!top || gap < top.gap) top = {gap:gap, selector:selectorFor(el)};
+      if (r.bottom <= rect.top) {
+        top = consider(top, rect.top - r.bottom, intervalGap(rect.left, rect.right, r.left, r.right), el);
       }
-      if (horizontalOverlap && r.top >= rect.bottom) {
-        const gap = r.top - rect.bottom;
-        if (!bottom || gap < bottom.gap) bottom = {gap:gap, selector:selectorFor(el)};
+      if (r.top >= rect.bottom) {
+        bottom = consider(bottom, r.top - rect.bottom, intervalGap(rect.left, rect.right, r.left, r.right), el);
       }
     });
+
     emit('spacing', {
       left: left,
       right: right,
       top: top,
       bottom: bottom,
+      selectionCount: selectionElements().length,
       parent: {
         left: Math.round(rect.left - parentRect.left),
         right: Math.round(parentRect.right - rect.right),
