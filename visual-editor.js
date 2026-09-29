@@ -1518,7 +1518,8 @@
       fontAdjusted:!!state.fontAdjusted,color:state.color,backgroundColor:state.backgroundColor,borderColor:state.borderColor,
       colorAdjusted:!!state.colorAdjusted,backgroundAdjusted:!!state.backgroundAdjusted,borderAdjusted:!!state.borderAdjusted,
       zIndex:state.zIndex,zAdjusted:!!state.zAdjusted,layoutAdjusted:!!state.layoutAdjusted,layout:Object.assign({},state.layout||{}),
-      tokenStyles:Object.assign({},state.tokenStyles||{}),accessibilityAdjusted:!!state.accessibilityAdjusted,accessibilityLabel:state.accessibilityLabel||'',
+      tokenStyles:Object.assign({},state.tokenStyles||{}),advancedAdjusted:!!state.advancedAdjusted,advancedStyles:Object.assign({},state.advancedStyles||{}),
+      accessibilityAdjusted:!!state.accessibilityAdjusted,accessibilityLabel:state.accessibilityLabel||'',
       animationAdjusted:!!state.animationAdjusted,animation:Object.assign({},state.animation||{}),
       responsive:cloneResponsive(state.responsive)
     };
@@ -1533,7 +1534,8 @@
     state.fontAdjusted=!!saved.fontAdjusted;state.color=saved.color;state.backgroundColor=saved.backgroundColor;state.borderColor=saved.borderColor;
     state.colorAdjusted=!!saved.colorAdjusted;state.backgroundAdjusted=!!saved.backgroundAdjusted;state.borderAdjusted=!!saved.borderAdjusted;
     state.zIndex=saved.zIndex;state.zAdjusted=!!saved.zAdjusted;state.layoutAdjusted=!!saved.layoutAdjusted;state.layout=Object.assign({},saved.layout||{});
-    state.tokenStyles=Object.assign({},saved.tokenStyles||{});state.accessibilityAdjusted=!!saved.accessibilityAdjusted;state.accessibilityLabel=saved.accessibilityLabel||'';
+    state.tokenStyles=Object.assign({},saved.tokenStyles||{});state.advancedAdjusted=!!saved.advancedAdjusted;state.advancedStyles=Object.assign({},saved.advancedStyles||{});
+    state.accessibilityAdjusted=!!saved.accessibilityAdjusted;state.accessibilityLabel=saved.accessibilityLabel||'';
     state.animationAdjusted=!!saved.animationAdjusted;state.animation=Object.assign({property:'all',duration:180,easing:'ease',delay:0},saved.animation||{});
     state.responsive=cloneResponsive(saved.responsive);
     applyState(element,state,false);
@@ -1941,6 +1943,7 @@
       info:lastAuditIssues.filter(function(i){return i.severity==='info'}).length,
       fixable:lastAuditIssues.filter(function(i){return i.fixable}).length
     }});
+    makeRepairSuggestions();
   }
 
 
@@ -2015,6 +2018,8 @@
       parentLayout: parentLayoutPayload(selected),
       safeArea: Object.assign({}, safeArea),
       environment: Object.assign({}, environment),
+      advancedStyles: Object.assign({}, state.advancedStyles || {}),
+      advancedAdjusted: !!state.advancedAdjusted,
       animation: Object.assign({}, state.animation || {}),
       animationAdjusted: !!state.animationAdjusted,
       componentName: state.componentName || '',
@@ -2731,6 +2736,14 @@
     if (data.type === 'layer-lock') setLayerLock(payload.selector, payload.value);
     if (data.type === 'layer-hidden') setLayerHidden(payload.selector, payload.value);
     if (data.type === 'parent-layout') setParentLayout(payload);
+    if (data.type === 'auto-layout') inferAutoLayout(!!payload.apply);
+    if (data.type === 'smart-constraints') inferSmartConstraints(!!payload.apply);
+    if (data.type === 'advanced-style') setAdvancedStyles(payload.styles || {});
+    if (data.type === 'design-consistency') analyzeDesignConsistency();
+    if (data.type === 'repair-suggest') makeRepairSuggestions();
+    if (data.type === 'repair-preview') previewRepair(payload.id);
+    if (data.type === 'repair-preview-clear') clearRepairPreview();
+    if (data.type === 'repair-apply') applyRepair(payload.id);
     if (data.type === 'distribute') distributeSelection(String(payload.mode || ''), payload.gap);
     if (data.type === 'audit') auditInterface();
     if (data.type === 'audit-fix') autoFixAudit();
@@ -2805,6 +2818,14 @@
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
     setParentLayout: setParentLayout,
+    inferAutoLayout: inferAutoLayout,
+    inferSmartConstraints: inferSmartConstraints,
+    setAdvancedStyles: setAdvancedStyles,
+    analyzeDesignConsistency: analyzeDesignConsistency,
+    makeRepairSuggestions: makeRepairSuggestions,
+    previewRepair: previewRepair,
+    clearRepairPreview: clearRepairPreview,
+    applyRepair: applyRepair,
     distributeSelection: distributeSelection,
     auditInterface: auditInterface,
     autoFixAudit: autoFixAudit,
