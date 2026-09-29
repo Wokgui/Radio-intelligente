@@ -2,6 +2,8 @@ const { app, BrowserWindow, dialog, ipcMain, clipboard, shell, session, webFrame
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { execFileSync } = require('child_process');
 
 let studioServer;
 let studioBaseUrl = '';
@@ -436,6 +438,106 @@ ipcMain.handle('preview:set-mode',async (_event,payload)=>{
 
 ipcMain.handle('preview:open-app',async (_event,payload)=>{
   try{return openAsAppWindow(payload)}catch(error){return {ok:false,error:String(error&&error.message||error)}}
+});
+
+
+function findAdb(){
+  const candidates=[];
+  const home=os.homedir();
+  if(process.env.ANDROID_HOME)candidates.push(path.join(process.env.ANDROID_HOME,'platform-tools',process.platform==='win32'?'adb.exe':'adb'));
+  if(process.env.ANDROID_SDK_ROOT)candidates.push(path.join(process.env.ANDROID_SDK_ROOT,'platform-tools',process.platform==='win32'?'adb.exe':'adb'));
+  if(process.platform==='win32')candidates.push(path.join(home,'AppData','Local','Android','Sdk','platform-tools','adb.exe'));
+  for(const candidate of candidates){if(candidate&&fs.existsSync(candidate))return candidate}
+  try{
+    const finder=process.platform==='win32'?'where.exe':'which';
+    const value=execFileSync(finder,['adb'],{encoding:'utf8',windowsHide:true}).split(/\r?\n/).find(Boolean);
+    if(value&&fs.existsSync(value.trim()))return value.trim();
+  }catch(_){}
+  return null;
+}
+
+function adbDevices(){
+  const adb=findAdb();
+  if(!adb)return {ok:false,error:'ADB introuvable. Installe Android Platform Tools ou Android Studio.',devices:[]};
+  try{
+    const output=execFileSync(adb,['devices'],{encoding:'utf8',windowsHide:true,timeout:5000});
+    const devices=output.split(/\r?\n/).slice(1).map(line=>line.trim().split(/\s+/)).filter(parts=>parts[0]&&parts[1]==='device').map(parts=>parts[0]);
+    return {ok:true,adb,devices};
+  }catch(error){return {ok:false,error:String(error&&error.message||error),devices:[]}}
+}
+
+ipcMain.handle('adb:status',async ()=>{
+  const result=adbDevices();
+  return {ok:result.ok,devices:result.devices,error:result.error||null};
+});
+
+ipcMain.handle('adb:screenshot',async (_event,payload)=>{
+  const status=adbDevices();
+  if(!status.ok)return status;
+  if(!status.devices.length)return {ok:false,error:'Aucun appareil Android autorisé par ADB.'};
+  const serial=String(payload&&payload.serial||status.devices[0]);
+  if(status.devices.indexOf(serial)<0)return {ok:false,error:'Appareil ADB introuvable.'};
+  try{
+    const png=execFileSync(status.adb,['-s',serial,'exec-out','screencap','-p'],{encoding:null,windowsHide:true,timeout:10000,maxBuffer:30*1024*1024});
+    return {ok:true,serial,dataUrl:'data:image/png;base64,'+Buffer.from(png).toString('base64')};
+  }catch(error){return {ok:false,error:'Capture ADB impossible : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('reference:pick-image',async ()=>{
+  const result=await dialog.showOpenDialog({
+    title:'Choisir une capture de référence',
+    properties:['openFile'],
+    filters:[{name:'Images',extensions:['png','jpg','jpeg','webp']}]
+  });
+  if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};
+  const file=result.filePaths[0];
+  try{
+    const ext=path.extname(file).toLowerCase();
+    const mime=ext==='.jpg'||ext==='.jpeg'?'image/jpeg':ext==='.webp'?'image/webp':'image/png';
+    return {ok:true,path:file,dataUrl:'data:'+mime+';base64,'+fs.readFileSync(file).toString('base64')};
+  }catch(error){return {ok:false,error:String(error&&error.message||error)}}
+});
+
+function localSourceEntry(source){
+  if(!source)return null;
+  if(source.type==='folder'&&source.path){
+    const entry=source.entry||'index.html';
+    return {root:source.path,html:path.join(source.path,entry)};
+  }
+  if(source.type==='html'&&source.path){
+    return {root:source.root||path.dirname(source.path),html:source.path};
+  }
+  return null;
+}
+
+ipcMain.handle('source:apply-css',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const css=String(payload&&payload.css||'').trim();
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
+  if(!css||css==='/* Aucun ajustement. */')return {ok:false,error:'Aucune modification CSS à appliquer.'};
+  if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
+
+  try{
+    const dir=path.dirname(local.html);
+    const cssPath=path.join(dir,'app-interface-studio.generated.css');
+    const originalHtml=fs.readFileSync(local.html,'utf8');
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const backupPath=path.join(dir,path.basename(local.html)+'.ais-backup-'+stamp);
+    fs.copyFileSync(local.html,backupPath);
+    fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\n'+css+'\n','utf8');
+
+    let html=originalHtml;
+    const marker='data-app-interface-studio="generated"';
+    if(!html.includes(marker)){
+      const href='./'+path.basename(cssPath);
+      const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
+      if(/<\/head>/i.test(html))html=html.replace(/<\/head>/i,'  '+link+'\n</head>');
+      else html=link+'\n'+html;
+      fs.writeFileSync(local.html,html,'utf8');
+    }
+    return {ok:true,cssPath,htmlPath:local.html,backupPath};
+  }catch(error){return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}}
 });
 
 ipcMain.handle('source:open-url',async (_event,value)=>{

@@ -258,6 +258,40 @@ body.desktop .desktop-badge{display:inline-flex}
 #textContent{font-size:.78rem}
 #fontFamily,#fontSize,#letterSpacing,#lineHeight,#zIndex,#posX,#posY,#sizeW,#sizeH{font-size:.76rem}
 .status{font-size:.7rem;line-height:1.35}
+
+.pro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.pro-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.layer-tree{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:11px;background:#fff;padding:5px}
+.layer-row{display:grid;grid-template-columns:minmax(0,1fr) 28px 28px;gap:4px;align-items:center;min-height:31px;padding:2px 3px;border-radius:7px}
+.layer-row:hover{background:#f7f3fb}
+.layer-row.selected{background:#eee6fb;color:#5f2ca8}
+.layer-main{min-width:0;border:0;background:transparent;text-align:left;color:inherit;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:calc(var(--depth,0) * 12px)}
+.layer-mini{width:28px;height:26px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:.64rem}
+.audit-summary{display:flex;gap:7px;margin:7px 0}
+.audit-chip{padding:5px 8px;border-radius:999px;font-size:.66rem;font-weight:850;background:#f2eef7;color:#625570}
+.audit-chip.error{background:#ffe9ef;color:#a62f50}.audit-chip.warning{background:#fff3dd;color:#906216}
+.audit-list{max-height:270px;overflow:auto;display:grid;gap:6px}
+.audit-item{padding:8px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:.67rem;line-height:1.35}
+.audit-item.error{border-color:#efbdca;background:#fff8fa}.audit-item.warning{border-color:#eed7a6;background:#fffaf1}
+.audit-item b{display:block;margin-bottom:2px}
+.reference-overlay{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:9;pointer-events:none}
+.reference-overlay.visible{display:block}
+.multi-modal{position:fixed;inset:0;z-index:2500;background:#17131feF;display:none;grid-template-rows:auto 1fr;color:#fff}
+.multi-modal.visible{display:grid}
+.multi-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#241b31;border-bottom:1px solid #ffffff18}
+.multi-head strong{font-size:.92rem}.multi-head span{font-size:.7rem;color:#cfc4da}
+.multi-head .btn{margin-left:auto}
+.multi-grid{min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(340px,1fr));gap:12px;padding:12px}
+.multi-card{min-width:0;border:1px solid #ffffff1f;border-radius:14px;background:#2b2234;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+.multi-card-head{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;font-size:.7rem;background:#32273d}
+.multi-viewport{position:relative;min-height:360px;overflow:hidden;background:#111;display:grid;place-items:center}
+.multi-inner{position:relative;transform-origin:top left;background:#fff;box-shadow:0 12px 35px #0005}
+.multi-inner iframe{position:absolute;inset:0;border:0;background:#fff}
+.breakpoint-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin:8px 0}
+.breakpoint-active{padding:7px 9px;border-radius:9px;background:#eee8fb;color:#6134a2;font-size:.67rem;font-weight:850}
+.compare-controls{display:grid;gap:7px}
+.compare-status{font-size:.68rem;color:var(--muted);line-height:1.4}
+.layout-note{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#69567c;font-size:.67rem;line-height:1.4}
 @media(max-width:1100px){
   body{overflow:auto}
   main{height:auto;min-height:calc(100vh - 76px);grid-template-columns:1fr;overflow:visible}
@@ -354,6 +388,15 @@ body.desktop .desktop-badge{display:inline-flex}
   </div>
 </div>
 
+<div class="multi-modal" id="multiPreviewModal">
+  <div class="multi-head">
+    <div><strong>Comparaison multi-écrans</strong><br><span>Le même projet est rendu simultanément avec ses breakpoints sur plusieurs viewports.</span></div>
+    <button class="btn" id="multiSyncBtn">Resynchroniser</button>
+    <button class="btn" id="multiCloseBtn">Fermer</button>
+  </div>
+  <div class="multi-grid" id="multiPreviewGrid"></div>
+</div>
+
 <div class="source-modal" id="settingsModal" hidden>
   <div class="source-dialog">
     <div class="source-dialog-head">
@@ -408,6 +451,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
         <div class="android-nav" id="androidNav"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
+        <img class="reference-overlay" id="referenceOverlay" alt="Capture de référence">
       </div>
     </div>
   </section>
@@ -445,6 +489,10 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="android-hole">Android · trou caméra</option>
           <option value="iphone-island">iPhone · Dynamic Island</option>
         </select></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
+        <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
       </div>
       <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches. Le contour violet représente la zone sûre simulée.</p>
     </section>
@@ -532,6 +580,15 @@ body.desktop .desktop-badge{display:inline-flex}
       <h2>Adaptatif <small>multi-écrans</small></h2>
       <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes relatives (recommandé)</label>
       <div class="responsive-body">
+        <div class="breakpoint-row">
+          <div class="field"><label>Modifier les règles pour</label><select id="breakpointEdit">
+            <option value="base">Base · tous les écrans</option>
+            <option value="phone">Téléphone · &lt; 600 px</option>
+            <option value="tablet">Tablette · 600–1023 px</option>
+            <option value="desktop">Grand écran · ≥ 1024 px</option>
+          </select></div>
+          <div class="breakpoint-active" id="breakpointActive">actif : téléphone</div>
+        </div>
         <div class="responsive-grid" style="margin-top:9px">
           <div class="field"><label>Ancrage horizontal</label><select id="hAnchor">
             <option value="free">Libre</option><option value="left">Gauche</option><option value="center">Centré</option><option value="right">Droite</option><option value="stretch">Gauche + droite</option>
@@ -562,6 +619,59 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
     </section>
 
+
+    <section class="card">
+      <h2>Calques <small>arbre des éléments</small></h2>
+      <div class="layer-tree" id="layerTree"><div class="hint">Chargement de l’arbre…</div></div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="refreshLayersBtn">Actualiser</button>
+      </div>
+      <p>Clique un calque pour sélectionner précisément un élément imbriqué. Œil = masquer, cadenas = verrouiller.</p>
+    </section>
+
+    <section class="card">
+      <h2>Flex / Grid <small>parent intelligent</small></h2>
+      <div class="layout-note" id="layoutParentName">Sélectionne un objet pour inspecter son conteneur parent.</div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Disposition</label><select id="layoutDisplay">
+          <option value="flex">Flex</option><option value="grid">Grid</option><option value="block">Bloc</option>
+        </select></div>
+        <div class="field"><label>Gap</label><input id="layoutGap" type="text" placeholder="12px"></div>
+        <div class="field"><label>Direction Flex</label><select id="layoutFlexDirection">
+          <option value="row">Ligne</option><option value="column">Colonne</option><option value="row-reverse">Ligne inversée</option><option value="column-reverse">Colonne inversée</option>
+        </select></div>
+        <div class="field"><label>Justification</label><select id="layoutJustify">
+          <option value="flex-start">Début</option><option value="center">Centre</option><option value="flex-end">Fin</option><option value="space-between">Espace entre</option><option value="space-around">Autour</option><option value="space-evenly">Régulier</option>
+        </select></div>
+        <div class="field"><label>Alignement</label><select id="layoutAlign">
+          <option value="stretch">Étirer</option><option value="flex-start">Début</option><option value="center">Centre</option><option value="flex-end">Fin</option>
+        </select></div>
+        <div class="field"><label>Colonnes Grid</label><input id="layoutColumns" type="text" placeholder="repeat(2, 1fr)"></div>
+      </div>
+      <button class="btn primary" id="applyParentLayout" style="width:100%;margin-top:8px">Appliquer au conteneur parent</button>
+    </section>
+
+    <section class="card">
+      <h2>Distribuer <small>sélection multiple</small></h2>
+      <div class="pro-grid three">
+        <button class="tool" data-distribute="align-left">← bords</button>
+        <button class="tool" data-distribute="align-center-x">↔ centres</button>
+        <button class="tool" data-distribute="align-right">bords →</button>
+        <button class="tool" data-distribute="align-top">↑ hauts</button>
+        <button class="tool" data-distribute="align-center-y">↕ milieux</button>
+        <button class="tool" data-distribute="align-bottom">bas ↓</button>
+        <button class="tool" data-distribute="same-width">Même largeur</button>
+        <button class="tool" data-distribute="same-height">Même hauteur</button>
+        <button class="tool" data-distribute="distribute-x">Espacer ↔</button>
+        <button class="tool" data-distribute="distribute-y">Espacer ↕</button>
+      </div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Écart exact</label><input id="distributeGap" type="number" value="12" min="0"></div>
+        <div class="toolbar" style="align-self:end"><button class="tool" data-distribute="gap-x">12 px ↔</button><button class="tool" data-distribute="gap-y">12 px ↕</button></div>
+      </div>
+      <p>Sélectionne plusieurs objets avec <kbd>Maj</kbd> + clic, puis aligne ou répartis-les.</p>
+    </section>
+
     <section class="card">
       <h2>Alignement <small>1 clic</small></h2>
       <div class="align-grid">
@@ -582,7 +692,42 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="space"><b id="spaceR">—</b><small>droite</small></div>
         <div class="space"><b id="spaceB">—</b><small>bas</small></div>
       </div>
-      <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche ; les marges du parent sont aussi calculées.</p>
+      <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche. Maintiens <kbd>Alt</kbd> et survole un autre objet pour mesurer instantanément bord à bord.</p>
+    </section>
+
+
+    <section class="card">
+      <h2>Simulation système <small>Android / accessibilité</small></h2>
+      <div class="fields">
+        <div class="field"><label>Taille texte Android</label><select id="systemFontScale">
+          <option value=".85">85 %</option><option value="1" selected>100 %</option><option value="1.15">115 %</option><option value="1.3">130 %</option><option value="1.5">150 %</option>
+        </select></div>
+        <div class="field"><label>Échelle affichage</label><select id="systemDisplayScale">
+          <option value=".9">90 %</option><option value="1" selected>100 %</option><option value="1.1">110 %</option><option value="1.2">120 %</option>
+        </select></div>
+      </div>
+      <label class="checkline"><input id="systemDarkMode" type="checkbox"> Simuler le thème sombre</label>
+      <p>Teste les interfaces avec les réglages système qui font souvent apparaître les textes coupés ou les chevauchements.</p>
+    </section>
+
+    <section class="card">
+      <h2>Vérifier l’interface <small>audit automatique</small></h2>
+      <button class="btn primary" id="auditBtn" style="width:100%">Analyser l’écran actuel</button>
+      <div class="audit-summary" id="auditSummary"></div>
+      <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Comparer avec l’APK <small>ADB / capture</small></h2>
+      <div class="compare-controls">
+        <div class="toolbar">
+          <button class="btn wide" id="adbCaptureBtn">Capturer le téléphone via ADB</button>
+          <button class="btn wide" id="loadReferenceBtn">Charger une capture</button>
+        </div>
+        <div class="field"><label>Opacité de la capture réelle</label><input id="referenceOpacity" type="range" min="0" max="100" value="50"></div>
+        <button class="btn" id="clearReferenceBtn">Retirer la comparaison</button>
+        <div class="compare-status" id="compareStatus">Superpose une capture réelle du téléphone à l’aperçu pour repérer immédiatement les différences.</div>
+      </div>
     </section>
 
     <section class="card desktop-only">
@@ -593,6 +738,7 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
+      <button class="btn" id="applySourceBtn" style="width:100%;margin-top:7px">Appliquer au code local (réversible)</button>
       <p>Le fichier projet conserve la source de l’application et les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source correspondant.</p>
     </section>
 
@@ -682,6 +828,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var screenCustomW=document.getElementById('screenCustomW');
   var screenCustomH=document.getElementById('screenCustomH');
   var previewExit=document.getElementById('previewExit');
+  var breakpointEdit=document.getElementById('breakpointEdit');
+  var breakpointActive=document.getElementById('breakpointActive');
+  var layerTree=document.getElementById('layerTree');
+  var layoutDisplay=document.getElementById('layoutDisplay');
+  var layoutGap=document.getElementById('layoutGap');
+  var layoutFlexDirection=document.getElementById('layoutFlexDirection');
+  var layoutJustify=document.getElementById('layoutJustify');
+  var layoutAlign=document.getElementById('layoutAlign');
+  var layoutColumns=document.getElementById('layoutColumns');
+  var layoutParentName=document.getElementById('layoutParentName');
+  var auditSummary=document.getElementById('auditSummary');
+  var auditList=document.getElementById('auditList');
+  var referenceOverlay=document.getElementById('referenceOverlay');
+  var compareStatus=document.getElementById('compareStatus');
+  var multiPreviewModal=document.getElementById('multiPreviewModal');
+  var multiPreviewGrid=document.getElementById('multiPreviewGrid');
 
   var hasSelection=false;
   var lastState=null;
@@ -690,10 +852,18 @@ body.desktop .desktop-badge{display:inline-flex}
   var readyWaiters=[];
   var currentPreviewMode='edit';
   var selectedDeviceKind='smartphone';
+  var multiFrames=[];
+  var multiProject=null;
+  var multiSyncTimer=null;
+  var multiSyncBusy=false;
+
+  function postTo(target,type,payload){
+    if(!target||!target.contentWindow)return;
+    target.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
+  }
 
   function post(type,payload){
-    if(!frame.contentWindow)return;
-    frame.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
+    postTo(frame,type,payload);
   }
 
   var PREF_KEY='app-interface-studio.preferences.v1';
@@ -958,13 +1128,23 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   function updateResponsiveControls(p){
-    var r=(p&&p.responsive)||{};
+    var base=(p&&p.responsive)||{};
     var selected=!!(p&&p.selected);
-    var enabled=selected&&!!r.enabled;
+    var editBp=(p&&p.editingBreakpoint)||breakpointEdit.value||'base';
+    if(Array.from(breakpointEdit.options).some(function(o){return o.value===editBp}))breakpointEdit.value=editBp;
+    var activeBp=(p&&p.activeBreakpoint)||'phone';
+    breakpointActive.textContent='actif : '+(activeBp==='phone'?'téléphone':activeBp==='tablet'?'tablette':'grand écran');
+
+    var r=base;
+    if(editBp!=='base'&&base.breakpoints&&base.breakpoints[editBp])r=base.breakpoints[editBp];
+    else if(editBp!=='base'&&p&&p.responsiveEffective)r=p.responsiveEffective;
+
+    var enabled=selected&&!!base.enabled;
     responsiveEnabled.disabled=!selected;
     responsiveEnabled.checked=enabled;
     responsiveCard.classList.toggle('off',!enabled);
     [hAnchor,vAnchor,widthMode,heightMode,marginLeft,marginRight,marginTop,marginBottom,widthPercent,heightPercent,respectSafeArea].forEach(function(el){el.disabled=!selected||!enabled});
+    breakpointEdit.disabled=!selected;
     document.getElementById('captureResponsive').disabled=!selected;
     if(!selected){
       responsiveSummary.textContent='Sélectionne un élément puis active les contraintes.';
@@ -982,9 +1162,25 @@ body.desktop .desktop-badge{display:inline-flex}
     heightPercent.value=Number(r.heightPercent)||100;
     respectSafeArea.checked=r.safeArea!==false;
     responsiveSummary.textContent=enabled
-      ? 'Règles actives : '+(r.hAnchor||'libre')+' / '+(r.vAnchor||'libre')+' · largeur '+(r.widthMode||'auto')+' · hauteur '+(r.heightMode||'auto')+(r.safeArea!==false?' · zone sûre':'')
+      ? 'Règles '+(editBp==='base'?'de base':editBp)+' : '+(r.hAnchor||'libre')+' / '+(r.vAnchor||'libre')+' · largeur '+(r.widthMode||'auto')+' · hauteur '+(r.heightMode||'auto')+(r.safeArea!==false?' · zone sûre':'')
       : 'Mode pixels actif. Coche la case pour conserver la disposition sur d’autres tailles d’écran.';
   }
+
+  function updateLayoutControls(layout){
+    layout=layout||{};
+    var editable=!!layout.editable;
+    [layoutDisplay,layoutGap,layoutFlexDirection,layoutJustify,layoutAlign,layoutColumns,document.getElementById('applyParentLayout')].forEach(function(el){if(el)el.disabled=!editable});
+    layoutParentName.textContent=editable?'Parent : '+(layout.selector||'conteneur')+' · '+(layout.display||'bloc'):'Sélectionne un objet dans un conteneur modifiable.';
+    if(!editable)return;
+    if(Array.from(layoutDisplay.options).some(function(o){return o.value===layout.display}))layoutDisplay.value=layout.display;
+    else layoutDisplay.value=layout.display.indexOf('flex')>=0?'flex':layout.display.indexOf('grid')>=0?'grid':'block';
+    layoutGap.value=layout.gap||'0px';
+    if(Array.from(layoutFlexDirection.options).some(function(o){return o.value===layout.flexDirection}))layoutFlexDirection.value=layout.flexDirection;
+    if(Array.from(layoutJustify.options).some(function(o){return o.value===layout.justifyContent}))layoutJustify.value=layout.justifyContent;
+    if(Array.from(layoutAlign.options).some(function(o){return o.value===layout.alignItems}))layoutAlign.value=layout.alignItems;
+    layoutColumns.value=layout.gridTemplateColumns&&layout.gridTemplateColumns!=='none'?layout.gridTemplateColumns:'';
+  }
+
 
   function updateState(p){
     lastState=p;
@@ -1044,10 +1240,194 @@ body.desktop .desktop-badge{display:inline-flex}
     }
 
     updateResponsiveControls(p);
+    updateLayoutControls(p.parentLayout);
     if(selectionCount>1){
       responsiveSummary.textContent='Sélection multiple : déplace le groupe avec la souris ou les flèches. Les propriétés individuelles restent attachées à l’objet principal.';
     }
     if(typeof p.css==='string')cssOut.value=p.css;
+  }
+
+
+  function renderLayers(tree){
+    layerTree.innerHTML='';
+    var frag=document.createDocumentFragment();
+    function add(nodes){
+      (nodes||[]).forEach(function(node){
+        var row=document.createElement('div');
+        row.className='layer-row'+(node.selected?' selected':'');
+        var main=document.createElement('button');
+        main.className='layer-main';
+        main.style.setProperty('--depth',String(node.depth||0));
+        main.title=node.selector||node.title||'';
+        main.textContent=(node.title||node.tag||'élément')+' · '+(node.tag||'');
+        main.addEventListener('click',function(e){post('select-selector',{selector:node.selector,additive:e.shiftKey})});
+        var eye=document.createElement('button');
+        eye.className='layer-mini';eye.title=node.hidden?'Afficher':'Masquer';eye.textContent=node.hidden?'◌':'◉';
+        eye.addEventListener('click',function(){post('layer-hidden',{selector:node.selector,value:!node.hidden});setTimeout(function(){post('get-layers')},80)});
+        var lock=document.createElement('button');
+        lock.className='layer-mini';lock.title=node.locked?'Déverrouiller':'Verrouiller';lock.textContent=node.locked?'🔒':'🔓';
+        lock.addEventListener('click',function(){post('layer-lock',{selector:node.selector,value:!node.locked});setTimeout(function(){post('get-layers')},80)});
+        row.append(main,eye,lock);frag.appendChild(row);
+        add(node.children);
+      });
+    }
+    add(tree);
+    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">Aucun élément visible.</div>';
+    else layerTree.appendChild(frag);
+  }
+
+  function renderAudit(payload){
+    payload=payload||{};
+    var summary=payload.summary||{};
+    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span>';
+    auditList.innerHTML='';
+    var issues=payload.issues||[];
+    if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
+    issues.forEach(function(issue){
+      var item=document.createElement('button');
+      item.className='audit-item '+(issue.severity||'warning');
+      item.style.textAlign='left';
+      item.innerHTML='<b>'+(issue.type||'problème')+'</b><span></span>';
+      item.querySelector('span').textContent=issue.message||'';
+      item.title=issue.selector||'';
+      item.addEventListener('click',function(){if(issue.selector)post('select-selector',{selector:issue.selector})});
+      auditList.appendChild(item);
+    });
+  }
+
+  function rotateDevice(){
+    var size=currentDeviceSize();
+    preset.value='custom';
+    screenCustomW.value=size.height;
+    screenCustomH.value=size.width;
+    customDeviceWidth.value=size.height;
+    customDeviceHeight.value=size.width;
+    customScreenSize.style.display='grid';
+    setDevice();
+  }
+
+  function multiFrameRecord(sourceWindow){
+    return multiFrames.find(function(rec){return rec.iframe&&rec.iframe.contentWindow===sourceWindow})||null;
+  }
+
+  function fitMultiRecord(rec){
+    if(!rec||!rec.inner||!rec.iframe)return;
+    var maxW=rec.viewport.clientWidth-24;
+    var maxH=rec.viewport.clientHeight-24;
+    var scale=Math.min(maxW/rec.width,maxH/rec.height,1);
+    if(!Number.isFinite(scale)||scale<=0)scale=.5;
+    rec.inner.style.width=Math.round(rec.width*scale)+'px';
+    rec.inner.style.height=Math.round(rec.height*scale)+'px';
+    rec.iframe.style.width=rec.width+'px';
+    rec.iframe.style.height=rec.height+'px';
+    rec.iframe.style.transform='scale('+scale+')';
+    rec.iframe.style.transformOrigin='top left';
+  }
+
+  function multiSafeArea(rec){
+    if(rec.width<600)return {profile:'multi-phone',top:28,right:0,bottom:24,left:0};
+    if(rec.width<1024)return {profile:'multi-tablet',top:24,right:0,bottom:24,left:0};
+    return {profile:'none',top:0,right:0,bottom:0,left:0};
+  }
+
+  function sendMultiProject(rec){
+    if(!rec||!multiProject)return;
+    postTo(rec.iframe,'load-project',{project:multiProject});
+    postTo(rec.iframe,'safe-area',multiSafeArea(rec));
+    postTo(rec.iframe,'environment-set',{
+      fontScale:Number(document.getElementById('systemFontScale').value)||1,
+      displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
+      darkMode:document.getElementById('systemDarkMode').checked
+    });
+    postTo(rec.iframe,'disable');
+  }
+
+  async function syncMultiPreview(){
+    if(!multiPreviewModal.classList.contains('visible')||multiSyncBusy)return;
+    multiSyncBusy=true;
+    try{
+      var project=await requestProject();
+      if(project){
+        project.source=currentSource;
+        multiProject=project;
+        multiFrames.forEach(sendMultiProject);
+      }
+    }finally{multiSyncBusy=false}
+  }
+
+  function scheduleMultiSync(){
+    if(!multiPreviewModal.classList.contains('visible'))return;
+    if(multiSyncTimer)clearTimeout(multiSyncTimer);
+    multiSyncTimer=setTimeout(function(){multiSyncTimer=null;syncMultiPreview()},220);
+  }
+
+  async function openMultiPreview(){
+    if(!currentSource){setStatus('Ouvre d’abord une application.',true);return}
+    multiProject=await requestProject();
+    if(!multiProject){setStatus('Impossible de préparer la comparaison.',true);return}
+    multiProject.source=currentSource;
+    multiPreviewGrid.innerHTML='';
+    multiFrames=[];
+    var configs=[
+      {name:'Téléphone compact',width:360,height:800},
+      {name:'Galaxy / grand téléphone',width:412,height:915},
+      {name:'Tablette',width:768,height:1024},
+      {name:'Bureau',width:1366,height:768}
+    ];
+    configs.forEach(function(cfg){
+      var card=document.createElement('div');card.className='multi-card';
+      var head=document.createElement('div');head.className='multi-card-head';head.innerHTML='<strong>'+cfg.name+'</strong><span>'+cfg.width+' × '+cfg.height+'</span>';
+      var viewport=document.createElement('div');viewport.className='multi-viewport';
+      var inner=document.createElement('div');inner.className='multi-inner';
+      var iframe=document.createElement('iframe');iframe.title=cfg.name;iframe.src=currentSource.url;
+      inner.appendChild(iframe);viewport.appendChild(inner);card.append(head,viewport);multiPreviewGrid.appendChild(card);
+      var rec={iframe:iframe,viewport:viewport,inner:inner,width:cfg.width,height:cfg.height,name:cfg.name};
+      multiFrames.push(rec);
+      requestAnimationFrame(function(){fitMultiRecord(rec)});
+    });
+    multiPreviewModal.classList.add('visible');
+    setTimeout(function(){multiFrames.forEach(fitMultiRecord);if(desktop&&desktop.injectEditor)desktop.injectEditor()},350);
+  }
+
+  function closeMultiPreview(){
+    multiPreviewModal.classList.remove('visible');
+    multiPreviewGrid.innerHTML='';
+    multiFrames=[];
+    multiProject=null;
+  }
+
+  async function captureAdbReference(){
+    if(!desktop||!desktop.adbScreenshot){compareStatus.textContent='ADB disponible uniquement dans l’application Windows.';return}
+    compareStatus.textContent='Recherche du téléphone…';
+    var statusResult=await desktop.adbStatus();
+    if(!statusResult||!statusResult.ok){compareStatus.textContent=(statusResult&&statusResult.error)||'ADB indisponible.';return}
+    if(!statusResult.devices||!statusResult.devices.length){compareStatus.textContent='Aucun téléphone autorisé. Active le débogage USB et accepte la connexion ADB.';return}
+    await setPreviewMode('android');
+    var shot=await desktop.adbScreenshot({serial:statusResult.devices[0]});
+    if(!shot||!shot.ok){compareStatus.textContent=(shot&&shot.error)||'Capture impossible.';return}
+    referenceOverlay.src=shot.dataUrl;
+    referenceOverlay.classList.add('visible');
+    referenceOverlay.style.opacity=String((Number(document.getElementById('referenceOpacity').value)||50)/100);
+    compareStatus.textContent='Capture réelle '+shot.serial+' superposée. Fais varier l’opacité pour comparer.';
+  }
+
+  async function loadReferenceImage(){
+    if(!desktop||!desktop.pickReferenceImage)return;
+    var result=await desktop.pickReferenceImage();
+    if(!result||!result.ok)return;
+    referenceOverlay.src=result.dataUrl;
+    referenceOverlay.classList.add('visible');
+    referenceOverlay.style.opacity=String((Number(document.getElementById('referenceOpacity').value)||50)/100);
+    compareStatus.textContent='Capture de référence chargée : '+(result.path||'image')+'.';
+  }
+
+  async function applyToLocalSource(){
+    if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
+    if(!confirm('Créer un patch CSS réversible dans le dossier source et l’ajouter à la page HTML ? Une sauvegarde du HTML sera créée.'))return;
+    var result=await desktop.applyCssToSource({source:currentSource,css:cssOut.value});
+    if(result&&result.ok)setStatus('Patch appliqué : '+result.cssPath+' · sauvegarde : '+result.backupPath);
+    else setStatus((result&&result.error)||'Application au code impossible.',true);
   }
 
   function requestProject(){
@@ -1067,7 +1447,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Les champs responsive sont des contraintes d’intention : ancrages, marges, largeur/hauteur fluides et safe areas doivent être implémentés nativement dans le layout (flex/grid/constraints/WindowInsets selon la technologie), pas figés avec les coordonnées du seul appareil de prévisualisation. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Implémente ces intentions nativement dans le layout (Flex/Grid/constraints/WindowInsets selon la technologie), pas avec les coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -1087,7 +1467,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'2.4.0'};
+    project.studio={name:'App Interface Studio',version:'3.0.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -1116,6 +1496,14 @@ body.desktop .desktop-badge{display:inline-flex}
         if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
         setDevice();
       }
+      if(project.environment){
+        document.getElementById('systemFontScale').value=String(project.environment.fontScale||1);
+        document.getElementById('systemDisplayScale').value=String(project.environment.displayScale||1);
+        document.getElementById('systemDarkMode').checked=!!project.environment.darkMode;
+      }
+      if(project.editingBreakpoint&&Array.from(breakpointEdit.options).some(function(o){return o.value===project.editingBreakpoint})){
+        breakpointEdit.value=project.editingBreakpoint;
+      }
       if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
         var profile=String(project.viewport.safeArea.profile);
         if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
@@ -1133,7 +1521,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'2.4.0'};
+    project.studio={name:'App Interface Studio',version:'3.0.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -1184,17 +1572,30 @@ body.desktop .desktop-badge{display:inline-flex}
   window.addEventListener('keyup',finishKeyboard,true);
 
   window.addEventListener('message',function(event){
-    if(event.source!==frame.contentWindow)return;
+    var multiRec=multiFrameRecord(event.source);
+    if(event.source!==frame.contentWindow&&!multiRec)return;
     var data=event.data||{};
     if(data.source!=='app-visual-editor'&&data.source!=='radio-visual-editor')return;
     var p=data.payload||{};
+
+    if(multiRec){
+      if(data.type==='ready')sendMultiProject(multiRec);
+      return;
+    }
 
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
       post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
       applySafeArea();
       post(currentPreviewMode==='edit'?'enable':'disable');
+      post('environment-set',{
+        fontScale:Number(document.getElementById('systemFontScale').value)||1,
+        displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
+        darkMode:document.getElementById('systemDarkMode').checked
+      });
+      post('breakpoint-edit',{breakpoint:breakpointEdit.value||'base'});
       post('get-css');
+      post('get-layers');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
@@ -1202,7 +1603,7 @@ body.desktop .desktop-badge{display:inline-flex}
       undoBtn.disabled=!p.canUndo;
       redoBtn.disabled=!p.canRedo;
     }
-    if(data.type==='state')updateState(p);
+    if(data.type==='state'){updateState(p);scheduleMultiSync()}
     if(data.type==='spacing'){
       document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
       document.getElementById('spaceR').textContent=p.right?Math.round(p.right.gap)+' px':'—';
@@ -1211,6 +1612,11 @@ body.desktop .desktop-badge{display:inline-flex}
       var q=p.parent||{};
       function near(v){return v?(Math.round(v.gap)+' px vers '+(v.selector||'objet')):'aucun objet'};
       document.getElementById('spacingDetail').textContent='Bords les plus proches — gauche : '+near(p.left)+' · haut : '+near(p.top)+' · droite : '+near(p.right)+' · bas : '+near(p.bottom)+'. Marges du parent : '+Math.round(q.left||0)+' / '+Math.round(q.top||0)+' / '+Math.round(q.right||0)+' / '+Math.round(q.bottom||0)+' px.';
+    }
+    if(data.type==='layers')renderLayers(p.tree||[]);
+    if(data.type==='audit')renderAudit(p);
+    if(data.type==='alt-measure'){
+      document.getElementById('spacingDetail').textContent='Alt · '+(p.selector||'objet')+' : horizontal '+Math.round(p.horizontal||0)+' px · vertical '+Math.round(p.vertical||0)+' px.';
     }
     if(data.type==='css'&&typeof p.css==='string'){
       cssOut.value=p.css;
@@ -1286,24 +1692,76 @@ body.desktop .desktop-badge{display:inline-flex}
   letterSpacing.addEventListener('change',function(){post('text-style',{kind:'letter-spacing',value:Number(letterSpacing.value)+'px'})});
   lineHeight.addEventListener('change',function(){post('text-style',{kind:'line-height',value:String(Number(lineHeight.value)||1.2)})});
 
-  responsiveEnabled.addEventListener('change',function(){if(hasSelection)post('responsive-set',{enabled:responsiveEnabled.checked})});
-  hAnchor.addEventListener('change',function(){post('responsive-set',{hAnchor:hAnchor.value})});
-  vAnchor.addEventListener('change',function(){post('responsive-set',{vAnchor:vAnchor.value})});
-  widthMode.addEventListener('change',function(){post('responsive-set',{widthMode:widthMode.value})});
-  heightMode.addEventListener('change',function(){post('responsive-set',{heightMode:heightMode.value})});
-  marginLeft.addEventListener('change',function(){post('responsive-set',{marginLeft:Number(marginLeft.value)||0})});
-  marginRight.addEventListener('change',function(){post('responsive-set',{marginRight:Number(marginRight.value)||0})});
-  marginTop.addEventListener('change',function(){post('responsive-set',{marginTop:Number(marginTop.value)||0})});
-  marginBottom.addEventListener('change',function(){post('responsive-set',{marginBottom:Number(marginBottom.value)||0})});
-  widthPercent.addEventListener('change',function(){post('responsive-set',{widthPercent:Number(widthPercent.value)||100})});
-  heightPercent.addEventListener('change',function(){post('responsive-set',{heightPercent:Number(heightPercent.value)||100})});
-  respectSafeArea.addEventListener('change',function(){post('responsive-set',{safeArea:respectSafeArea.checked})});
+  function responsivePayload(extra){return Object.assign({breakpoint:breakpointEdit.value||'base'},extra||{})}
+  responsiveEnabled.addEventListener('change',function(){if(hasSelection)post('responsive-set',responsivePayload({enabled:responsiveEnabled.checked}))});
+  breakpointEdit.addEventListener('change',function(){post('breakpoint-edit',{breakpoint:breakpointEdit.value})});
+  hAnchor.addEventListener('change',function(){post('responsive-set',responsivePayload({hAnchor:hAnchor.value}))});
+  vAnchor.addEventListener('change',function(){post('responsive-set',responsivePayload({vAnchor:vAnchor.value}))});
+  widthMode.addEventListener('change',function(){post('responsive-set',responsivePayload({widthMode:widthMode.value}))});
+  heightMode.addEventListener('change',function(){post('responsive-set',responsivePayload({heightMode:heightMode.value}))});
+  marginLeft.addEventListener('change',function(){post('responsive-set',responsivePayload({marginLeft:Number(marginLeft.value)||0}))});
+  marginRight.addEventListener('change',function(){post('responsive-set',responsivePayload({marginRight:Number(marginRight.value)||0}))});
+  marginTop.addEventListener('change',function(){post('responsive-set',responsivePayload({marginTop:Number(marginTop.value)||0}))});
+  marginBottom.addEventListener('change',function(){post('responsive-set',responsivePayload({marginBottom:Number(marginBottom.value)||0}))});
+  widthPercent.addEventListener('change',function(){post('responsive-set',responsivePayload({widthPercent:Number(widthPercent.value)||100}))});
+  heightPercent.addEventListener('change',function(){post('responsive-set',responsivePayload({heightPercent:Number(heightPercent.value)||100}))});
+  respectSafeArea.addEventListener('change',function(){post('responsive-set',responsivePayload({safeArea:respectSafeArea.checked}))});
   document.getElementById('captureResponsive').addEventListener('click',function(){post('responsive-capture')});
 
   document.querySelectorAll('[data-align]').forEach(function(btn){
     btn.addEventListener('click',function(){post('align',{mode:btn.dataset.align})});
   });
   document.getElementById('measureBtn').addEventListener('click',function(){post('measure-spacing')});
+
+  document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
+  document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
+  document.getElementById('multiCloseBtn').addEventListener('click',closeMultiPreview);
+  document.getElementById('multiSyncBtn').addEventListener('click',syncMultiPreview);
+  document.getElementById('refreshLayersBtn').addEventListener('click',function(){post('get-layers')});
+
+  document.getElementById('applyParentLayout').addEventListener('click',function(){
+    post('parent-layout',{
+      display:layoutDisplay.value,
+      flexDirection:layoutFlexDirection.value,
+      justifyContent:layoutJustify.value,
+      alignItems:layoutAlign.value,
+      gap:layoutGap.value||'0px',
+      gridTemplateColumns:layoutColumns.value||'none'
+    });
+    setTimeout(function(){post('get-layers')},100);
+  });
+
+  document.querySelectorAll('[data-distribute]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      post('distribute',{mode:btn.dataset.distribute,gap:Number(document.getElementById('distributeGap').value)||0});
+      setTimeout(function(){post('measure-spacing')},80);
+    });
+  });
+
+  function sendEnvironment(){
+    post('environment-set',{
+      fontScale:Number(document.getElementById('systemFontScale').value)||1,
+      displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
+      darkMode:document.getElementById('systemDarkMode').checked
+    });
+    scheduleMultiSync();
+  }
+  document.getElementById('systemFontScale').addEventListener('change',sendEnvironment);
+  document.getElementById('systemDisplayScale').addEventListener('change',sendEnvironment);
+  document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
+
+  document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
+  document.getElementById('adbCaptureBtn').addEventListener('click',captureAdbReference);
+  document.getElementById('loadReferenceBtn').addEventListener('click',loadReferenceImage);
+  document.getElementById('referenceOpacity').addEventListener('input',function(){
+    referenceOverlay.style.opacity=String((Number(this.value)||0)/100);
+  });
+  document.getElementById('clearReferenceBtn').addEventListener('click',function(){
+    referenceOverlay.classList.remove('visible');
+    referenceOverlay.removeAttribute('src');
+    compareStatus.textContent='Comparaison retirée.';
+  });
+  document.getElementById('applySourceBtn').addEventListener('click',applyToLocalSource);
 
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
   document.getElementById('downloadBtn').addEventListener('click',function(){post('download-css')});
@@ -1351,6 +1809,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   async function loadSource(source){
     if(!source||!source.url)return false;
+    closeMultiPreview();
     currentSource=source;
     await setPreviewMode('edit');
     document.getElementById('sourceName').textContent=source.label||source.url||'Application';
@@ -1413,7 +1872,10 @@ body.desktop .desktop-badge{display:inline-flex}
       event.preventDefault();event.stopImmediatePropagation();setPreviewMode('edit');
     }
   },true);
-  window.addEventListener('resize',function(){if(currentPreviewMode!=='edit')setDevice()});
+  window.addEventListener('resize',function(){
+    if(currentPreviewMode!=='edit')setDevice();
+    multiFrames.forEach(fitMultiRecord);
+  });
 
   function refreshAndroidClock(){
     var d=new Date();

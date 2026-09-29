@@ -52,7 +52,14 @@
   const guideHLabel = document.createElement('span');
   guideHLabel.className = 've-guide-label ve-guide-h-label';
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel);
+  const constraintBadge = document.createElement('div');
+  constraintBadge.className = 've-constraint-badge';
+  const altTargetOutline = document.createElement('div');
+  altTargetOutline.className = 've-alt-target';
+  const altMeasureLabel = document.createElement('div');
+  altMeasureLabel.className = 've-alt-measure';
+
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel);
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
@@ -69,6 +76,8 @@
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
+  let editingBreakpoint = 'base';
+  let environment = { fontScale: 1, displayScale: 1, darkMode: false };
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -122,7 +131,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -167,6 +176,8 @@
       zIndex: parseInt(getComputedStyle(element).zIndex,10) || 0,
       zAdjusted: false,
       deleted: false,
+      layoutAdjusted: false,
+      layout: {},
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
@@ -183,7 +194,8 @@
         centerOffsetY: 0,
         widthPercent: 100,
         heightPercent: 100,
-        safeArea: true
+        safeArea: true,
+        breakpoints: {}
       }
     };
     touched.set(element, state);
@@ -261,12 +273,13 @@
   }
 
   function moveResponsiveState(element, state, dx, dy) {
-    const cfg = state.responsive;
-    if (!cfg || !cfg.enabled) {
+    const effective = effectiveResponsive(state);
+    if (!effective || !effective.enabled) {
       state.dx = snapGrid(state.dx + dx);
       state.dy = snapGrid(state.dy + dy);
       return;
     }
+    const cfg = editableResponsive(state, editingBreakpoint);
     if (cfg.hAnchor === 'left' || cfg.hAnchor === 'stretch') cfg.marginLeft = snapGrid(cfg.marginLeft + dx);
     else if (cfg.hAnchor === 'right') cfg.marginRight = snapGrid(cfg.marginRight - dx);
     else if (cfg.hAnchor === 'center') cfg.centerOffsetX = snapGrid(cfg.centerOffsetX + dx);
@@ -300,10 +313,9 @@
   }
 
 
-  function cloneResponsive(value) {
-    const src = value || {};
+  function normalizeResponsiveValues(src) {
+    src = src || {};
     return {
-      enabled: !!src.enabled,
       hAnchor: src.hAnchor || 'free',
       vAnchor: src.vAnchor || 'free',
       widthMode: src.widthMode || 'auto',
@@ -320,6 +332,43 @@
     };
   }
 
+  function cloneResponsive(value) {
+    const src = value || {};
+    const out = Object.assign({ enabled: !!src.enabled }, normalizeResponsiveValues(src), { breakpoints: {} });
+    const points = src.breakpoints || {};
+    ['phone','tablet','desktop'].forEach(function (key) {
+      if (points[key]) out.breakpoints[key] = normalizeResponsiveValues(points[key]);
+    });
+    return out;
+  }
+
+  function viewportBreakpoint() {
+    if (innerWidth < 600) return 'phone';
+    if (innerWidth < 1024) return 'tablet';
+    return 'desktop';
+  }
+
+  function effectiveResponsive(state) {
+    const base = state && state.responsive ? state.responsive : {};
+    const out = Object.assign({ enabled: !!base.enabled }, normalizeResponsiveValues(base));
+    const bp = viewportBreakpoint();
+    if (base.breakpoints && base.breakpoints[bp]) Object.assign(out, normalizeResponsiveValues(base.breakpoints[bp]));
+    out.breakpoint = bp;
+    return out;
+  }
+
+  function editableResponsive(state, breakpoint) {
+    const base = state.responsive;
+    const bp = breakpoint || editingBreakpoint || 'base';
+    if (bp === 'base') return base;
+    base.breakpoints = base.breakpoints || {};
+    if (!base.breakpoints[bp]) {
+      const eff = effectiveResponsive(state);
+      base.breakpoints[bp] = normalizeResponsiveValues(eff);
+    }
+    return base.breakpoints[bp];
+  }
+
   function isViewportParent(parent, rect) {
     if (!parent || parent === document.body || parent === document.documentElement) return true;
     if (!rect) return false;
@@ -333,7 +382,7 @@
     const parentRect = viewportParent
       ? { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight }
       : parent.getBoundingClientRect();
-    const useSafe = state.responsive && state.responsive.safeArea && (viewportParent || isViewportParent(parent, parentRect));
+    const useSafe = state.responsive && effectiveResponsive(state).safeArea && (viewportParent || isViewportParent(parent, parentRect));
     const leftInset = useSafe ? safeArea.left : 0;
     const rightInset = useSafe ? safeArea.right : 0;
     const topInset = useSafe ? safeArea.top : 0;
@@ -370,7 +419,7 @@
   }
 
   function applyResponsive(element, state) {
-    const cfg = state.responsive;
+    const cfg = effectiveResponsive(state);
     if (!cfg || !cfg.enabled) {
       state.responsiveDx = 0;
       state.responsiveDy = 0;
@@ -443,40 +492,54 @@
     if (!active || !selected) return;
     const state = remember(selected);
     if (!state || state.locked) return;
+    const bp = String(payload.breakpoint || editingBreakpoint || 'base');
+    if (bp !== 'base' && ['phone','tablet','desktop'].indexOf(bp) < 0) return;
+
     const wasEnabled = !!state.responsive.enabled;
     if (payload.enabled === true && !wasEnabled) {
       state.responsive.enabled = true;
       captureResponsiveFromCurrent(selected, state, false);
     }
 
+    const target = editableResponsive(state, bp);
     const currentRect = selected.getBoundingClientRect();
     const bounds = responsiveBounds(selected, state);
-    if (payload.hAnchor && payload.hAnchor !== state.responsive.hAnchor) {
-      state.responsive.marginLeft = Math.round(currentRect.left - bounds.left);
-      state.responsive.marginRight = Math.round(bounds.right - currentRect.right);
-      state.responsive.centerOffsetX = Math.round((currentRect.left + currentRect.width / 2) - (bounds.left + bounds.width / 2));
+
+    if (payload.hAnchor && payload.hAnchor !== target.hAnchor) {
+      target.marginLeft = Math.round(currentRect.left - bounds.left);
+      target.marginRight = Math.round(bounds.right - currentRect.right);
+      target.centerOffsetX = Math.round((currentRect.left + currentRect.width / 2) - (bounds.left + bounds.width / 2));
     }
-    if (payload.vAnchor && payload.vAnchor !== state.responsive.vAnchor) {
-      state.responsive.marginTop = Math.round(currentRect.top - bounds.top);
-      state.responsive.marginBottom = Math.round(bounds.bottom - currentRect.bottom);
-      state.responsive.centerOffsetY = Math.round((currentRect.top + currentRect.height / 2) - (bounds.top + bounds.height / 2));
+    if (payload.vAnchor && payload.vAnchor !== target.vAnchor) {
+      target.marginTop = Math.round(currentRect.top - bounds.top);
+      target.marginBottom = Math.round(bounds.bottom - currentRect.bottom);
+      target.centerOffsetY = Math.round((currentRect.top + currentRect.height / 2) - (bounds.top + bounds.height / 2));
     }
 
     Object.keys(payload || {}).forEach(function (key) {
-      if (key in state.responsive && key !== 'enabled') state.responsive[key] = payload[key];
+      if (key in target && key !== 'enabled' && key !== 'breakpoints') target[key] = payload[key];
     });
-    if (payload.hAnchor === 'stretch') state.responsive.widthMode = 'fill';
-    if (payload.vAnchor === 'stretch') state.responsive.heightMode = 'fill';
-    if (payload.enabled === false) {
+    if (payload.hAnchor === 'stretch') target.widthMode = 'fill';
+    if (payload.vAnchor === 'stretch') target.heightMode = 'fill';
+
+    if (payload.enabled === false && bp === 'base') {
       state.responsive.enabled = false;
       state.responsiveDx = 0;
       state.responsiveDy = 0;
     }
+
     state.responsive = cloneResponsive(state.responsive);
     applyState(selected, state, false);
     updateOverlay();
     commitHistory();
   }
+
+  function setEditingBreakpoint(value) {
+    const bp = String(value || 'base');
+    editingBreakpoint = ['base','phone','tablet','desktop'].indexOf(bp) >= 0 ? bp : 'base';
+    updateOverlay();
+  }
+
 
   function captureResponsiveRules() {
     if (!active || !selected) return;
@@ -575,6 +638,15 @@
       restoreOriginalProp(state.selector, 'position');
     }
 
+    const layoutProps = ['display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items'];
+    if (state.layoutAdjusted && state.layout) {
+      layoutProps.forEach(function (prop) {
+        if (Object.prototype.hasOwnProperty.call(state.layout, prop)) setInline(element, prop, state.layout[prop]);
+      });
+    } else {
+      layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
+    }
+
     if (update !== false) updateOverlay();
   }
 
@@ -613,7 +685,8 @@
 
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
-      node === guideV || node === guideH || node === guideVLabel || node === guideHLabel;
+      node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
+      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel;
   }
 
   function alignmentCandidates(element) {
@@ -725,6 +798,8 @@
         zIndex: state.zIndex,
         zAdjusted: state.zAdjusted,
         deleted: state.deleted,
+        layoutAdjusted: !!state.layoutAdjusted,
+        layout: Object.assign({}, state.layout || {}),
         responsiveDx: state.responsiveDx || 0,
         responsiveDy: state.responsiveDy || 0,
         responsive: cloneResponsive(state.responsive)
@@ -801,6 +876,8 @@
         zIndex: Number(saved.zIndex) || 0,
         zAdjusted: !!saved.zAdjusted,
         deleted: !!saved.deleted,
+        layoutAdjusted: !!saved.layoutAdjusted,
+        layout: Object.assign({}, saved.layout || {}),
         responsiveDx: Number(saved.responsiveDx) || 0,
         responsiveDy: Number(saved.responsiveDy) || 0,
         responsive: cloneResponsive(saved.responsive)
@@ -851,8 +928,22 @@
     commitHistory();
   }
 
+  function responsiveCssDeclarations(cfg, label) {
+    if (!cfg) return [];
+    const out = [];
+    out.push('  /* ' + (label || 'Responsive') + ': horizontal=' + cfg.hAnchor + ', vertical=' + cfg.vAnchor +
+      ', marges=' + cfg.marginLeft + '/' + cfg.marginTop + '/' + cfg.marginRight + '/' + cfg.marginBottom +
+      ', largeur=' + cfg.widthMode + ', hauteur=' + cfg.heightMode + ', safe-area=' + cfg.safeArea + ' */');
+    if (cfg.widthMode === 'percent') out.push('  width: ' + cfg.widthPercent + '% !important;');
+    if (cfg.widthMode === 'fill') out.push('  width: calc(100% - ' + cfg.marginLeft + 'px - ' + cfg.marginRight + 'px) !important;');
+    if (cfg.heightMode === 'percent') out.push('  height: ' + cfg.heightPercent + '% !important;');
+    if (cfg.heightMode === 'fill') out.push('  height: calc(100% - ' + cfg.marginTop + 'px - ' + cfg.marginBottom + 'px) !important;');
+    return out;
+  }
+
   function cssText() {
     const rules = [];
+    const mediaRules = { phone:[], tablet:[], desktop:[] };
     touched.forEach(function (state) {
       const declarations = [];
       if (state.deleted) {
@@ -860,11 +951,13 @@
         declarations.push('  pointer-events: none !important;');
       } else {
         if (state.responsive && state.responsive.enabled) {
-          declarations.push('  /* Responsive: horizontal=' + state.responsive.hAnchor + ', vertical=' + state.responsive.vAnchor + ', largeur=' + state.responsive.widthMode + ', hauteur=' + state.responsive.heightMode + ', safe-area=' + state.responsive.safeArea + ' */');
-          if (state.responsive.widthMode === 'percent') declarations.push('  width: ' + state.responsive.widthPercent + '% !important;');
-          if (state.responsive.widthMode === 'fill') declarations.push('  width: calc(100% - ' + state.responsive.marginLeft + 'px - ' + state.responsive.marginRight + 'px) !important;');
-          if (state.responsive.heightMode === 'percent') declarations.push('  height: ' + state.responsive.heightPercent + '% !important;');
-          if (state.responsive.heightMode === 'fill') declarations.push('  height: calc(100% - ' + state.responsive.marginTop + 'px - ' + state.responsive.marginBottom + 'px) !important;');
+          responsiveCssDeclarations(state.responsive, 'Responsive de base').forEach(function(line){declarations.push(line)});
+          const points = state.responsive.breakpoints || {};
+          ['phone','tablet','desktop'].forEach(function(bp){
+            if (!points[bp]) return;
+            const bpDecl = responsiveCssDeclarations(points[bp], 'Breakpoint ' + bp);
+            if (bpDecl.length) mediaRules[bp].push(state.selector + ' {\n' + bpDecl.join('\n') + '\n}');
+          });
         }
         const responsiveExport = !!(state.responsive && state.responsive.enabled);
         const exportDx = state.dx || 0;
@@ -903,10 +996,329 @@
           declarations.push('  position: relative !important;');
           declarations.push('  z-index: ' + state.zIndex + ' !important;');
         }
+        if (state.layoutAdjusted && state.layout) {
+          Object.keys(state.layout).forEach(function (prop) {
+            const value = state.layout[prop];
+            if (value !== undefined && value !== null && value !== '') declarations.push('  ' + prop + ': ' + value + ' !important;');
+          });
+        }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
     });
+    const mediaMap = {
+      phone:'@media (max-width: 599px)',
+      tablet:'@media (min-width: 600px) and (max-width: 1023px)',
+      desktop:'@media (min-width: 1024px)'
+    };
+    ['phone','tablet','desktop'].forEach(function(bp){
+      if(mediaRules[bp].length)rules.push(mediaMap[bp] + ' {\n' + mediaRules[bp].join('\n\n').replace(/^/gm,'  ') + '\n}');
+    });
     return rules.join('\n\n') || '/* Aucun ajustement. */';
+  }
+
+
+  function parentLayoutPayload(element) {
+    const parent = element && element.parentElement;
+    if (!parent || parent === document.body || parent === document.documentElement) {
+      return { selector:'', display:'block', editable:false };
+    }
+    const cs = getComputedStyle(parent);
+    return {
+      selector: selectorFor(parent),
+      editable: true,
+      display: cs.display,
+      flexDirection: cs.flexDirection,
+      justifyContent: cs.justifyContent,
+      alignItems: cs.alignItems,
+      gap: cs.gap,
+      rowGap: cs.rowGap,
+      columnGap: cs.columnGap,
+      gridTemplateColumns: cs.gridTemplateColumns,
+      gridAutoRows: cs.gridAutoRows,
+      gridAutoFlow: cs.gridAutoFlow,
+      placeItems: cs.placeItems
+    };
+  }
+
+  function setParentLayout(payload) {
+    if (!active || !selected || !selected.parentElement) return;
+    const parent = selected.parentElement;
+    if (parent === document.body || parent === document.documentElement) return;
+    const state = remember(parent);
+    if (!state || state.locked) return;
+    state.layoutAdjusted = true;
+    state.layout = state.layout || {};
+    const map = {
+      display:'display',
+      flexDirection:'flex-direction',
+      justifyContent:'justify-content',
+      alignItems:'align-items',
+      gap:'gap',
+      rowGap:'row-gap',
+      columnGap:'column-gap',
+      gridTemplateColumns:'grid-template-columns',
+      gridAutoRows:'grid-auto-rows',
+      gridAutoFlow:'grid-auto-flow',
+      placeItems:'place-items'
+    };
+    Object.keys(map).forEach(function (key) {
+      if (payload[key] !== undefined) state.layout[map[key]] = String(payload[key]);
+    });
+    applyState(parent, state, false);
+    updateOverlay();
+    commitHistory();
+    emit('layout', { layout: parentLayoutPayload(selected) });
+  }
+
+  function layerTitle(element) {
+    if (!element) return '';
+    const aria = element.getAttribute && (element.getAttribute('aria-label') || element.getAttribute('title'));
+    if (aria) return String(aria).trim().slice(0,60);
+    const text = element.children.length === 0 ? String(element.textContent || '').trim().replace(/\s+/g,' ') : '';
+    if (text) return text.slice(0,60);
+    if (element.id) return '#' + element.id;
+    const cls = element.className && typeof element.className === 'string' ? element.className.trim().split(/\s+/).filter(Boolean)[0] : '';
+    return cls ? '.' + cls : element.tagName.toLowerCase();
+  }
+
+  function buildLayerTree() {
+    let count = 0;
+    const maxNodes = 350;
+    function walk(parent, depth) {
+      const out = [];
+      if (!parent || depth > 7 || count >= maxNodes) return out;
+      Array.from(parent.children || []).forEach(function (el) {
+        if (count >= maxNodes || isEditorNode(el) || /^SCRIPT|STYLE|LINK|META|NOSCRIPT$/i.test(el.tagName)) return;
+        const cs = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        if (cs.display === 'none' || rect.width < 1 || rect.height < 1) return;
+        count += 1;
+        const st = touched.get(el);
+        out.push({
+          selector: selectorFor(el),
+          tag: el.tagName.toLowerCase(),
+          title: layerTitle(el),
+          locked: !!(st && st.locked),
+          hidden: !!(st && st.deleted),
+          selected: selectedSet.has(el) || selected === el,
+          depth: depth,
+          children: walk(el, depth + 1)
+        });
+      });
+      return out;
+    }
+    return walk(document.body,0);
+  }
+
+  function emitLayers() {
+    emit('layers', { tree: buildLayerTree(), selectedSelectors: selectionElements().map(selectorFor).filter(Boolean) });
+  }
+
+  function selectBySelector(selector, additive) {
+    let el = null;
+    try { el = document.querySelector(String(selector || '')); } catch (_) {}
+    if (!el) return;
+    select(el, !!additive);
+    emitLayers();
+  }
+
+  function setLayerLock(selector, value) {
+    let el = null;
+    try { el = document.querySelector(String(selector || '')); } catch (_) {}
+    if (!el) return;
+    const st = remember(el);
+    st.locked = value === undefined ? !st.locked : !!value;
+    updateOverlay();
+    commitHistory();
+    emitLayers();
+  }
+
+  function setLayerHidden(selector, value) {
+    let el = null;
+    try { el = document.querySelector(String(selector || '')); } catch (_) {}
+    if (!el) return;
+    const st = remember(el);
+    st.deleted = value === undefined ? !st.deleted : !!value;
+    applyState(el, st, false);
+    if (st.deleted) selectedSet.delete(el);
+    if (selected === el && st.deleted) selected = selectionElements()[0] || null;
+    updateOverlay();
+    commitHistory();
+    emitLayers();
+  }
+
+  function distributeSelection(mode, gapValue) {
+    const items = selectionElements();
+    if (items.length < 2) return;
+    const rects = items.map(function (el) { return { el:el, rect:el.getBoundingClientRect() }; });
+    const bounds = selectionBounds();
+    const firstRect = rects[0].rect;
+
+    function moveTo(item, left, top) {
+      const r = item.el.getBoundingClientRect();
+      const st = remember(item.el);
+      if (!st || st.locked) return;
+      moveResponsiveState(item.el, st,
+        Number.isFinite(left) ? left - r.left : 0,
+        Number.isFinite(top) ? top - r.top : 0
+      );
+    }
+
+    if (mode === 'same-width' || mode === 'same-height') {
+      items.forEach(function (el) {
+        const st = remember(el);
+        if (!st || st.locked) return;
+        const cfg = editableResponsive(st, editingBreakpoint);
+        st.resized = true;
+        if (mode === 'same-width') {
+          st.width = Math.round(firstRect.width);
+          if (st.responsive && st.responsive.enabled) cfg.widthMode = 'fixed';
+        } else {
+          st.height = Math.round(firstRect.height);
+          if (st.responsive && st.responsive.enabled) cfg.heightMode = 'fixed';
+        }
+        applyState(el, st, false);
+      });
+    }
+
+    if (mode === 'align-left') rects.forEach(function (it) { moveTo(it,bounds.left,NaN); });
+    if (mode === 'align-right') rects.forEach(function (it) { moveTo(it,bounds.right-it.rect.width,NaN); });
+    if (mode === 'align-center-x') rects.forEach(function (it) { moveTo(it,bounds.left+(bounds.width-it.rect.width)/2,NaN); });
+    if (mode === 'align-top') rects.forEach(function (it) { moveTo(it,NaN,bounds.top); });
+    if (mode === 'align-bottom') rects.forEach(function (it) { moveTo(it,NaN,bounds.bottom-it.rect.height); });
+    if (mode === 'align-center-y') rects.forEach(function (it) { moveTo(it,NaN,bounds.top+(bounds.height-it.rect.height)/2); });
+
+    if (mode === 'distribute-x' || mode === 'gap-x') {
+      const sorted = rects.slice().sort(function(a,b){return a.rect.left-b.rect.left});
+      const total = sorted.reduce(function(sum,it){return sum+it.rect.width},0);
+      const gap = mode === 'gap-x' && Number.isFinite(Number(gapValue))
+        ? Number(gapValue)
+        : Math.max(0,(bounds.width-total)/Math.max(1,sorted.length-1));
+      let x = bounds.left;
+      sorted.forEach(function (it) { moveTo(it,x,NaN); x += it.rect.width + gap; });
+    }
+
+    if (mode === 'distribute-y' || mode === 'gap-y') {
+      const sorted = rects.slice().sort(function(a,b){return a.rect.top-b.rect.top});
+      const total = sorted.reduce(function(sum,it){return sum+it.rect.height},0);
+      const gap = mode === 'gap-y' && Number.isFinite(Number(gapValue))
+        ? Number(gapValue)
+        : Math.max(0,(bounds.height-total)/Math.max(1,sorted.length-1));
+      let y = bounds.top;
+      sorted.forEach(function (it) { moveTo(it,NaN,y); y += it.rect.height + gap; });
+    }
+
+    hideGuides();
+    updateOverlay();
+    commitHistory();
+  }
+
+  function parseRgb(value) {
+    const m = String(value || '').match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/i);
+    if (!m) return null;
+    return { r:Number(m[1]), g:Number(m[2]), b:Number(m[3]), a:m[4]===undefined?1:Number(m[4]) };
+  }
+
+  function luminance(rgb) {
+    function channel(v) {
+      v /= 255;
+      return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4);
+    }
+    return .2126*channel(rgb.r)+.7152*channel(rgb.g)+.0722*channel(rgb.b);
+  }
+
+  function contrastRatio(a,b) {
+    const l1=luminance(a),l2=luminance(b);
+    return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+  }
+
+  function solidBackground(element) {
+    let node = element;
+    while (node && node.nodeType === 1) {
+      const bg = parseRgb(getComputedStyle(node).backgroundColor);
+      if (bg && bg.a > .85) return bg;
+      node = node.parentElement;
+    }
+    return {r:255,g:255,b:255,a:1};
+  }
+
+  function auditInterface() {
+    const issues = [];
+    const nodes = Array.from(document.body.querySelectorAll('*')).filter(function (el) {
+      if (isEditorNode(el) || /^SCRIPT|STYLE|LINK|META$/i.test(el.tagName)) return false;
+      const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+      return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>1&&r.height>1;
+    }).slice(0,650);
+
+    if (document.documentElement.scrollWidth > innerWidth + 2) {
+      issues.push({severity:'error',type:'overflow-x',selector:'html',message:'La page dépasse horizontalement le viewport de '+Math.round(document.documentElement.scrollWidth-innerWidth)+' px.'});
+    }
+
+    const interactive = [];
+    nodes.forEach(function (el) {
+      const r=el.getBoundingClientRect();
+      const cs=getComputedStyle(el);
+      const selector=selectorFor(el);
+      const isInteractive=/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)||el.getAttribute('role')==='button';
+
+      if (el.children.length===0 && String(el.textContent||'').trim()) {
+        const clipped=(el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2) &&
+          (/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY)||cs.whiteSpace==='nowrap');
+        if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.'});
+
+        const fg=parseRgb(cs.color),bg=solidBackground(el);
+        if(fg&&bg&&fg.a>.8){
+          const ratio=contrastRatio(fg,bg);
+          const min=parseFloat(cs.fontSize)>=18?3:4.5;
+          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).'});
+        }
+      }
+
+      if(isInteractive){
+        interactive.push({el:el,rect:r,selector:selector});
+        if(r.width<44||r.height<44)issues.push({severity:'warning',type:'touch-target',selector:selector,message:'Zone tactile '+Math.round(r.width)+' × '+Math.round(r.height)+' px, sous 44 × 44.'});
+        if(r.top<safeArea.top-1||r.left<safeArea.left-1||r.right>innerWidth-safeArea.right+1||r.bottom>innerHeight-safeArea.bottom+1){
+          issues.push({severity:'error',type:'safe-area',selector:selector,message:'Élément interactif en dehors de la zone sûre.'});
+        }
+      }
+    });
+
+    for(let i=0;i<interactive.length&&i<90;i+=1){
+      for(let j=i+1;j<interactive.length&&j<90;j+=1){
+        const a=interactive[i],b=interactive[j];
+        if(a.el.contains(b.el)||b.el.contains(a.el))continue;
+        const iw=Math.max(0,Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left));
+        const ih=Math.max(0,Math.min(a.rect.bottom,b.rect.bottom)-Math.max(a.rect.top,b.rect.top));
+        const area=iw*ih;
+        const minArea=Math.min(a.rect.width*a.rect.height,b.rect.width*b.rect.height);
+        if(area>0&&minArea>0&&area/minArea>.25){
+          issues.push({severity:'warning',type:'overlap',selector:a.selector,message:'Chevauchement important avec '+b.selector+'.'});
+        }
+      }
+    }
+
+    const order={error:0,warning:1,info:2};
+    issues.sort(function(a,b){return order[a.severity]-order[b.severity]});
+    emit('audit',{issues:issues.slice(0,120),summary:{
+      errors:issues.filter(function(i){return i.severity==='error'}).length,
+      warnings:issues.filter(function(i){return i.severity==='warning'}).length
+    }});
+  }
+
+  function applyEnvironment(payload) {
+    environment = {
+      fontScale: Math.max(.75,Math.min(2,Number(payload.fontScale)||1)),
+      displayScale: Math.max(.75,Math.min(1.6,Number(payload.displayScale)||1)),
+      darkMode: !!payload.darkMode
+    };
+    let style=document.getElementById('ve-environment-style');
+    if(!style){style=document.createElement('style');style.id='ve-environment-style';document.head.appendChild(style);}
+    style.textContent=
+      'html{-webkit-text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;color-scheme:'+(environment.darkMode?'dark':'light')+';}'+
+      'body{zoom:'+environment.displayScale+';}';
+    document.documentElement.dataset.aisTheme=environment.darkMode?'dark':'light';
+    reflowResponsive();
+    emit('environment',{environment:Object.assign({},environment)});
   }
 
   function currentPayload() {
@@ -947,7 +1359,12 @@
       selectionCount: selectionElements().length,
       selectedSelectors: selectionElements().map(selectorFor).filter(Boolean),
       responsive: cloneResponsive(state.responsive),
+      responsiveEffective: effectiveResponsive(state),
+      activeBreakpoint: viewportBreakpoint(),
+      editingBreakpoint: editingBreakpoint,
+      parentLayout: parentLayoutPayload(selected),
       safeArea: Object.assign({}, safeArea),
+      environment: Object.assign({}, environment),
       css: cssText(),
       grid: grid
     };
@@ -956,6 +1373,9 @@
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
+      constraintBadge.style.display = 'none';
+      altTargetOutline.style.display = 'none';
+      altMeasureLabel.style.display = 'none';
       clearSecondaryOutlines();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
@@ -966,11 +1386,19 @@
     const state = remember(selected);
     if (!state || state.deleted) {
       outline.style.display = 'none';
+      constraintBadge.style.display = 'none';
       emit('state', currentPayload());
       return;
     }
 
     const rect = selected.getBoundingClientRect();
+    const cfg = effectiveResponsive(state);
+    constraintBadge.style.display = 'block';
+    constraintBadge.style.left = Math.max(4, rect.left) + 'px';
+    constraintBadge.style.top = Math.max(4, rect.top - 25) + 'px';
+    const hIcon = cfg.hAnchor === 'left' ? '←' : cfg.hAnchor === 'right' ? '→' : cfg.hAnchor === 'center' ? '↔' : cfg.hAnchor === 'stretch' ? '⇆' : '·';
+    const vIcon = cfg.vAnchor === 'top' ? '↑' : cfg.vAnchor === 'bottom' ? '↓' : cfg.vAnchor === 'center' ? '↕' : cfg.vAnchor === 'stretch' ? '⇅' : '·';
+    constraintBadge.textContent = hIcon + ' ' + vIcon + ' · ' + viewportBreakpoint();
     outline.style.display = 'block';
     outline.style.left = rect.left + 'px';
     outline.style.top = rect.top + 'px';
@@ -1011,6 +1439,7 @@
 
     hideGuides();
     updateOverlay();
+    emitLayers();
   }
 
   function adjustMove(dx, dy, commit) {
@@ -1306,14 +1735,17 @@
     hideGuides();
     updateOverlay();
     commitHistory();
+    emitLayers();
   }
 
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
-      viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea) },
+      viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
+      editingBreakpoint: editingBreakpoint,
+      environment: Object.assign({}, environment),
       snapshot: snapshot(),
       css: cssText()
     };
@@ -1322,6 +1754,8 @@
   function importProject(project) {
     if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
     if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
+    if (project.editingBreakpoint) setEditingBreakpoint(project.editingBreakpoint);
+    if (project.environment) applyEnvironment(project.environment);
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -1381,6 +1815,8 @@
     resizeDrag = null;
     document.body.classList.remove('ve-active');
     outline.style.display = 'none';
+    constraintBadge.style.display = 'none';
+    clearAltMeasure();
     clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
@@ -1425,6 +1861,43 @@
     hideGuides();
     updateOverlay();
   }, true);
+
+  function clearAltMeasure() {
+    altTargetOutline.style.display = 'none';
+    altMeasureLabel.style.display = 'none';
+  }
+
+  function showAltMeasure(event) {
+    if (!active || !selected || !event.altKey) { clearAltMeasure(); return; }
+    const target = event.target && event.target.closest ? event.target.closest('*') : event.target;
+    if (!target || target === selected || isEditorNode(target) || selected.contains(target) || target.contains(selected)) {
+      clearAltMeasure(); return;
+    }
+    const a = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    if (!b || b.width < 1 || b.height < 1) { clearAltMeasure(); return; }
+
+    altTargetOutline.style.display = 'block';
+    altTargetOutline.style.left = b.left + 'px';
+    altTargetOutline.style.top = b.top + 'px';
+    altTargetOutline.style.width = b.width + 'px';
+    altTargetOutline.style.height = b.height + 'px';
+
+    const horizontal = b.left >= a.right ? Math.round(b.left - a.right) :
+      (a.left >= b.right ? Math.round(a.left - b.right) : 0);
+    const vertical = b.top >= a.bottom ? Math.round(b.top - a.bottom) :
+      (a.top >= b.bottom ? Math.round(a.top - b.bottom) : 0);
+
+    altMeasureLabel.style.display = 'block';
+    altMeasureLabel.style.left = Math.min(innerWidth - 180, Math.max(6, event.clientX + 12)) + 'px';
+    altMeasureLabel.style.top = Math.min(innerHeight - 46, Math.max(6, event.clientY + 12)) + 'px';
+    altMeasureLabel.textContent = '↔ ' + horizontal + ' px · ↕ ' + vertical + ' px';
+    emit('alt-measure', { selector:selectorFor(target), horizontal:horizontal, vertical:vertical });
+  }
+
+  window.addEventListener('pointermove', showAltMeasure, true);
+  window.addEventListener('keyup', function(event){ if(event.key==='Alt') clearAltMeasure(); }, true);
+  window.addEventListener('blur', clearAltMeasure);
 
   window.addEventListener('pointerup', function (event) {
     if (!active || !drag || event.pointerId !== drag.pointerId) return;
@@ -1567,6 +2040,7 @@
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
     if (data.type === 'keyboard-commit') flushKeyboardCommit();
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
+    if (data.type === 'breakpoint-edit') setEditingBreakpoint(payload.breakpoint);
     if (data.type === 'responsive-capture') captureResponsiveRules();
     if (data.type === 'safe-area') setSafeArea(payload);
     if (data.type === 'preferences') {
@@ -1580,6 +2054,14 @@
     if (data.type === 'text-content') setTextContent(payload.value);
     if (data.type === 'lock') toggleLock(payload.value);
     if (data.type === 'measure-spacing') measureSpacing();
+    if (data.type === 'get-layers') emitLayers();
+    if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
+    if (data.type === 'layer-lock') setLayerLock(payload.selector, payload.value);
+    if (data.type === 'layer-hidden') setLayerHidden(payload.selector, payload.value);
+    if (data.type === 'parent-layout') setParentLayout(payload);
+    if (data.type === 'distribute') distributeSelection(String(payload.mode || ''), payload.gap);
+    if (data.type === 'audit') auditInterface();
+    if (data.type === 'environment-set') applyEnvironment(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -1635,6 +2117,11 @@
     setTextContent: setTextContent,
     toggleLock: toggleLock,
     measureSpacing: measureSpacing,
+    emitLayers: emitLayers,
+    setParentLayout: setParentLayout,
+    distributeSelection: distributeSelection,
+    auditInterface: auditInterface,
+    applyEnvironment: applyEnvironment,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,
