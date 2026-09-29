@@ -143,7 +143,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -190,6 +190,7 @@
       deleted: false,
       layoutAdjusted: false,
       layout: {},
+      tokenStyles: {},
       animationAdjusted: false,
       animation: {
         property: 'all',
@@ -669,6 +670,12 @@
       layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
     }
 
+    const tokenProps=['border-radius'];
+    tokenProps.forEach(function(prop){
+      if(state.tokenStyles&&state.tokenStyles[prop])setInline(element,prop,state.tokenStyles[prop]);
+      else restoreOriginalProp(state.selector,prop);
+    });
+
     const animationProps = ['transition-property','transition-duration','transition-timing-function','transition-delay'];
     if (state.animationAdjusted && state.animation) {
       setInline(element,'transition-property',state.animation.property || 'all');
@@ -832,6 +839,7 @@
         deleted: state.deleted,
         layoutAdjusted: !!state.layoutAdjusted,
         layout: Object.assign({}, state.layout || {}),
+        tokenStyles: Object.assign({}, state.tokenStyles || {}),
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -915,6 +923,7 @@
         deleted: !!saved.deleted,
         layoutAdjusted: !!saved.layoutAdjusted,
         layout: Object.assign({}, saved.layout || {}),
+        tokenStyles: Object.assign({}, saved.tokenStyles || {}),
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -985,6 +994,12 @@
 
   function cssText() {
     const rules = [];
+    rules.push(':root {\n'+
+      '  --ais-space: '+Math.max(1,Number(designTokens.spacingUnit)||8)+'px;\n'+
+      '  --ais-radius-card: '+Math.max(0,Number(designTokens.radiusCard)||12)+'px;\n'+
+      '  --ais-text-title: '+Math.max(8,Number(designTokens.textTitle)||20)+'px;\n'+
+      '  --ais-color-primary: '+String(designTokens.colorPrimary||'#6f49f5')+';\n'+
+      '  --ais-color-surface: '+String(designTokens.colorSurface||'#ffffff')+';\n}');
     const mediaRules = { phone:[], tablet:[], desktop:[] };
     touched.forEach(function (state) {
       const declarations = [];
@@ -1042,6 +1057,11 @@
           Object.keys(state.layout).forEach(function (prop) {
             const value = state.layout[prop];
             if (value !== undefined && value !== null && value !== '') declarations.push('  ' + prop + ': ' + value + ' !important;');
+          });
+        }
+        if (state.tokenStyles) {
+          Object.keys(state.tokenStyles).forEach(function(prop){
+            if(state.tokenStyles[prop])declarations.push('  '+prop+': '+state.tokenStyles[prop]+' !important;');
           });
         }
         if (state.animationAdjusted && state.animation) {
@@ -1388,7 +1408,7 @@
       if(kind==='primary'){st.colorAdjusted=true;st.color='var(--ais-color-primary)'}
       if(kind==='surface'){st.backgroundAdjusted=true;st.backgroundColor='var(--ais-color-surface)'}
       if(kind==='title'){st.fontAdjusted=true;st.fontSize=Number(designTokens.textTitle)||20}
-      if(kind==='radius'){el.style.setProperty('border-radius','var(--ais-radius-card)','important')}
+      if(kind==='radius'){st.tokenStyles=st.tokenStyles||{};st.tokenStyles['border-radius']='var(--ais-radius-card)'}
       if(kind==='spacing'&&el.parentElement){
         const parent=el.parentElement,pst=remember(parent);
         pst.layoutAdjusted=true;pst.layout=pst.layout||{};pst.layout.gap='var(--ais-space)';applyState(parent,pst,false);
