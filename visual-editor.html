@@ -828,6 +828,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var screenCustomW=document.getElementById('screenCustomW');
   var screenCustomH=document.getElementById('screenCustomH');
   var previewExit=document.getElementById('previewExit');
+  var breakpointEdit=document.getElementById('breakpointEdit');
+  var breakpointActive=document.getElementById('breakpointActive');
+  var layerTree=document.getElementById('layerTree');
+  var layoutDisplay=document.getElementById('layoutDisplay');
+  var layoutGap=document.getElementById('layoutGap');
+  var layoutFlexDirection=document.getElementById('layoutFlexDirection');
+  var layoutJustify=document.getElementById('layoutJustify');
+  var layoutAlign=document.getElementById('layoutAlign');
+  var layoutColumns=document.getElementById('layoutColumns');
+  var layoutParentName=document.getElementById('layoutParentName');
+  var auditSummary=document.getElementById('auditSummary');
+  var auditList=document.getElementById('auditList');
+  var referenceOverlay=document.getElementById('referenceOverlay');
+  var compareStatus=document.getElementById('compareStatus');
+  var multiPreviewModal=document.getElementById('multiPreviewModal');
+  var multiPreviewGrid=document.getElementById('multiPreviewGrid');
 
   var hasSelection=false;
   var lastState=null;
@@ -836,10 +852,18 @@ body.desktop .desktop-badge{display:inline-flex}
   var readyWaiters=[];
   var currentPreviewMode='edit';
   var selectedDeviceKind='smartphone';
+  var multiFrames=[];
+  var multiProject=null;
+  var multiSyncTimer=null;
+  var multiSyncBusy=false;
+
+  function postTo(target,type,payload){
+    if(!target||!target.contentWindow)return;
+    target.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
+  }
 
   function post(type,payload){
-    if(!frame.contentWindow)return;
-    frame.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
+    postTo(frame,type,payload);
   }
 
   var PREF_KEY='app-interface-studio.preferences.v1';
