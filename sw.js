@@ -1,4 +1,4 @@
-const CACHE = 'radio-intelligente-pwa-v102';
+const CACHE = 'radio-intelligente-pwa-v103';
 
 const APP_SHELL = [
   '/',
@@ -16,7 +16,11 @@ const APP_SHELL = [
   '/radio-v51.js?v=32',
   '/music-player.css?v=17',
   '/music-player.js?v=17',
-  '/radio-v51-core.js?v=1'
+  '/radio-v51-core.js?v=1',
+  '/visual-elements.js?v=1',
+  '/visual-elements.json',
+  '/visual-editor.css?v=2',
+  '/visual-editor.js?v=2'
 ];
 
 self.addEventListener('install', event => {
@@ -65,7 +69,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const isCodeAsset = /\.(?:js|css)$/.test(url.pathname);
+  const isCodeAsset = /\.(?:js|css|json)$/.test(url.pathname);
   if (isCodeAsset) {
     event.respondWith(
       fetch(request, { cache: 'no-store' })
