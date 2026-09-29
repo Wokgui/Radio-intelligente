@@ -83,8 +83,13 @@ main{
   overflow:hidden;transform-origin:top left;transition:border-radius .2s,border-width .2s
 }
 .device.wide{border-width:7px;border-radius:18px}
+.device:before{content:"";display:none;position:absolute;z-index:5;pointer-events:none;background:#161319}
+.device.notch-hole:before{display:block;top:8px;left:50%;width:10px;height:10px;transform:translateX(-50%);border-radius:50%}
+.device.notch-island:before{display:block;top:7px;left:50%;width:94px;height:28px;transform:translateX(-50%);border-radius:999px}
 .device.wide:before{display:none}
-.device:before{content:"";position:absolute;z-index:3;top:7px;left:50%;width:78px;height:19px;transform:translateX(-50%);border-radius:999px;background:#161319;pointer-events:none}
+.safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+.safe-outline.visible{display:block}
+.safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
 .side{display:grid;gap:12px;align-content:start;max-height:calc(100vh - 104px);overflow:auto;padding:1px 3px 18px 1px;scrollbar-gutter:stable}
 .card{border:1px solid rgba(227,220,235,.94);border-radius:18px;background:rgba(255,255,255,.97);padding:15px;box-shadow:var(--shadow)}
@@ -133,6 +138,13 @@ iframe{display:block;width:100%;height:100%;border:0;background:white}
 .status{min-height:18px;color:var(--ok);font-size:.69rem;margin-top:6px}
 .code{width:100%;height:118px;resize:vertical;padding:9px;border:1px solid #2f2837;border-radius:9px;background:#19151f;color:#f0e9f6;font:600 10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
 .hint{padding:10px 11px;border-radius:10px;background:#f7f2fc;color:#684c82;font-size:.69rem;line-height:1.48;font-weight:650}
+.responsive-card{border-color:#d9cef1;background:linear-gradient(180deg,#fff,#fcfaff)}
+.responsive-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.responsive-margins{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+.responsive-margins input{text-align:center}
+.responsive-summary{margin-top:9px;padding:9px 10px;border-radius:10px;background:#f3eefc;color:#624c7a;font-size:.68rem;line-height:1.4}
+.responsive-card.off .responsive-body{opacity:.5}
+.responsive-card.off .responsive-body{pointer-events:none}
 kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 10px system-ui}
 .source-bar{display:flex;align-items:center;gap:7px;min-width:0}
 .source-pill{max-width:310px;min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(#fff,#faf8fc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5f526a;font-size:.72rem;line-height:1;font-weight:750;box-shadow:0 3px 9px rgba(50,34,77,.04);display:inline-flex;align-items:center}
@@ -255,6 +267,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="ruler-y" id="rulerY"></div>
       <div class="device" id="device">
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
+        <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
       </div>
     </div>
   </section>
@@ -281,8 +294,14 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="field"><label>Pas boutons</label><select id="step">
           <option value="1">1 px</option><option value="5">5 px</option><option value="10">10 px</option>
         </select></div>
+        <div class="field" style="grid-column:1/-1"><label>Encoche / zones sûres</label><select id="safeProfile">
+          <option value="auto">Automatique selon l’écran</option>
+          <option value="none">Aucune</option>
+          <option value="android-hole">Android · trou caméra</option>
+          <option value="iphone-island">iPhone · Dynamic Island</option>
+        </select></div>
       </div>
-      <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches.</p>
+      <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches. Le contour violet représente la zone sûre simulée.</p>
     </section>
 
     <section class="card">
@@ -361,6 +380,41 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" data-font="1">Icône / texte +</button>
       </div>
       <p>Pour un SVG ou une icône indépendante, clique directement dessus : largeur/hauteur agissent alors sur l’icône elle-même.</p>
+    </section>
+
+
+    <section class="card responsive-card off" id="responsiveCard">
+      <h2>Adaptatif <small>multi-écrans</small></h2>
+      <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes plutôt que seulement X / Y</label>
+      <div class="responsive-body">
+        <div class="responsive-grid" style="margin-top:9px">
+          <div class="field"><label>Ancrage horizontal</label><select id="hAnchor">
+            <option value="free">Libre</option><option value="left">Gauche</option><option value="center">Centré</option><option value="right">Droite</option><option value="stretch">Gauche + droite</option>
+          </select></div>
+          <div class="field"><label>Ancrage vertical</label><select id="vAnchor">
+            <option value="free">Libre</option><option value="top">Haut</option><option value="center">Centré</option><option value="bottom">Bas</option><option value="stretch">Haut + bas</option>
+          </select></div>
+          <div class="field"><label>Largeur</label><select id="widthMode">
+            <option value="auto">Naturelle</option><option value="fixed">Fixe</option><option value="percent">Pourcentage</option><option value="fill">Remplir entre marges</option>
+          </select></div>
+          <div class="field"><label>Hauteur</label><select id="heightMode">
+            <option value="auto">Naturelle</option><option value="fixed">Fixe</option><option value="percent">Pourcentage</option><option value="fill">Remplir entre marges</option>
+          </select></div>
+        </div>
+        <div class="responsive-margins">
+          <div class="field"><label>Gauche</label><input id="marginLeft" type="number" step="1"></div>
+          <div class="field"><label>Haut</label><input id="marginTop" type="number" step="1"></div>
+          <div class="field"><label>Droite</label><input id="marginRight" type="number" step="1"></div>
+          <div class="field"><label>Bas</label><input id="marginBottom" type="number" step="1"></div>
+        </div>
+        <div class="fields" style="margin-top:9px">
+          <div class="field"><label>Largeur %</label><input id="widthPercent" type="number" min="1" max="100" step=".1"></div>
+          <div class="field"><label>Hauteur %</label><input id="heightPercent" type="number" min="1" max="100" step=".1"></div>
+        </div>
+        <label class="checkline"><input id="respectSafeArea" type="checkbox" checked> Respecter automatiquement les encoches et barres système</label>
+        <button class="btn" id="captureResponsive" style="width:100%;margin-top:8px">Reprendre les marges depuis la position actuelle</button>
+        <div class="responsive-summary" id="responsiveSummary">Sélectionne un élément puis active les contraintes.</div>
+      </div>
     </section>
 
     <section class="card">
@@ -451,6 +505,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var sizeW=document.getElementById('sizeW');
   var sizeH=document.getElementById('sizeH');
   var keepRatio=document.getElementById('keepRatio');
+  var safeProfile=document.getElementById('safeProfile');
+  var safeOutline=document.getElementById('safeOutline');
+  var responsiveCard=document.getElementById('responsiveCard');
+  var responsiveEnabled=document.getElementById('responsiveEnabled');
+  var hAnchor=document.getElementById('hAnchor');
+  var vAnchor=document.getElementById('vAnchor');
+  var widthMode=document.getElementById('widthMode');
+  var heightMode=document.getElementById('heightMode');
+  var marginLeft=document.getElementById('marginLeft');
+  var marginRight=document.getElementById('marginRight');
+  var marginTop=document.getElementById('marginTop');
+  var marginBottom=document.getElementById('marginBottom');
+  var widthPercent=document.getElementById('widthPercent');
+  var heightPercent=document.getElementById('heightPercent');
+  var respectSafeArea=document.getElementById('respectSafeArea');
+  var responsiveSummary=document.getElementById('responsiveSummary');
   var metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
 
   var hasSelection=false;
@@ -472,6 +542,34 @@ body.desktop .desktop-badge{display:inline-flex}
     return '#'+[m[1],m[2],m[3]].map(function(v){return Math.max(0,Math.min(255,Number(v))).toString(16).padStart(2,'0')}).join('');
   }
 
+  function resolvedSafeProfile(){
+    if(safeProfile.value!=='auto')return safeProfile.value;
+    var bits=preset.value.split('x');
+    var w=Number(bits[0]);
+    if(w>=700)return 'none';
+    if(preset.value==='390x844')return 'iphone-island';
+    return 'android-hole';
+  }
+
+  function safeAreaValues(){
+    var profile=resolvedSafeProfile();
+    if(profile==='android-hole')return {profile:profile,top:28,right:0,bottom:24,left:0,notch:'hole'};
+    if(profile==='iphone-island')return {profile:profile,top:59,right:0,bottom:34,left:0,notch:'island'};
+    return {profile:'none',top:0,right:0,bottom:0,left:0,notch:'none'};
+  }
+
+  function applySafeArea(){
+    var s=safeAreaValues();
+    device.classList.toggle('notch-hole',s.notch==='hole');
+    device.classList.toggle('notch-island',s.notch==='island');
+    safeOutline.classList.toggle('visible',!!(s.top||s.right||s.bottom||s.left));
+    safeOutline.style.top=s.top+'px';
+    safeOutline.style.right=s.right+'px';
+    safeOutline.style.bottom=s.bottom+'px';
+    safeOutline.style.left=s.left+'px';
+    post('safe-area',s);
+  }
+
   function setDevice(){
     var bits=preset.value.split('x');
     var w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
@@ -483,6 +581,7 @@ body.desktop .desktop-badge{display:inline-flex}
     rulerY.style.height=h+'px';
     stage.style.width=(31+w*z+20)+'px';
     stage.style.height=(31+h*z+20)+'px';
+    applySafeArea();
   }
 
   function setStatus(message,error){
@@ -492,6 +591,35 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function setActive(button,on){
     if(button)button.classList.toggle('active',!!on);
+  }
+
+  function updateResponsiveControls(p){
+    var r=(p&&p.responsive)||{};
+    var selected=!!(p&&p.selected);
+    var enabled=selected&&!!r.enabled;
+    responsiveEnabled.disabled=!selected;
+    responsiveEnabled.checked=enabled;
+    responsiveCard.classList.toggle('off',!enabled);
+    [hAnchor,vAnchor,widthMode,heightMode,marginLeft,marginRight,marginTop,marginBottom,widthPercent,heightPercent,respectSafeArea].forEach(function(el){el.disabled=!selected||!enabled});
+    document.getElementById('captureResponsive').disabled=!selected;
+    if(!selected){
+      responsiveSummary.textContent='Sélectionne un élément puis active les contraintes.';
+      return;
+    }
+    hAnchor.value=r.hAnchor||'free';
+    vAnchor.value=r.vAnchor||'free';
+    widthMode.value=r.widthMode||'auto';
+    heightMode.value=r.heightMode||'auto';
+    marginLeft.value=Number(r.marginLeft)||0;
+    marginRight.value=Number(r.marginRight)||0;
+    marginTop.value=Number(r.marginTop)||0;
+    marginBottom.value=Number(r.marginBottom)||0;
+    widthPercent.value=Number(r.widthPercent)||100;
+    heightPercent.value=Number(r.heightPercent)||100;
+    respectSafeArea.checked=r.safeArea!==false;
+    responsiveSummary.textContent=enabled
+      ? 'Règles actives : '+(r.hAnchor||'libre')+' / '+(r.vAnchor||'libre')+' · largeur '+(r.widthMode||'auto')+' · hauteur '+(r.heightMode||'auto')+(r.safeArea!==false?' · zone sûre':'')
+      : 'Mode pixels actif. Coche la case pour conserver la disposition sur d’autres tailles d’écran.';
   }
 
   function updateState(p){
@@ -545,6 +673,7 @@ body.desktop .desktop-badge{display:inline-flex}
       [posX,posY,sizeW,sizeH,zIndex].forEach(function(el){el.value=''});
     }
 
+    updateResponsiveControls(p);
     if(typeof p.css==='string')cssOut.value=p.css;
   }
 
@@ -565,7 +694,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Préserve le responsive et les espaces volontaires. Les éléments masqués doivent conserver leur espace afin de ne pas décaler automatiquement le reste de l’interface, sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Les champs responsive sont des contraintes d’intention : ancrages, marges, largeur/hauteur fluides et safe areas doivent être implémentés nativement dans le layout (flex/grid/constraints/WindowInsets selon la technologie), pas figés avec les coordonnées du seul appareil de prévisualisation. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -584,7 +713,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:2};
+    project.studio={name:'App Interface Studio',version:'2.2.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -604,6 +733,13 @@ body.desktop .desktop-badge{display:inline-flex}
         if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
         await loadSource(restored.source);
       }
+      if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
+        var profile=String(project.viewport.safeArea.profile);
+        if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
+          safeProfile.value=profile;
+          applySafeArea();
+        }
+      }
       post('load-project',{project:project});
       setStatus('Projet ouvert : '+result.path);
     }else if(result&&result.error)setStatus(result.error,true);
@@ -613,7 +749,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
-    project.studio={name:'App Interface Studio',version:2};
+    project.studio={name:'App Interface Studio',version:'2.2.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -671,6 +807,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
+      applySafeArea();
       post('enable');
       post('get-css');
       setStatus('Éditeur prêt.');
@@ -706,6 +843,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   preset.addEventListener('change',setDevice);
   zoom.addEventListener('change',setDevice);
+  safeProfile.addEventListener('change',applySafeArea);
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
 
   document.getElementById('reloadBtn').addEventListener('click',function(){
@@ -752,6 +890,20 @@ body.desktop .desktop-badge{display:inline-flex}
   });
   letterSpacing.addEventListener('change',function(){post('text-style',{kind:'letter-spacing',value:Number(letterSpacing.value)+'px'})});
   lineHeight.addEventListener('change',function(){post('text-style',{kind:'line-height',value:String(Number(lineHeight.value)||1.2)})});
+
+  responsiveEnabled.addEventListener('change',function(){if(hasSelection)post('responsive-set',{enabled:responsiveEnabled.checked})});
+  hAnchor.addEventListener('change',function(){post('responsive-set',{hAnchor:hAnchor.value})});
+  vAnchor.addEventListener('change',function(){post('responsive-set',{vAnchor:vAnchor.value})});
+  widthMode.addEventListener('change',function(){post('responsive-set',{widthMode:widthMode.value})});
+  heightMode.addEventListener('change',function(){post('responsive-set',{heightMode:heightMode.value})});
+  marginLeft.addEventListener('change',function(){post('responsive-set',{marginLeft:Number(marginLeft.value)||0})});
+  marginRight.addEventListener('change',function(){post('responsive-set',{marginRight:Number(marginRight.value)||0})});
+  marginTop.addEventListener('change',function(){post('responsive-set',{marginTop:Number(marginTop.value)||0})});
+  marginBottom.addEventListener('change',function(){post('responsive-set',{marginBottom:Number(marginBottom.value)||0})});
+  widthPercent.addEventListener('change',function(){post('responsive-set',{widthPercent:Number(widthPercent.value)||100})});
+  heightPercent.addEventListener('change',function(){post('responsive-set',{heightPercent:Number(heightPercent.value)||100})});
+  respectSafeArea.addEventListener('change',function(){post('responsive-set',{safeArea:respectSafeArea.checked})});
+  document.getElementById('captureResponsive').addEventListener('click',function(){post('responsive-capture')});
 
   document.querySelectorAll('[data-align]').forEach(function(btn){
     btn.addEventListener('click',function(){post('align',{mode:btn.dataset.align})});

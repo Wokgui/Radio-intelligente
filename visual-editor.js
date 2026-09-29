@@ -65,6 +65,8 @@
   let resizeDrag = null;
   let grid = 1;
   let keyboardCommitTimer = null;
+  let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
+  let responsiveResizeTimer = null;
 
   const history = [];
   let historyIndex = -1;
@@ -161,7 +163,25 @@
       borderAdjusted: false,
       zIndex: parseInt(getComputedStyle(element).zIndex,10) || 0,
       zAdjusted: false,
-      deleted: false
+      deleted: false,
+      responsiveDx: 0,
+      responsiveDy: 0,
+      responsive: {
+        enabled: false,
+        hAnchor: 'free',
+        vAnchor: 'free',
+        widthMode: 'auto',
+        heightMode: 'auto',
+        marginLeft: 0,
+        marginRight: 0,
+        marginTop: 0,
+        marginBottom: 0,
+        centerOffsetX: 0,
+        centerOffsetY: 0,
+        widthPercent: 100,
+        heightPercent: 100,
+        safeArea: true
+      }
     };
     touched.set(element, state);
     return state;
@@ -186,6 +206,209 @@
     else reg.element.style.removeProperty(prop);
   }
 
+
+  function cloneResponsive(value) {
+    const src = value || {};
+    return {
+      enabled: !!src.enabled,
+      hAnchor: src.hAnchor || 'free',
+      vAnchor: src.vAnchor || 'free',
+      widthMode: src.widthMode || 'auto',
+      heightMode: src.heightMode || 'auto',
+      marginLeft: Number(src.marginLeft) || 0,
+      marginRight: Number(src.marginRight) || 0,
+      marginTop: Number(src.marginTop) || 0,
+      marginBottom: Number(src.marginBottom) || 0,
+      centerOffsetX: Number(src.centerOffsetX) || 0,
+      centerOffsetY: Number(src.centerOffsetY) || 0,
+      widthPercent: Math.max(1, Math.min(100, Number(src.widthPercent) || 100)),
+      heightPercent: Math.max(1, Math.min(100, Number(src.heightPercent) || 100)),
+      safeArea: src.safeArea !== false
+    };
+  }
+
+  function isViewportParent(parent, rect) {
+    if (!parent || parent === document.body || parent === document.documentElement) return true;
+    if (!rect) return false;
+    return Math.abs(rect.left) < 3 && Math.abs(rect.top) < 3 &&
+      Math.abs(rect.width - innerWidth) < 6 && Math.abs(rect.height - innerHeight) < 6;
+  }
+
+  function responsiveBounds(element, state) {
+    const parent = element.parentElement;
+    const viewportParent = !parent || parent === document.body || parent === document.documentElement;
+    const parentRect = viewportParent
+      ? { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight }
+      : parent.getBoundingClientRect();
+    const useSafe = state.responsive && state.responsive.safeArea && (viewportParent || isViewportParent(parent, parentRect));
+    const leftInset = useSafe ? safeArea.left : 0;
+    const rightInset = useSafe ? safeArea.right : 0;
+    const topInset = useSafe ? safeArea.top : 0;
+    const bottomInset = useSafe ? safeArea.bottom : 0;
+    return {
+      left: parentRect.left + leftInset,
+      top: parentRect.top + topInset,
+      right: parentRect.right - rightInset,
+      bottom: parentRect.bottom - bottomInset,
+      width: Math.max(1, parentRect.width - leftInset - rightInset),
+      height: Math.max(1, parentRect.height - topInset - bottomInset)
+    };
+  }
+
+  function captureResponsiveFromCurrent(element, state, resetFineOffset) {
+    if (!element || !state) return;
+    const r = element.getBoundingClientRect();
+    const b = responsiveBounds(element, state);
+    const cfg = state.responsive;
+    cfg.marginLeft = Math.round(r.left - b.left);
+    cfg.marginRight = Math.round(b.right - r.right);
+    cfg.marginTop = Math.round(r.top - b.top);
+    cfg.marginBottom = Math.round(b.bottom - r.bottom);
+    cfg.centerOffsetX = Math.round((r.left + r.width / 2) - (b.left + b.width / 2));
+    cfg.centerOffsetY = Math.round((r.top + r.height / 2) - (b.top + b.height / 2));
+    cfg.widthPercent = Math.max(1, Math.min(100, Math.round((r.width / b.width) * 1000) / 10));
+    cfg.heightPercent = Math.max(1, Math.min(100, Math.round((r.height / b.height) * 1000) / 10));
+    if (resetFineOffset) {
+      state.dx = 0;
+      state.dy = 0;
+      state.responsiveDx = 0;
+      state.responsiveDy = 0;
+    }
+  }
+
+  function applyResponsive(element, state) {
+    const cfg = state.responsive;
+    if (!cfg || !cfg.enabled) {
+      state.responsiveDx = 0;
+      state.responsiveDy = 0;
+      return;
+    }
+
+    const bounds = responsiveBounds(element, state);
+
+    if (cfg.widthMode === 'fill') {
+      setInline(element, 'width', Math.max(1, bounds.width - cfg.marginLeft - cfg.marginRight) + 'px');
+      setInline(element, 'min-width', '0px');
+      setInline(element, 'max-width', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+    } else if (cfg.widthMode === 'percent') {
+      setInline(element, 'width', Math.max(1, bounds.width * cfg.widthPercent / 100) + 'px');
+      setInline(element, 'min-width', '0px');
+      setInline(element, 'max-width', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+    } else if (cfg.widthMode === 'fixed') {
+      setInline(element, 'width', Math.max(1, state.width) + 'px');
+      setInline(element, 'box-sizing', 'border-box');
+    }
+
+    if (cfg.heightMode === 'fill') {
+      setInline(element, 'height', Math.max(1, bounds.height - cfg.marginTop - cfg.marginBottom) + 'px');
+      setInline(element, 'min-height', '0px');
+      setInline(element, 'max-height', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+    } else if (cfg.heightMode === 'percent') {
+      setInline(element, 'height', Math.max(1, bounds.height * cfg.heightPercent / 100) + 'px');
+      setInline(element, 'min-height', '0px');
+      setInline(element, 'max-height', 'none');
+      setInline(element, 'box-sizing', 'border-box');
+    } else if (cfg.heightMode === 'fixed') {
+      setInline(element, 'height', Math.max(1, state.height) + 'px');
+      setInline(element, 'box-sizing', 'border-box');
+    }
+
+    const visible = element.getBoundingClientRect();
+    const currentTx = (state.dx || 0) + (state.responsiveDx || 0);
+    const currentTy = (state.dy || 0) + (state.responsiveDy || 0);
+    const baseLeft = visible.left - currentTx;
+    const baseTop = visible.top - currentTy;
+    let targetLeft = baseLeft;
+    let targetTop = baseTop;
+
+    if (cfg.hAnchor === 'left') targetLeft = bounds.left + cfg.marginLeft;
+    if (cfg.hAnchor === 'right') targetLeft = bounds.right - cfg.marginRight - visible.width;
+    if (cfg.hAnchor === 'center') targetLeft = bounds.left + (bounds.width - visible.width) / 2 + cfg.centerOffsetX;
+    if (cfg.hAnchor === 'stretch') targetLeft = bounds.left + cfg.marginLeft;
+
+    if (cfg.vAnchor === 'top') targetTop = bounds.top + cfg.marginTop;
+    if (cfg.vAnchor === 'bottom') targetTop = bounds.bottom - cfg.marginBottom - visible.height;
+    if (cfg.vAnchor === 'center') targetTop = bounds.top + (bounds.height - visible.height) / 2 + cfg.centerOffsetY;
+    if (cfg.vAnchor === 'stretch') targetTop = bounds.top + cfg.marginTop;
+
+    state.responsiveDx = cfg.hAnchor === 'free' ? 0 : Math.round(targetLeft - baseLeft);
+    state.responsiveDy = cfg.vAnchor === 'free' ? 0 : Math.round(targetTop - baseTop);
+  }
+
+  function reflowResponsive() {
+    touched.forEach(function (state, element) {
+      if (!state.responsive || !state.responsive.enabled || state.deleted || !document.documentElement.contains(element)) return;
+      applyState(element, state, false);
+    });
+    updateOverlay();
+  }
+
+  function setResponsiveConfig(payload) {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state || state.locked) return;
+    const wasEnabled = !!state.responsive.enabled;
+    if (payload.enabled === true && !wasEnabled) {
+      state.responsive.enabled = true;
+      captureResponsiveFromCurrent(selected, state, false);
+    }
+
+    const currentRect = selected.getBoundingClientRect();
+    const bounds = responsiveBounds(selected, state);
+    if (payload.hAnchor && payload.hAnchor !== state.responsive.hAnchor) {
+      state.responsive.marginLeft = Math.round(currentRect.left - bounds.left);
+      state.responsive.marginRight = Math.round(bounds.right - currentRect.right);
+      state.responsive.centerOffsetX = Math.round((currentRect.left + currentRect.width / 2) - (bounds.left + bounds.width / 2));
+    }
+    if (payload.vAnchor && payload.vAnchor !== state.responsive.vAnchor) {
+      state.responsive.marginTop = Math.round(currentRect.top - bounds.top);
+      state.responsive.marginBottom = Math.round(bounds.bottom - currentRect.bottom);
+      state.responsive.centerOffsetY = Math.round((currentRect.top + currentRect.height / 2) - (bounds.top + bounds.height / 2));
+    }
+
+    Object.keys(payload || {}).forEach(function (key) {
+      if (key in state.responsive && key !== 'enabled') state.responsive[key] = payload[key];
+    });
+    if (payload.hAnchor === 'stretch') state.responsive.widthMode = 'fill';
+    if (payload.vAnchor === 'stretch') state.responsive.heightMode = 'fill';
+    if (payload.enabled === false) {
+      state.responsive.enabled = false;
+      state.responsiveDx = 0;
+      state.responsiveDy = 0;
+    }
+    state.responsive = cloneResponsive(state.responsive);
+    applyState(selected, state, false);
+    updateOverlay();
+    commitHistory();
+  }
+
+  function captureResponsiveRules() {
+    if (!active || !selected) return;
+    const state = remember(selected);
+    if (!state || state.locked) return;
+    state.responsive.enabled = true;
+    if (state.responsive.hAnchor === 'free') state.responsive.hAnchor = 'left';
+    if (state.responsive.vAnchor === 'free') state.responsive.vAnchor = 'top';
+    captureResponsiveFromCurrent(selected, state, true);
+    applyState(selected, state, false);
+    updateOverlay();
+    commitHistory();
+  }
+
+  function setSafeArea(payload) {
+    safeArea = {
+      top: Math.max(0, Number(payload.top) || 0),
+      right: Math.max(0, Number(payload.right) || 0),
+      bottom: Math.max(0, Number(payload.bottom) || 0),
+      left: Math.max(0, Number(payload.left) || 0),
+      profile: String(payload.profile || 'custom')
+    };
+    reflowResponsive();
+  }
+
   function applyState(element, state, update) {
     if (!element || !state) return;
 
@@ -198,7 +421,7 @@
     restoreOriginalProp(state.selector, 'visibility');
     restoreOriginalProp(state.selector, 'pointer-events');
 
-    setInline(element, 'translate', (state.dx || state.dy) ? state.dx + 'px ' + state.dy + 'px' : null);
+    const responsiveActive = !!(state.responsive && state.responsive.enabled);
 
     if (state.resized) {
       setInline(element, 'width', Math.max(1, state.width) + 'px');
@@ -214,6 +437,16 @@
         restoreOriginalProp(state.selector, prop);
       });
     }
+
+    if (responsiveActive) applyResponsive(element, state);
+    else {
+      state.responsiveDx = 0;
+      state.responsiveDy = 0;
+    }
+
+    const totalDx = (state.dx || 0) + (state.responsiveDx || 0);
+    const totalDy = (state.dy || 0) + (state.responsiveDy || 0);
+    setInline(element, 'translate', (totalDx || totalDy) ? totalDx + 'px ' + totalDy + 'px' : null);
 
     if (state.fontAdjusted) {
       setInline(element, 'font-size', Math.max(4, state.fontSize) + 'px');
@@ -398,7 +631,10 @@
         borderAdjusted: state.borderAdjusted,
         zIndex: state.zIndex,
         zAdjusted: state.zAdjusted,
-        deleted: state.deleted
+        deleted: state.deleted,
+        responsiveDx: state.responsiveDx || 0,
+        responsiveDy: state.responsiveDy || 0,
+        responsive: cloneResponsive(state.responsive)
       });
     });
     items.sort(function (a, b) { return a.selector.localeCompare(b.selector); });
@@ -470,7 +706,10 @@
         borderAdjusted: !!saved.borderAdjusted,
         zIndex: Number(saved.zIndex) || 0,
         zAdjusted: !!saved.zAdjusted,
-        deleted: !!saved.deleted
+        deleted: !!saved.deleted,
+        responsiveDx: Number(saved.responsiveDx) || 0,
+        responsiveDy: Number(saved.responsiveDy) || 0,
+        responsive: cloneResponsive(saved.responsive)
       };
       touched.set(element, state);
       applyState(element, state, false);
@@ -516,14 +755,30 @@
         declarations.push('  visibility: hidden !important;');
         declarations.push('  pointer-events: none !important;');
       } else {
-        if (state.dx || state.dy) declarations.push('  translate: ' + state.dx + 'px ' + state.dy + 'px !important;');
+        if (state.responsive && state.responsive.enabled) {
+          declarations.push('  /* Responsive: horizontal=' + state.responsive.hAnchor + ', vertical=' + state.responsive.vAnchor + ', largeur=' + state.responsive.widthMode + ', hauteur=' + state.responsive.heightMode + ', safe-area=' + state.responsive.safeArea + ' */');
+          if (state.responsive.widthMode === 'percent') declarations.push('  width: ' + state.responsive.widthPercent + '% !important;');
+          if (state.responsive.widthMode === 'fill') declarations.push('  width: calc(100% - ' + state.responsive.marginLeft + 'px - ' + state.responsive.marginRight + 'px) !important;');
+          if (state.responsive.heightMode === 'percent') declarations.push('  height: ' + state.responsive.heightPercent + '% !important;');
+          if (state.responsive.heightMode === 'fill') declarations.push('  height: calc(100% - ' + state.responsive.marginTop + 'px - ' + state.responsive.marginBottom + 'px) !important;');
+        }
+        const responsiveExport = !!(state.responsive && state.responsive.enabled);
+        const exportDx = state.dx || 0;
+        const exportDy = state.dy || 0;
+        if (responsiveExport) declarations.push('  /* Les ancrages et marges ci-dessus sont structurels ; la translation calculée de l’aperçu n’est volontairement pas exportée. */');
+        if (exportDx || exportDy) declarations.push('  translate: ' + exportDx + 'px ' + exportDy + 'px !important;');
         if (state.resized) {
-          declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
-          declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
-          declarations.push('  min-width: 0 !important;');
-          declarations.push('  min-height: 0 !important;');
-          declarations.push('  max-width: none !important;');
-          declarations.push('  max-height: none !important;');
+          const responsiveActive = !!(state.responsive && state.responsive.enabled);
+          if (!responsiveActive || state.responsive.widthMode === 'auto' || state.responsive.widthMode === 'fixed') {
+            declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
+            declarations.push('  min-width: 0 !important;');
+            declarations.push('  max-width: none !important;');
+          }
+          if (!responsiveActive || state.responsive.heightMode === 'auto' || state.responsive.heightMode === 'fixed') {
+            declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
+            declarations.push('  min-height: 0 !important;');
+            declarations.push('  max-height: none !important;');
+          }
           declarations.push('  box-sizing: border-box !important;');
           declarations.push('  flex: none !important;');
         }
@@ -583,6 +838,8 @@
       zIndex: state.zIndex,
       dx: state.dx,
       dy: state.dy,
+      responsive: cloneResponsive(state.responsive),
+      safeArea: Object.assign({}, safeArea),
       css: cssText(),
       grid: grid
     };
@@ -889,9 +1146,9 @@
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
-      viewport: { width: window.innerWidth, height: window.innerHeight },
+      viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea) },
       snapshot: snapshot(),
       css: cssText()
     };
@@ -899,6 +1156,7 @@
 
   function importProject(project) {
     if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
+    if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -1100,6 +1358,14 @@
     flushKeyboardCommit();
   }, true);
 
+  window.addEventListener('resize', function () {
+    if (responsiveResizeTimer) clearTimeout(responsiveResizeTimer);
+    responsiveResizeTimer = setTimeout(function () {
+      responsiveResizeTimer = null;
+      reflowResponsive();
+    }, 40);
+  });
+
   window.addEventListener('message', function (event) {
     if (event.source !== window.parent) return;
     const data = event.data || {};
@@ -1115,6 +1381,9 @@
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0, payload.commit !== false);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
     if (data.type === 'keyboard-commit') flushKeyboardCommit();
+    if (data.type === 'responsive-set') setResponsiveConfig(payload);
+    if (data.type === 'responsive-capture') captureResponsiveRules();
+    if (data.type === 'safe-area') setSafeArea(payload);
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
     if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
@@ -1151,7 +1420,6 @@
     if (data.type === 'copy-css') copyCss();
   });
 
-  window.addEventListener('resize', updateOverlay);
   window.addEventListener('scroll', updateOverlay, true);
   launcher.addEventListener('click', enable);
   toolbar.querySelector('.ve-copy').addEventListener('click', copyCss);

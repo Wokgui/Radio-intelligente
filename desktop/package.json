@@ -1,12 +1,12 @@
 {
   "name": "app-interface-studio",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "private": true,
   "description": "Éditeur visuel universel Windows pour applications web, PWA et interfaces HTML",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js && node scripts/check-responsive.cjs",
     "dist:win": "npm run icon && electron-builder --win portable",
     "icon": "node scripts/make-icon.cjs"
   },
