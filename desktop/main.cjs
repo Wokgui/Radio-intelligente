@@ -690,8 +690,8 @@ ipcMain.handle('capture:current-source',async (_event,payload)=>{
 
 
 function escapeRegex(value){
-  const special='\\^$.*+?()[]{}|';
-  return String(value||'').split('').map(ch=>special.includes(ch)?'\\\\'+ch:ch).join('');
+  const special='^$.*+?()[]{}|'+String.fromCharCode(92);
+  return String(value||'').split('').map(ch=>special.includes(ch)?String.fromCharCode(92)+ch:ch).join('');
 }
 function detectAndroidProject(root){
   const manifestCandidates=[
