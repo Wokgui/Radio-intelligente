@@ -1261,6 +1261,255 @@
     commitHistory();
   }
 
+
+  function cloneStateForComponent(state) {
+    return {
+      width:state.width,height:state.height,resized:!!state.resized,
+      fontSize:state.fontSize,fontFamily:state.fontFamily,fontWeight:state.fontWeight,fontStyle:state.fontStyle,
+      textDecoration:state.textDecoration,textAlign:state.textAlign,letterSpacing:state.letterSpacing,lineHeight:state.lineHeight,
+      fontAdjusted:!!state.fontAdjusted,color:state.color,backgroundColor:state.backgroundColor,borderColor:state.borderColor,
+      colorAdjusted:!!state.colorAdjusted,backgroundAdjusted:!!state.backgroundAdjusted,borderAdjusted:!!state.borderAdjusted,
+      zIndex:state.zIndex,zAdjusted:!!state.zAdjusted,layoutAdjusted:!!state.layoutAdjusted,layout:Object.assign({},state.layout||{}),
+      animationAdjusted:!!state.animationAdjusted,animation:Object.assign({},state.animation||{}),
+      responsive:cloneResponsive(state.responsive)
+    };
+  }
+
+  function applyComponentState(element, saved) {
+    if(!element||!saved)return;
+    const state=remember(element);
+    state.width=saved.width;state.height=saved.height;state.resized=!!saved.resized;
+    state.fontSize=saved.fontSize;state.fontFamily=saved.fontFamily;state.fontWeight=saved.fontWeight;state.fontStyle=saved.fontStyle;
+    state.textDecoration=saved.textDecoration;state.textAlign=saved.textAlign;state.letterSpacing=saved.letterSpacing;state.lineHeight=saved.lineHeight;
+    state.fontAdjusted=!!saved.fontAdjusted;state.color=saved.color;state.backgroundColor=saved.backgroundColor;state.borderColor=saved.borderColor;
+    state.colorAdjusted=!!saved.colorAdjusted;state.backgroundAdjusted=!!saved.backgroundAdjusted;state.borderAdjusted=!!saved.borderAdjusted;
+    state.zIndex=saved.zIndex;state.zAdjusted=!!saved.zAdjusted;state.layoutAdjusted=!!saved.layoutAdjusted;state.layout=Object.assign({},saved.layout||{});
+    state.animationAdjusted=!!saved.animationAdjusted;state.animation=Object.assign({property:'all',duration:180,easing:'ease',delay:0},saved.animation||{});
+    state.responsive=cloneResponsive(saved.responsive);
+    applyState(element,state,false);
+  }
+
+  function componentSummary() {
+    return Object.keys(components).sort().map(function(name){
+      const item=components[name];
+      return {name:name,count:(item.instances||[]).length,variants:Object.keys(item.variants||{}).sort()};
+    });
+  }
+
+  function emitComponents() {
+    emit('components',{items:componentSummary()});
+  }
+
+  function createComponent(name) {
+    name=String(name||'').trim();
+    const items=selectionElements();
+    if(!name||!items.length)return;
+    const selectors=items.map(selectorFor).filter(Boolean);
+    const states=items.map(function(el){return cloneStateForComponent(remember(el))});
+    components[name]={name:name,states:states,instances:[selectors],variants:{}};
+    items.forEach(function(el){const st=remember(el);st.componentName=name;st.componentInstance=true});
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function linkComponentInstance(name) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    if(!component||!items.length)return;
+    const selectors=items.map(selectorFor).filter(Boolean);
+    const count=Math.min(items.length,component.states.length);
+    for(let i=0;i<count;i+=1){
+      applyComponentState(items[i],component.states[i]);
+      const st=remember(items[i]);st.componentName=component.name;st.componentInstance=true;
+    }
+    if(!(component.instances||[]).some(function(list){return JSON.stringify(list)===JSON.stringify(selectors)})){
+      component.instances.push(selectors);
+    }
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function updateComponentFromSelection(name) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    if(!component||!items.length)return;
+    component.states=items.map(function(el){return cloneStateForComponent(remember(el))});
+    (component.instances||[]).forEach(function(selectors){
+      selectors.forEach(function(sel,index){
+        let el=null;try{el=document.querySelector(sel)}catch(_){}
+        if(el&&component.states[index])applyComponentState(el,component.states[index]);
+      });
+    });
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function saveComponentVariant(name,variantName) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    variantName=String(variantName||'').trim();
+    if(!component||!variantName||!items.length)return;
+    component.variants=component.variants||{};
+    component.variants[variantName]=items.map(function(el){return cloneStateForComponent(remember(el))});
+    emitComponents();
+  }
+
+  function applyComponentVariant(name,variantName,allInstances) {
+    const component=components[String(name||'')];
+    const variant=component&&component.variants&&component.variants[String(variantName||'')];
+    if(!component||!variant)return;
+    const groups=allInstances?(component.instances||[]):[selectionElements().map(selectorFor).filter(Boolean)];
+    groups.forEach(function(selectors){
+      selectors.forEach(function(sel,index){
+        let el=null;try{el=document.querySelector(sel)}catch(_){}
+        if(el&&variant[index])applyComponentState(el,variant[index]);
+      });
+    });
+    commitHistory();updateOverlay();
+  }
+
+  function deleteComponent(name) {
+    delete components[String(name||'')];
+    emitComponents();
+  }
+
+  function applyDesignTokens(payload) {
+    designTokens=Object.assign({},designTokens,payload||{});
+    const root=document.documentElement;
+    root.style.setProperty('--ais-space',Math.max(1,Number(designTokens.spacingUnit)||8)+'px');
+    root.style.setProperty('--ais-radius-card',Math.max(0,Number(designTokens.radiusCard)||12)+'px');
+    root.style.setProperty('--ais-text-title',Math.max(8,Number(designTokens.textTitle)||20)+'px');
+    root.style.setProperty('--ais-color-primary',String(designTokens.colorPrimary||'#6f49f5'));
+    root.style.setProperty('--ais-color-surface',String(designTokens.colorSurface||'#ffffff'));
+    emit('tokens',{tokens:Object.assign({},designTokens)});
+  }
+
+  function setAnimation(payload) {
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      const st=remember(el);if(!st||st.locked)return;
+      st.animationAdjusted=true;
+      st.animation=Object.assign({},st.animation||{},{
+        property:String(payload.property||'all'),
+        duration:Math.max(0,Number(payload.duration)||0),
+        easing:String(payload.easing||'ease'),
+        delay:Math.max(0,Number(payload.delay)||0)
+      });
+      applyState(el,st,false);
+    });
+    commitHistory();updateOverlay();
+  }
+
+  function setInteractiveState(stateName) {
+    activeInteractiveState=String(stateName||'normal');
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      el.classList.remove('ais-state-hover','ais-state-active','ais-state-focus','ais-state-disabled');
+      if(activeInteractiveState==='hover')el.classList.add('ais-state-hover');
+      if(activeInteractiveState==='active')el.classList.add('ais-state-active');
+      if(activeInteractiveState==='focus'){el.classList.add('ais-state-focus');if(el.focus)try{el.focus({preventScroll:true})}catch(_){}}
+      if(activeInteractiveState==='disabled'){
+        el.classList.add('ais-state-disabled');
+        if('disabled' in el)el.disabled=true;
+        else el.setAttribute('aria-disabled','true');
+      }else{
+        if('disabled' in el&&el.dataset.aisWasDisabled!=='true')el.disabled=false;
+        if(el.getAttribute('aria-disabled')==='true')el.removeAttribute('aria-disabled');
+      }
+    });
+    emit('interactive-state',{state:activeInteractiveState});
+  }
+
+  function setPrototypeLink(payload) {
+    if(!selected)return;
+    const target=String(payload.target||'').trim();
+    const trigger=String(payload.trigger||'click');
+    const selector=selectorFor(selected);
+    if(!selector)return;
+    prototypeLinks[selector]={target:target,trigger:trigger};
+    const st=remember(selected);st.prototypeTarget=target;
+    emit('prototype',{links:Object.assign({},prototypeLinks)});
+    updateOverlay();
+  }
+
+  function runPrototypeTarget(sourceEl) {
+    const selector=selectorFor(sourceEl);
+    const link=prototypeLinks[selector];
+    if(!link||!link.target)return false;
+    let target=null;try{target=document.querySelector(link.target)}catch(_){}
+    if(!target)return false;
+    if(target.scrollIntoView)target.scrollIntoView({behavior:'smooth',block:'center'});
+    if(target.click&&/button|a|input/i.test(target.tagName))try{target.click()}catch(_){}
+    target.animate&&target.animate([{outline:'3px solid #6f49f5'},{outline:'0 solid transparent'}],{duration:700});
+    return true;
+  }
+
+  function stressTest(mode) {
+    mode=String(mode||'normal');
+    if(mode==='normal'){
+      if(stressBackup){
+        stressBackup.texts.forEach(function(item){if(document.documentElement.contains(item.el))item.el.textContent=item.text});
+        stressBackup.images.forEach(function(item){if(document.documentElement.contains(item.el))item.el.style.visibility=item.visibility});
+        stressBackup.clones.forEach(function(el){el.remove()});
+      }
+      stressBackup=null;reflowResponsive();emit('stress',{mode:'normal'});return;
+    }
+
+    if(!stressBackup){
+      stressBackup={texts:[],images:[],clones:[]};
+      Array.from(document.body.querySelectorAll('*')).slice(0,700).forEach(function(el){
+        if(isEditorNode(el))return;
+        if(el.children.length===0&&String(el.textContent||'').trim())stressBackup.texts.push({el:el,text:el.textContent});
+        if(el.tagName==='IMG')stressBackup.images.push({el:el,visibility:el.style.visibility});
+      });
+    }
+    if(mode==='long-text'){
+      stressBackup.texts.forEach(function(item){
+        if(!document.documentElement.contains(item.el))return;
+        const base=String(item.text||'Texte');
+        item.el.textContent=(base+' — contenu exceptionnellement long pour tester toutes les traductions et les petits écrans').slice(0,180);
+      });
+    }
+    if(mode==='no-images')stressBackup.images.forEach(function(item){if(document.documentElement.contains(item.el))item.el.style.visibility='hidden'});
+    if(mode==='empty')stressBackup.texts.forEach(function(item){if(document.documentElement.contains(item.el))item.el.textContent=''});
+    if(mode==='many-items'){
+      const list=document.querySelector('ul,ol,[role="list"],.list,.items,.articles,.tracks');
+      if(list&&list.children.length){
+        const source=list.children[0];
+        for(let i=0;i<12;i+=1){const clone=source.cloneNode(true);clone.dataset.aisStressClone='1';list.appendChild(clone);stressBackup.clones.push(clone)}
+      }
+    }
+    reflowResponsive();emit('stress',{mode:mode});
+  }
+
+  function autoFixAudit() {
+    const fixed=[];
+    (lastAuditIssues||[]).forEach(function(issue){
+      let el=null;try{el=issue.selector==='html'?document.documentElement:document.querySelector(issue.selector)}catch(_){}
+      if(!el)return;
+      if(issue.type==='touch-target'){
+        el.style.setProperty('min-width','44px','important');
+        el.style.setProperty('min-height','44px','important');
+        fixed.push(issue);
+      }
+      if(issue.type==='text-clipped'){
+        el.style.setProperty('white-space','normal','important');
+        el.style.setProperty('overflow','visible','important');
+        el.style.setProperty('text-overflow','clip','important');
+        fixed.push(issue);
+      }
+      if(issue.type==='overflow-x'&&el===document.documentElement){
+        document.body.style.setProperty('max-width','100vw','important');
+        document.body.style.setProperty('overflow-x','hidden','important');
+        fixed.push(issue);
+      }
+      if(issue.type==='accessible-name'){
+        const text=String(el.textContent||el.getAttribute('title')||'Action').trim().slice(0,80);
+        el.setAttribute('aria-label',text||'Action');
+        fixed.push(issue);
+      }
+    });
+    auditInterface();
+    emit('audit-fixed',{count:fixed.length});
+  }
+
   function parseRgb(value) {
     const m = String(value || '').match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/i);
     if (!m) return null;
