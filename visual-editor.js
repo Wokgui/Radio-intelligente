@@ -266,12 +266,13 @@
   }
 
   function moveResponsiveState(element, state, dx, dy) {
-    const cfg = state.responsive;
-    if (!cfg || !cfg.enabled) {
+    const effective = effectiveResponsive(state);
+    if (!effective || !effective.enabled) {
       state.dx = snapGrid(state.dx + dx);
       state.dy = snapGrid(state.dy + dy);
       return;
     }
+    const cfg = editableResponsive(state, editingBreakpoint);
     if (cfg.hAnchor === 'left' || cfg.hAnchor === 'stretch') cfg.marginLeft = snapGrid(cfg.marginLeft + dx);
     else if (cfg.hAnchor === 'right') cfg.marginRight = snapGrid(cfg.marginRight - dx);
     else if (cfg.hAnchor === 'center') cfg.centerOffsetX = snapGrid(cfg.centerOffsetX + dx);
@@ -305,10 +306,9 @@
   }
 
 
-  function cloneResponsive(value) {
-    const src = value || {};
+  function normalizeResponsiveValues(src) {
+    src = src || {};
     return {
-      enabled: !!src.enabled,
       hAnchor: src.hAnchor || 'free',
       vAnchor: src.vAnchor || 'free',
       widthMode: src.widthMode || 'auto',
@@ -325,6 +325,43 @@
     };
   }
 
+  function cloneResponsive(value) {
+    const src = value || {};
+    const out = Object.assign({ enabled: !!src.enabled }, normalizeResponsiveValues(src), { breakpoints: {} });
+    const points = src.breakpoints || {};
+    ['phone','tablet','desktop'].forEach(function (key) {
+      if (points[key]) out.breakpoints[key] = normalizeResponsiveValues(points[key]);
+    });
+    return out;
+  }
+
+  function viewportBreakpoint() {
+    if (innerWidth < 600) return 'phone';
+    if (innerWidth < 1024) return 'tablet';
+    return 'desktop';
+  }
+
+  function effectiveResponsive(state) {
+    const base = state && state.responsive ? state.responsive : {};
+    const out = Object.assign({ enabled: !!base.enabled }, normalizeResponsiveValues(base));
+    const bp = viewportBreakpoint();
+    if (base.breakpoints && base.breakpoints[bp]) Object.assign(out, normalizeResponsiveValues(base.breakpoints[bp]));
+    out.breakpoint = bp;
+    return out;
+  }
+
+  function editableResponsive(state, breakpoint) {
+    const base = state.responsive;
+    const bp = breakpoint || editingBreakpoint || 'base';
+    if (bp === 'base') return base;
+    base.breakpoints = base.breakpoints || {};
+    if (!base.breakpoints[bp]) {
+      const eff = effectiveResponsive(state);
+      base.breakpoints[bp] = normalizeResponsiveValues(eff);
+    }
+    return base.breakpoints[bp];
+  }
+
   function isViewportParent(parent, rect) {
     if (!parent || parent === document.body || parent === document.documentElement) return true;
     if (!rect) return false;
@@ -338,7 +375,7 @@
     const parentRect = viewportParent
       ? { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight }
       : parent.getBoundingClientRect();
-    const useSafe = state.responsive && state.responsive.safeArea && (viewportParent || isViewportParent(parent, parentRect));
+    const useSafe = state.responsive && effectiveResponsive(state).safeArea && (viewportParent || isViewportParent(parent, parentRect));
     const leftInset = useSafe ? safeArea.left : 0;
     const rightInset = useSafe ? safeArea.right : 0;
     const topInset = useSafe ? safeArea.top : 0;
@@ -375,7 +412,7 @@
   }
 
   function applyResponsive(element, state) {
-    const cfg = state.responsive;
+    const cfg = effectiveResponsive(state);
     if (!cfg || !cfg.enabled) {
       state.responsiveDx = 0;
       state.responsiveDy = 0;
