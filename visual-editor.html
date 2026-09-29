@@ -1093,6 +1093,22 @@ body.desktop .desktop-badge{display:inline-flex}
   var regressionStatus=document.getElementById('regressionStatus');
   var regressionDiff=document.getElementById('regressionDiff');
   var gitStatusText=document.getElementById('gitStatusText');
+  var sourceDiffModal=document.getElementById('sourceDiffModal');
+  var sourceDiffCode=document.getElementById('sourceDiffCode');
+  var sourceDiffFile=document.getElementById('sourceDiffFile');
+  var flowModal=document.getElementById('flowModal');
+  var flowCanvas=document.getElementById('flowCanvas');
+  var matrixModal=document.getElementById('matrixModal');
+  var matrixStatus=document.getElementById('matrixStatus');
+  var matrixList=document.getElementById('matrixList');
+  var repairModal=document.getElementById('repairModal');
+  var repairList=document.getElementById('repairList');
+  var nativeStatus=document.getElementById('nativeStatus');
+  var nativeList=document.getElementById('nativeList');
+  var directSourceStatus=document.getElementById('directSourceStatus');
+  var consistencyStatus=document.getElementById('consistencyStatus');
+  var consistencyList=document.getElementById('consistencyList');
+  var autoLayoutStatus=document.getElementById('autoLayoutStatus');
 
   var hasSelection=false;
   var lastState=null;
@@ -1105,17 +1121,27 @@ body.desktop .desktop-badge{display:inline-flex}
   var multiProject=null;
   var multiSyncTimer=null;
   var multiSyncBusy=false;
+  var activeMultiRec=null;
   var namedVersions=[];
   var componentCatalog=[];
   var regressionBaseline=null;
+  var pendingDirectDiff=null;
+  var pendingNativeDiff=null;
+  var nativeNodes=[];
+  var selectedNativeNode=null;
+  var lastRepairItems=[];
 
   function postTo(target,type,payload){
     if(!target||!target.contentWindow)return;
     target.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
   }
 
+  function activeEditorFrame(){
+    return activeMultiRec&&activeMultiRec.iframe?activeMultiRec.iframe:frame;
+  }
+
   function post(type,payload){
-    postTo(frame,type,payload);
+    postTo(activeEditorFrame(),type,payload);
   }
 
   var PREF_KEY='app-interface-studio.preferences.v1';
