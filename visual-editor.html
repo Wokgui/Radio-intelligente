@@ -2280,6 +2280,16 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='tokens')syncTokenInputs(p.tokens||{});
     if(data.type==='prototype')prototypeStatus.textContent='Prototype : '+Object.keys(p.links||{}).length+' lien(s) enregistré(s).';
     if(data.type==='audit')renderAudit(p);
+    if(data.type==='auto-layout'){
+      autoLayoutStatus.textContent=p.ok?(p.applied?'Auto-layout appliqué : ':'Suggestion : ')+(p.mode||'')+' · '+((p.layout&&p.layout.gap)||''):(p.message||'Analyse impossible.');
+    }
+    if(data.type==='smart-constraints'){
+      responsiveSummary.textContent=p.ok?(p.applied?'Contraintes intelligentes appliquées à ':'Suggestion calculée pour ')+(p.suggestions||[]).length+' objet(s).':(p.message||'Analyse impossible.');
+    }
+    if(data.type==='design-consistency')renderConsistency(p);
+    if(data.type==='repair-suggestions')renderRepairSuggestions(p.items||[]);
+    if(data.type==='repair-preview')setStatus('Aperçu de correction actif. Utilise Annuler l’aperçu ou Appliquer.');
+    if(data.type==='repair-preview-cleared')setStatus('Aperçu de correction annulé.');
     if(data.type==='audit-fixed'){setStatus((p.count||0)+' correction(s) automatique(s) appliquée(s).');post('get-css')}
     if(data.type==='stress')setStatus(p.mode==='normal'?'Contenu normal restauré.':'Test de contenu : '+p.mode);
     if(data.type==='alt-measure'){
