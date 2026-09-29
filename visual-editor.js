@@ -939,6 +939,8 @@
       zIndex: state.zIndex,
       dx: state.dx,
       dy: state.dy,
+      selectionCount: selectionElements().length,
+      selectedSelectors: selectionElements().map(selectorFor).filter(Boolean),
       responsive: cloneResponsive(state.responsive),
       safeArea: Object.assign({}, safeArea),
       css: cssText(),
@@ -949,6 +951,7 @@
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
+      clearSecondaryOutlines();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -968,31 +971,51 @@
     outline.style.top = rect.top + 'px';
     outline.style.width = rect.width + 'px';
     outline.style.height = rect.height + 'px';
-    targetLabel.textContent = state.selector;
-    metrics.textContent = 'X ' + Math.round(rect.left) + ' · Y ' + Math.round(rect.top) +
-      ' · L ' + Math.round(rect.width) + ' · H ' + Math.round(rect.height) +
-      ' · texte ' + Math.round(state.fontSize * 10) / 10 + ' px';
+    syncSecondaryOutlines();
+    const count = selectionElements().length;
+    const groupRect = count > 1 ? selectionBounds() : rect;
+    targetLabel.textContent = count > 1 ? (count + ' objets sélectionnés') : state.selector;
+    metrics.textContent = 'X ' + Math.round(groupRect.left) + ' · Y ' + Math.round(groupRect.top) +
+      ' · L ' + Math.round(groupRect.width) + ' · H ' + Math.round(groupRect.height) +
+      (count > 1 ? ' · sélection multiple' : ' · texte ' + Math.round(state.fontSize * 10) / 10 + ' px');
     emit('state', currentPayload());
   }
 
-  function select(element) {
+  function select(element, additive) {
     if (!element || isEditorNode(element)) return;
     if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
       element = element.closest('svg');
     }
-    selected = element;
     remember(element);
+
+    if (!additive) {
+      selectedSet.clear();
+      selectedSet.add(element);
+      selected = element;
+    } else if (selectedSet.has(element)) {
+      if (selectedSet.size > 1) {
+        selectedSet.delete(element);
+        if (selected === element) selected = Array.from(selectedSet).pop() || null;
+      } else {
+        selected = element;
+      }
+    } else {
+      selectedSet.add(element);
+      selected = element;
+    }
+
     hideGuides();
     updateOverlay();
   }
 
   function adjustMove(dx, dy, commit) {
     if (!active || !selected) return;
-    const state = remember(selected);
-    if (state.locked) return;
-    state.dx = snapGrid(state.dx + dx);
-    state.dy = snapGrid(state.dy + dy);
-    applyState(selected, state, false);
+    const items = selectionElements();
+    items.forEach(function (element) {
+      const state = remember(element);
+      if (!state || state.locked) return;
+      moveResponsiveState(element, state, dx, dy);
+    });
     hideGuides();
     updateOverlay();
     if (commit !== false) commitHistory();
@@ -1072,14 +1095,10 @@
 
   function setExactPosition(x, y) {
     if (!active || !selected) return;
-    const state = remember(selected);
-    if (state.locked) return;
-    const rect = selected.getBoundingClientRect();
-    if (Number.isFinite(Number(x))) state.dx = snapGrid(state.dx + Number(x) - rect.left);
-    if (Number.isFinite(Number(y))) state.dy = snapGrid(state.dy + Number(y) - rect.top);
-    applyState(selected, state);
-    updateOverlay();
-    commitHistory();
+    const rect = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
+    const dx = Number.isFinite(Number(x)) ? snapGrid(Number(x) - rect.left) : 0;
+    const dy = Number.isFinite(Number(y)) ? snapGrid(Number(y) - rect.top) : 0;
+    adjustMove(dx, dy, true);
   }
 
   function alignSelected(mode) {
@@ -1234,11 +1253,15 @@
 
   function deleteSelected() {
     if (!active || !selected) return;
-    const element = selected;
-    const state = remember(element);
-    state.deleted = true;
-    applyState(element, state, false);
+    selectionElements().forEach(function (element) {
+      const state = remember(element);
+      if (!state || state.locked) return;
+      state.deleted = true;
+      applyState(element, state, false);
+    });
     selected = null;
+    selectedSet.clear();
+    clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
     commitHistory();
@@ -1317,6 +1340,7 @@
     resizeDrag = null;
     document.body.classList.remove('ve-active');
     outline.style.display = 'none';
+    clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
   }
@@ -1325,20 +1349,39 @@
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    select(event.target);
-    const state = remember(selected);
-    if (state.locked) return;
-    drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: state.dx, dy: state.dy };
+    select(event.target, !!event.shiftKey);
+    if (!selected) return;
+    const movable = selectionElements().filter(function (element) {
+      const state = remember(element);
+      return state && !state.locked;
+    });
+    if (!movable.length) return;
+    drag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      lastDx: 0,
+      lastDy: 0
+    };
   }, true);
 
   window.addEventListener('pointermove', function (event) {
     if (!active || !drag || event.pointerId !== drag.pointerId || !selected) return;
     event.preventDefault();
-    const state = remember(selected);
-    state.dx = snapGrid(drag.dx + event.clientX - drag.x);
-    state.dy = snapGrid(drag.dy + event.clientY - drag.y);
-    applyState(selected, state, false);
-    smartSnap(selected, state);
+    const totalDx = snapGrid(event.clientX - drag.x);
+    const totalDy = snapGrid(event.clientY - drag.y);
+    const stepDx = totalDx - drag.lastDx;
+    const stepDy = totalDy - drag.lastDy;
+    if (stepDx || stepDy) {
+      selectionElements().forEach(function (element) {
+        const state = remember(element);
+        if (!state || state.locked) return;
+        moveResponsiveState(element, state, stepDx, stepDy);
+      });
+      drag.lastDx = totalDx;
+      drag.lastDy = totalDy;
+    }
+    hideGuides();
     updateOverlay();
   }, true);
 
