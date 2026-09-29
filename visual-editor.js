@@ -928,8 +928,22 @@
     commitHistory();
   }
 
+  function responsiveCssDeclarations(cfg, label) {
+    if (!cfg) return [];
+    const out = [];
+    out.push('  /* ' + (label || 'Responsive') + ': horizontal=' + cfg.hAnchor + ', vertical=' + cfg.vAnchor +
+      ', marges=' + cfg.marginLeft + '/' + cfg.marginTop + '/' + cfg.marginRight + '/' + cfg.marginBottom +
+      ', largeur=' + cfg.widthMode + ', hauteur=' + cfg.heightMode + ', safe-area=' + cfg.safeArea + ' */');
+    if (cfg.widthMode === 'percent') out.push('  width: ' + cfg.widthPercent + '% !important;');
+    if (cfg.widthMode === 'fill') out.push('  width: calc(100% - ' + cfg.marginLeft + 'px - ' + cfg.marginRight + 'px) !important;');
+    if (cfg.heightMode === 'percent') out.push('  height: ' + cfg.heightPercent + '% !important;');
+    if (cfg.heightMode === 'fill') out.push('  height: calc(100% - ' + cfg.marginTop + 'px - ' + cfg.marginBottom + 'px) !important;');
+    return out;
+  }
+
   function cssText() {
     const rules = [];
+    const mediaRules = { phone:[], tablet:[], desktop:[] };
     touched.forEach(function (state) {
       const declarations = [];
       if (state.deleted) {
@@ -937,11 +951,13 @@
         declarations.push('  pointer-events: none !important;');
       } else {
         if (state.responsive && state.responsive.enabled) {
-          declarations.push('  /* Responsive: horizontal=' + state.responsive.hAnchor + ', vertical=' + state.responsive.vAnchor + ', largeur=' + state.responsive.widthMode + ', hauteur=' + state.responsive.heightMode + ', safe-area=' + state.responsive.safeArea + ' */');
-          if (state.responsive.widthMode === 'percent') declarations.push('  width: ' + state.responsive.widthPercent + '% !important;');
-          if (state.responsive.widthMode === 'fill') declarations.push('  width: calc(100% - ' + state.responsive.marginLeft + 'px - ' + state.responsive.marginRight + 'px) !important;');
-          if (state.responsive.heightMode === 'percent') declarations.push('  height: ' + state.responsive.heightPercent + '% !important;');
-          if (state.responsive.heightMode === 'fill') declarations.push('  height: calc(100% - ' + state.responsive.marginTop + 'px - ' + state.responsive.marginBottom + 'px) !important;');
+          responsiveCssDeclarations(state.responsive, 'Responsive de base').forEach(function(line){declarations.push(line)});
+          const points = state.responsive.breakpoints || {};
+          ['phone','tablet','desktop'].forEach(function(bp){
+            if (!points[bp]) return;
+            const bpDecl = responsiveCssDeclarations(points[bp], 'Breakpoint ' + bp);
+            if (bpDecl.length) mediaRules[bp].push(state.selector + ' {\n' + bpDecl.join('\n') + '\n}');
+          });
         }
         const responsiveExport = !!(state.responsive && state.responsive.enabled);
         const exportDx = state.dx || 0;
@@ -988,6 +1004,14 @@
         }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
+    });
+    const mediaMap = {
+      phone:'@media (max-width: 599px)',
+      tablet:'@media (min-width: 600px) and (max-width: 1023px)',
+      desktop:'@media (min-width: 1024px)'
+    };
+    ['phone','tablet','desktop'].forEach(function(bp){
+      if(mediaRules[bp].length)rules.push(mediaMap[bp] + ' {\n' + mediaRules[bp].join('\n\n').replace(/^/gm,'  ') + '\n}');
     });
     return rules.join('\n\n') || '/* Aucun ajustement. */';
   }
