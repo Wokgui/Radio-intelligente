@@ -71,11 +71,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "app-interface-studio-v2.1.0"
+          $tag = "app-interface-studio-v2.1.1"
           $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $file.FullName --clobber
           } else {
-            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.1.0" --notes "Version avec nouvelle identité visuelle, icône Windows dédiée, interface raffinée et formats téléphone, tablette et bureau."
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.1.1" --notes "Corrige l’injection du moteur d’édition dans les applications chargées et ajoute une réinjection automatique après navigation ou rechargement."
           }

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   pickHtml: () => ipcRenderer.invoke('source:pick-html'),
   openDemo: () => ipcRenderer.invoke('source:open-demo'),
   restoreSource: source => ipcRenderer.invoke('source:restore', source),
+  injectEditor: () => ipcRenderer.invoke('source:inject-editor'),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   saveChatGPTExport: payload => ipcRenderer.invoke('layout:save-chatgpt', payload),
