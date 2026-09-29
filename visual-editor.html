@@ -2408,6 +2408,28 @@ body.desktop .desktop-badge{display:inline-flex}
     setTimeout(function(){post('get-layers')},100);
   });
 
+  document.getElementById('suggestAutoLayoutBtn').addEventListener('click',function(){post('auto-layout',{apply:false})});
+  document.getElementById('applyAutoLayoutBtn').addEventListener('click',function(){post('auto-layout',{apply:true})});
+  document.getElementById('suggestConstraintsBtn').addEventListener('click',function(){post('smart-constraints',{apply:false})});
+  document.getElementById('applyConstraintsBtn').addEventListener('click',function(){post('smart-constraints',{apply:true})});
+
+  document.getElementById('applyAdvancedBtn').addEventListener('click',function(){
+    post('advanced-style',{styles:{
+      padding:document.getElementById('advPadding').value.trim(),
+      margin:document.getElementById('advMargin').value.trim(),
+      'border-radius':document.getElementById('advRadius').value.trim(),
+      'box-shadow':document.getElementById('advShadow').value.trim(),
+      opacity:document.getElementById('advOpacity').value.trim(),
+      filter:document.getElementById('advFilter').value.trim(),
+      'aspect-ratio':document.getElementById('advAspect').value.trim(),
+      overflow:document.getElementById('advOverflow').value,
+      'min-width':document.getElementById('advMinWidth').value.trim(),
+      'max-width':document.getElementById('advMaxWidth').value.trim(),
+      position:document.getElementById('advPosition').value,
+      'object-fit':document.getElementById('advObjectFit').value
+    }});
+  });
+
   document.querySelectorAll('[data-distribute]').forEach(function(btn){
     btn.addEventListener('click',function(){
       post('distribute',{mode:btn.dataset.distribute,gap:Number(document.getElementById('distributeGap').value)||0});
@@ -2466,6 +2488,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('setPrototypeBtn').addEventListener('click',function(){
     post('prototype-set',{target:document.getElementById('prototypeTarget').value.trim(),trigger:'click'});
   });
+  document.getElementById('openFlowBtn').addEventListener('click',openFlow);
 
   document.querySelectorAll('[data-stress]').forEach(function(btn){
     btn.addEventListener('click',function(){post('stress-test',{mode:btn.dataset.stress})});
@@ -2495,6 +2518,11 @@ body.desktop .desktop-badge{display:inline-flex}
 
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
   document.getElementById('auditFixBtn').addEventListener('click',function(){post('audit-fix')});
+  document.getElementById('repairAssistantBtn').addEventListener('click',function(){
+    repairModal.classList.add('visible');post('audit');setTimeout(function(){post('repair-suggest')},80);
+  });
+  document.getElementById('testMatrixBtn').addEventListener('click',runTestMatrix);
+  document.getElementById('consistencyBtn').addEventListener('click',function(){post('design-consistency')});
   document.getElementById('adbCaptureBtn').addEventListener('click',captureAdbReference);
   document.getElementById('loadReferenceBtn').addEventListener('click',loadReferenceImage);
   document.getElementById('referenceOpacity').addEventListener('input',function(){
@@ -2506,6 +2534,8 @@ body.desktop .desktop-badge{display:inline-flex}
     compareStatus.textContent='Comparaison retirée.';
   });
   document.getElementById('applySourceBtn').addEventListener('click',applyToLocalSource);
+  document.getElementById('prepareDirectEditBtn').addEventListener('click',prepareDirectSourceEdit);
+  document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
   document.getElementById('downloadBtn').addEventListener('click',function(){post('download-css')});
