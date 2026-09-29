@@ -61,6 +61,8 @@
 
   let active = false;
   let selected = null;
+  const selectedSet = new Set();
+  const secondaryOutlines = new Map();
   let drag = null;
   let resizeDrag = null;
   let grid = 1;
@@ -167,7 +169,7 @@
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
-        enabled: false,
+        enabled: true,
         hAnchor: 'free',
         vAnchor: 'free',
         widthMode: 'auto',
@@ -184,7 +186,95 @@
       }
     };
     touched.set(element, state);
+    captureResponsiveFromCurrent(element, state, false);
+    const bounds = responsiveBounds(element, state);
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const rx = bounds.width > 0 ? (cx - bounds.left) / bounds.width : .5;
+    const ry = bounds.height > 0 ? (cy - bounds.top) / bounds.height : .5;
+    state.responsive.hAnchor = rx < .34 ? 'left' : (rx > .66 ? 'right' : 'center');
+    state.responsive.vAnchor = ry < .34 ? 'top' : (ry > .66 ? 'bottom' : 'center');
+    if (rect.width >= bounds.width * .78) {
+      state.responsive.widthMode = 'fill';
+      state.responsive.hAnchor = 'stretch';
+    }
     return state;
+  }
+
+
+  function selectionElements() {
+    const list = Array.from(selectedSet).filter(function (el) {
+      const state = touched.get(el);
+      return document.documentElement.contains(el) && !(state && state.deleted);
+    });
+    if (selected && document.documentElement.contains(selected) && !list.includes(selected)) list.push(selected);
+    return list;
+  }
+
+  function selectionBounds() {
+    const items = selectionElements();
+    if (!items.length) return null;
+    const rects = items.map(function (el) { return el.getBoundingClientRect(); });
+    const left = Math.min.apply(null, rects.map(function (r) { return r.left; }));
+    const top = Math.min.apply(null, rects.map(function (r) { return r.top; }));
+    const right = Math.max.apply(null, rects.map(function (r) { return r.right; }));
+    const bottom = Math.max.apply(null, rects.map(function (r) { return r.bottom; }));
+    return { left:left, top:top, right:right, bottom:bottom, width:right-left, height:bottom-top };
+  }
+
+  function ensureSecondaryOutline(element) {
+    if (secondaryOutlines.has(element)) return secondaryOutlines.get(element);
+    const box = document.createElement('div');
+    box.className = 've-selection ve-selection-secondary';
+    document.body.appendChild(box);
+    secondaryOutlines.set(element, box);
+    return box;
+  }
+
+  function clearSecondaryOutlines() {
+    secondaryOutlines.forEach(function (box) { box.remove(); });
+    secondaryOutlines.clear();
+  }
+
+  function syncSecondaryOutlines() {
+    const keep = new Set();
+    selectionElements().forEach(function (el) {
+      if (el === selected) return;
+      const box = ensureSecondaryOutline(el);
+      const r = el.getBoundingClientRect();
+      box.style.display = active ? 'block' : 'none';
+      box.style.left = r.left + 'px';
+      box.style.top = r.top + 'px';
+      box.style.width = r.width + 'px';
+      box.style.height = r.height + 'px';
+      keep.add(el);
+    });
+    Array.from(secondaryOutlines.entries()).forEach(function (entry) {
+      if (!keep.has(entry[0])) {
+        entry[1].remove();
+        secondaryOutlines.delete(entry[0]);
+      }
+    });
+  }
+
+  function moveResponsiveState(element, state, dx, dy) {
+    const cfg = state.responsive;
+    if (!cfg || !cfg.enabled) {
+      state.dx = snapGrid(state.dx + dx);
+      state.dy = snapGrid(state.dy + dy);
+      return;
+    }
+    if (cfg.hAnchor === 'left' || cfg.hAnchor === 'stretch') cfg.marginLeft = snapGrid(cfg.marginLeft + dx);
+    else if (cfg.hAnchor === 'right') cfg.marginRight = snapGrid(cfg.marginRight - dx);
+    else if (cfg.hAnchor === 'center') cfg.centerOffsetX = snapGrid(cfg.centerOffsetX + dx);
+    else state.dx = snapGrid(state.dx + dx);
+
+    if (cfg.vAnchor === 'top' || cfg.vAnchor === 'stretch') cfg.marginTop = snapGrid(cfg.marginTop + dy);
+    else if (cfg.vAnchor === 'bottom') cfg.marginBottom = snapGrid(cfg.marginBottom - dy);
+    else if (cfg.vAnchor === 'center') cfg.centerOffsetY = snapGrid(cfg.centerOffsetY + dy);
+    else state.dy = snapGrid(state.dy + dy);
+
+    applyState(element, state, false);
   }
 
   function snapGrid(value) {
@@ -640,7 +730,8 @@
     items.sort(function (a, b) { return a.selector.localeCompare(b.selector); });
     return {
       items: items,
-      selectedSelector: selected ? selectorFor(selected) : ''
+      selectedSelector: selected ? selectorFor(selected) : '',
+      selectedSelectors: selectionElements().map(selectorFor).filter(Boolean)
     };
   }
 
@@ -715,11 +806,19 @@
       applyState(element, state, false);
     });
 
-    selected = snap.selectedSelector ? document.querySelector(snap.selectedSelector) : null;
+    selectedSet.clear();
+    const restoredSelectors = Array.isArray(snap.selectedSelectors) ? snap.selectedSelectors : (snap.selectedSelector ? [snap.selectedSelector] : []);
+    restoredSelectors.forEach(function (sel) {
+      const el = document.querySelector(sel);
+      const st = el ? touched.get(el) : null;
+      if (el && !(st && st.deleted)) selectedSet.add(el);
+    });
+    selected = snap.selectedSelector ? document.querySelector(snap.selectedSelector) : (selectedSet.values().next().value || null);
     if (selected) {
       const st = touched.get(selected);
       if (st && st.deleted) selected = null;
     }
+    if (selected && !selectedSet.has(selected)) selectedSet.add(selected);
     applyingHistory = false;
     hideGuides();
     updateOverlay();
@@ -742,6 +841,8 @@
     registry.forEach(restoreEntry);
     touched.clear();
     selected = null;
+    selectedSet.clear();
+    clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
     commitHistory();
