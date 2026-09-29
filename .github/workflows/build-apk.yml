@@ -14,6 +14,8 @@ on:
       - 'cloud-backup.js'
       - 'visual-editor.css'
       - 'visual-editor.js'
+      - 'visual-elements.js'
+      - 'visual-elements.json'
       - 'vendor/**'
       - 'manifest.webmanifest'
       - 'sw.js'
@@ -53,7 +55,7 @@ jobs:
           cp radio-v51.css radio-v51.js radio-v51-core.js "$ASSETS/"
           cp music-player.css music-player.js "$ASSETS/"
           cp cloud-backup.js "$ASSETS/"
-          cp visual-editor.css visual-editor.js "$ASSETS/"
+          cp visual-editor.css visual-editor.js visual-elements.js visual-elements.json "$ASSETS/"
           cp vendor/supabase/supabase.js "$ASSETS/vendor/supabase/"
           cp manifest.webmanifest sw.js "$ASSETS/"
           cp cover-default.png icon-192.png icon-512.png icon-maskable-192.png apple-touch-icon.png favicon-32.png "$ASSETS/"
