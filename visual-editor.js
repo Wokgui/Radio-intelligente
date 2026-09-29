@@ -64,6 +64,7 @@
   let drag = null;
   let resizeDrag = null;
   let grid = 1;
+  let keyboardCommitTimer = null;
 
   const history = [];
   let historyIndex = -1;
@@ -634,9 +635,24 @@
     state.dx = snapGrid(state.dx + dx);
     state.dy = snapGrid(state.dy + dy);
     applyState(selected, state, false);
-    smartSnap(selected, state);
+    hideGuides();
     updateOverlay();
     if (commit !== false) commitHistory();
+  }
+
+  function queueKeyboardCommit() {
+    if (keyboardCommitTimer) clearTimeout(keyboardCommitTimer);
+    keyboardCommitTimer = setTimeout(function () {
+      keyboardCommitTimer = null;
+      commitHistory();
+    }, 180);
+  }
+
+  function flushKeyboardCommit() {
+    if (!keyboardCommitTimer) return;
+    clearTimeout(keyboardCommitTimer);
+    keyboardCommitTimer = null;
+    commitHistory();
   }
 
   function adjustSize(dw, dh, commit, proportional) {
@@ -1061,21 +1077,27 @@
     event.preventDefault();
     const step = modifier ? 10 : 1;
     if (event.shiftKey) {
-      if (key === 'ArrowLeft') adjustSize(-step, 0);
-      if (key === 'ArrowRight') adjustSize(step, 0);
-      if (key === 'ArrowUp') adjustSize(0, -step);
-      if (key === 'ArrowDown') adjustSize(0, step);
+      if (key === 'ArrowLeft') adjustSize(-step, 0, false);
+      if (key === 'ArrowRight') adjustSize(step, 0, false);
+      if (key === 'ArrowUp') adjustSize(0, -step, false);
+      if (key === 'ArrowDown') adjustSize(0, step, false);
     } else {
-      if (key === 'ArrowLeft') adjustMove(-step, 0);
-      if (key === 'ArrowRight') adjustMove(step, 0);
-      if (key === 'ArrowUp') adjustMove(0, -step);
-      if (key === 'ArrowDown') adjustMove(0, step);
+      if (key === 'ArrowLeft') adjustMove(-step, 0, false);
+      if (key === 'ArrowRight') adjustMove(step, 0, false);
+      if (key === 'ArrowUp') adjustMove(0, -step, false);
+      if (key === 'ArrowDown') adjustMove(0, step, false);
     }
+    queueKeyboardCommit();
     return true;
   }
 
   window.addEventListener('keydown', function (event) {
     if (handleKeyboard(event)) event.stopImmediatePropagation();
+  }, true);
+
+  window.addEventListener('keyup', function (event) {
+    if (!active || !event.key.startsWith('Arrow')) return;
+    flushKeyboardCommit();
   }, true);
 
   window.addEventListener('message', function (event) {
@@ -1090,8 +1112,9 @@
     if (data.type === 'undo') undo();
     if (data.type === 'redo') redo();
     if (data.type === 'delete') deleteSelected();
-    if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0);
-    if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, true, !!payload.proportional);
+    if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0, payload.commit !== false);
+    if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
+    if (data.type === 'keyboard-commit') flushKeyboardCommit();
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
     if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
