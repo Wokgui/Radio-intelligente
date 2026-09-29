@@ -1541,47 +1541,68 @@
 
   function auditInterface() {
     const issues = [];
+    const spacingUnit=Math.max(1,Number(designTokens.spacingUnit)||8);
     const nodes = Array.from(document.body.querySelectorAll('*')).filter(function (el) {
       if (isEditorNode(el) || /^SCRIPT|STYLE|LINK|META$/i.test(el.tagName)) return false;
       const cs=getComputedStyle(el),r=el.getBoundingClientRect();
       return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>1&&r.height>1;
-    }).slice(0,650);
+    }).slice(0,750);
 
     if (document.documentElement.scrollWidth > innerWidth + 2) {
-      issues.push({severity:'error',type:'overflow-x',selector:'html',message:'La page dépasse horizontalement le viewport de '+Math.round(document.documentElement.scrollWidth-innerWidth)+' px.'});
+      issues.push({severity:'error',type:'overflow-x',selector:'html',message:'La page dépasse horizontalement le viewport de '+Math.round(document.documentElement.scrollWidth-innerWidth)+' px.',fixable:true});
     }
 
     const interactive = [];
+    const focusable=[];
     nodes.forEach(function (el) {
       const r=el.getBoundingClientRect();
       const cs=getComputedStyle(el);
       const selector=selectorFor(el);
-      const isInteractive=/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)||el.getAttribute('role')==='button';
+      const role=el.getAttribute('role')||'';
+      const isInteractive=/^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(el.tagName)||role==='button'||role==='link';
+      const tabindex=el.getAttribute('tabindex');
+      const isFocusable=isInteractive||(tabindex!==null&&Number(tabindex)>=0);
 
       if (el.children.length===0 && String(el.textContent||'').trim()) {
         const clipped=(el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2) &&
           (/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY)||cs.whiteSpace==='nowrap');
-        if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.'});
+        if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.',fixable:true});
 
         const fg=parseRgb(cs.color),bg=solidBackground(el);
         if(fg&&bg&&fg.a>.8){
           const ratio=contrastRatio(fg,bg);
           const min=parseFloat(cs.fontSize)>=18?3:4.5;
-          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).'});
+          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).',fixable:false});
         }
       }
 
       if(isInteractive){
         interactive.push({el:el,rect:r,selector:selector});
-        if(r.width<44||r.height<44)issues.push({severity:'warning',type:'touch-target',selector:selector,message:'Zone tactile '+Math.round(r.width)+' × '+Math.round(r.height)+' px, sous 44 × 44.'});
+        const accessible=String(el.getAttribute('aria-label')||el.getAttribute('aria-labelledby')||el.getAttribute('title')||el.textContent||el.value||'').trim();
+        if(!accessible)issues.push({severity:'error',type:'accessible-name',selector:selector,message:'Contrôle interactif sans nom accessible.',fixable:true});
+        if(r.width<44||r.height<44)issues.push({severity:'warning',type:'touch-target',selector:selector,message:'Zone tactile '+Math.round(r.width)+' × '+Math.round(r.height)+' px, sous 44 × 44.',fixable:true});
         if(r.top<safeArea.top-1||r.left<safeArea.left-1||r.right>innerWidth-safeArea.right+1||r.bottom>innerHeight-safeArea.bottom+1){
-          issues.push({severity:'error',type:'safe-area',selector:selector,message:'Élément interactif en dehors de la zone sûre.'});
+          issues.push({severity:'error',type:'safe-area',selector:selector,message:'Élément interactif en dehors de la zone sûre.',fixable:false});
         }
       }
+
+      if(isFocusable)focusable.push({el:el,selector:selector,tabindex:tabindex===null?0:Number(tabindex)||0});
+      if(tabindex!==null&&Number(tabindex)>0)issues.push({severity:'warning',type:'tab-order',selector:selector,message:'tabindex positif ('+tabindex+') : ordre clavier potentiellement artificiel.',fixable:false});
+
+      const margins=[parseFloat(cs.marginLeft)||0,parseFloat(cs.marginRight)||0,parseFloat(cs.marginTop)||0,parseFloat(cs.marginBottom)||0];
+      margins.forEach(function(v){
+        if(v>0&&Math.abs(v/spacingUnit-Math.round(v/spacingUnit))>.16){
+          issues.push({severity:'info',type:'spacing-token',selector:selector,message:'Espacement '+Math.round(v*10)/10+' px hors grille '+spacingUnit+' px.',fixable:false});
+        }
+      });
     });
 
-    for(let i=0;i<interactive.length&&i<90;i+=1){
-      for(let j=i+1;j<interactive.length&&j<90;j+=1){
+    if(focusable.length>0&&!focusable.some(function(x){return x.el===document.activeElement})){
+      issues.push({severity:'info',type:'keyboard-navigation',selector:'body',message:focusable.length+' éléments sont accessibles au clavier. Utilise le mode Focus pour vérifier leur parcours.',fixable:false});
+    }
+
+    for(let i=0;i<interactive.length&&i<100;i+=1){
+      for(let j=i+1;j<interactive.length&&j<100;j+=1){
         const a=interactive[i],b=interactive[j];
         if(a.el.contains(b.el)||b.el.contains(a.el))continue;
         const iw=Math.max(0,Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left));
@@ -1589,18 +1610,27 @@
         const area=iw*ih;
         const minArea=Math.min(a.rect.width*a.rect.height,b.rect.width*b.rect.height);
         if(area>0&&minArea>0&&area/minArea>.25){
-          issues.push({severity:'warning',type:'overlap',selector:a.selector,message:'Chevauchement important avec '+b.selector+'.'});
+          issues.push({severity:'warning',type:'overlap',selector:a.selector,message:'Chevauchement important avec '+b.selector+'.',fixable:false});
         }
       }
     }
 
+    const seen=new Set();
+    const deduped=issues.filter(function(issue){
+      const key=issue.type+'|'+issue.selector+'|'+issue.message;
+      if(seen.has(key))return false;seen.add(key);return true;
+    });
     const order={error:0,warning:1,info:2};
-    issues.sort(function(a,b){return order[a.severity]-order[b.severity]});
-    emit('audit',{issues:issues.slice(0,120),summary:{
-      errors:issues.filter(function(i){return i.severity==='error'}).length,
-      warnings:issues.filter(function(i){return i.severity==='warning'}).length
+    deduped.sort(function(a,b){return order[a.severity]-order[b.severity]});
+    lastAuditIssues=deduped.slice(0,160);
+    emit('audit',{issues:lastAuditIssues,summary:{
+      errors:lastAuditIssues.filter(function(i){return i.severity==='error'}).length,
+      warnings:lastAuditIssues.filter(function(i){return i.severity==='warning'}).length,
+      info:lastAuditIssues.filter(function(i){return i.severity==='info'}).length,
+      fixable:lastAuditIssues.filter(function(i){return i.fixable}).length
     }});
   }
+
 
   function applyEnvironment(payload) {
     environment = {
