@@ -6,6 +6,7 @@ on:
     paths:
       - 'desktop/**'
       - 'visual-editor.html'
+      - 'app-runtime.html'
       - 'visual-editor.js'
       - 'visual-editor.css'
       - '.github/workflows/build-desktop.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'desktop/**'
       - 'visual-editor.html'
+      - 'app-runtime.html'
       - 'visual-editor.js'
       - 'visual-editor.css'
       - 'visual-elements.js'
@@ -71,11 +73,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "app-interface-studio-v2.3.0"
+          $tag = "app-interface-studio-v2.4.0"
           $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $file.FullName --clobber
           } else {
-            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.3.0" --notes "Ajoute les paramètres d’interface, la colonne latérale pleine hauteur en accordéons repliés par défaut, la multisélection Maj+clic, une mesure fiable des écarts entre bords et le positionnement adaptatif relatif par défaut."
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.4.0" --notes "Ajoute les modes Édition, Aperçu plein écran et Android exact, une fenêtre Ouvrir comme appli sans chrome, le choix Smartphone/Tablette/TV/Bureau/Autre dès l’ouverture et la simulation du profil WebView/MainActivity."
           }
