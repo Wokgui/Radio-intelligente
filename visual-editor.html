@@ -1447,7 +1447,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Les champs responsive sont des contraintes d’intention : ancrages, marges, largeur/hauteur fluides et safe areas doivent être implémentés nativement dans le layout (flex/grid/constraints/WindowInsets selon la technologie), pas figés avec les coordonnées du seul appareil de prévisualisation. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Implémente ces intentions nativement dans le layout (Flex/Grid/constraints/WindowInsets selon la technologie), pas avec les coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -1467,7 +1467,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'2.4.0'};
+    project.studio={name:'App Interface Studio',version:'3.0.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -1513,7 +1513,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'2.4.0'};
+    project.studio={name:'App Interface Studio',version:'3.0.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -1564,17 +1564,30 @@ body.desktop .desktop-badge{display:inline-flex}
   window.addEventListener('keyup',finishKeyboard,true);
 
   window.addEventListener('message',function(event){
-    if(event.source!==frame.contentWindow)return;
+    var multiRec=multiFrameRecord(event.source);
+    if(event.source!==frame.contentWindow&&!multiRec)return;
     var data=event.data||{};
     if(data.source!=='app-visual-editor'&&data.source!=='radio-visual-editor')return;
     var p=data.payload||{};
+
+    if(multiRec){
+      if(data.type==='ready')sendMultiProject(multiRec);
+      return;
+    }
 
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
       post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
       applySafeArea();
       post(currentPreviewMode==='edit'?'enable':'disable');
+      post('environment-set',{
+        fontScale:Number(document.getElementById('systemFontScale').value)||1,
+        displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
+        darkMode:document.getElementById('systemDarkMode').checked
+      });
+      post('breakpoint-edit',{breakpoint:breakpointEdit.value||'base'});
       post('get-css');
+      post('get-layers');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
@@ -1582,7 +1595,7 @@ body.desktop .desktop-badge{display:inline-flex}
       undoBtn.disabled=!p.canUndo;
       redoBtn.disabled=!p.canRedo;
     }
-    if(data.type==='state')updateState(p);
+    if(data.type==='state'){updateState(p);scheduleMultiSync()}
     if(data.type==='spacing'){
       document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
       document.getElementById('spaceR').textContent=p.right?Math.round(p.right.gap)+' px':'—';
@@ -1591,6 +1604,11 @@ body.desktop .desktop-badge{display:inline-flex}
       var q=p.parent||{};
       function near(v){return v?(Math.round(v.gap)+' px vers '+(v.selector||'objet')):'aucun objet'};
       document.getElementById('spacingDetail').textContent='Bords les plus proches — gauche : '+near(p.left)+' · haut : '+near(p.top)+' · droite : '+near(p.right)+' · bas : '+near(p.bottom)+'. Marges du parent : '+Math.round(q.left||0)+' / '+Math.round(q.top||0)+' / '+Math.round(q.right||0)+' / '+Math.round(q.bottom||0)+' px.';
+    }
+    if(data.type==='layers')renderLayers(p.tree||[]);
+    if(data.type==='audit')renderAudit(p);
+    if(data.type==='alt-measure'){
+      document.getElementById('spacingDetail').textContent='Alt · '+(p.selector||'objet')+' : horizontal '+Math.round(p.horizontal||0)+' px · vertical '+Math.round(p.vertical||0)+' px.';
     }
     if(data.type==='css'&&typeof p.css==='string'){
       cssOut.value=p.css;
@@ -1666,18 +1684,20 @@ body.desktop .desktop-badge{display:inline-flex}
   letterSpacing.addEventListener('change',function(){post('text-style',{kind:'letter-spacing',value:Number(letterSpacing.value)+'px'})});
   lineHeight.addEventListener('change',function(){post('text-style',{kind:'line-height',value:String(Number(lineHeight.value)||1.2)})});
 
-  responsiveEnabled.addEventListener('change',function(){if(hasSelection)post('responsive-set',{enabled:responsiveEnabled.checked})});
-  hAnchor.addEventListener('change',function(){post('responsive-set',{hAnchor:hAnchor.value})});
-  vAnchor.addEventListener('change',function(){post('responsive-set',{vAnchor:vAnchor.value})});
-  widthMode.addEventListener('change',function(){post('responsive-set',{widthMode:widthMode.value})});
-  heightMode.addEventListener('change',function(){post('responsive-set',{heightMode:heightMode.value})});
-  marginLeft.addEventListener('change',function(){post('responsive-set',{marginLeft:Number(marginLeft.value)||0})});
-  marginRight.addEventListener('change',function(){post('responsive-set',{marginRight:Number(marginRight.value)||0})});
-  marginTop.addEventListener('change',function(){post('responsive-set',{marginTop:Number(marginTop.value)||0})});
-  marginBottom.addEventListener('change',function(){post('responsive-set',{marginBottom:Number(marginBottom.value)||0})});
-  widthPercent.addEventListener('change',function(){post('responsive-set',{widthPercent:Number(widthPercent.value)||100})});
-  heightPercent.addEventListener('change',function(){post('responsive-set',{heightPercent:Number(heightPercent.value)||100})});
-  respectSafeArea.addEventListener('change',function(){post('responsive-set',{safeArea:respectSafeArea.checked})});
+  function responsivePayload(extra){return Object.assign({breakpoint:breakpointEdit.value||'base'},extra||{})}
+  responsiveEnabled.addEventListener('change',function(){if(hasSelection)post('responsive-set',responsivePayload({enabled:responsiveEnabled.checked}))});
+  breakpointEdit.addEventListener('change',function(){post('breakpoint-edit',{breakpoint:breakpointEdit.value})});
+  hAnchor.addEventListener('change',function(){post('responsive-set',responsivePayload({hAnchor:hAnchor.value}))});
+  vAnchor.addEventListener('change',function(){post('responsive-set',responsivePayload({vAnchor:vAnchor.value}))});
+  widthMode.addEventListener('change',function(){post('responsive-set',responsivePayload({widthMode:widthMode.value}))});
+  heightMode.addEventListener('change',function(){post('responsive-set',responsivePayload({heightMode:heightMode.value}))});
+  marginLeft.addEventListener('change',function(){post('responsive-set',responsivePayload({marginLeft:Number(marginLeft.value)||0}))});
+  marginRight.addEventListener('change',function(){post('responsive-set',responsivePayload({marginRight:Number(marginRight.value)||0}))});
+  marginTop.addEventListener('change',function(){post('responsive-set',responsivePayload({marginTop:Number(marginTop.value)||0}))});
+  marginBottom.addEventListener('change',function(){post('responsive-set',responsivePayload({marginBottom:Number(marginBottom.value)||0}))});
+  widthPercent.addEventListener('change',function(){post('responsive-set',responsivePayload({widthPercent:Number(widthPercent.value)||100}))});
+  heightPercent.addEventListener('change',function(){post('responsive-set',responsivePayload({heightPercent:Number(heightPercent.value)||100}))});
+  respectSafeArea.addEventListener('change',function(){post('responsive-set',responsivePayload({safeArea:respectSafeArea.checked}))});
   document.getElementById('captureResponsive').addEventListener('click',function(){post('responsive-capture')});
 
   document.querySelectorAll('[data-align]').forEach(function(btn){
