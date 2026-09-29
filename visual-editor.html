@@ -44,7 +44,9 @@ header{
 .brand-logo svg{display:block;width:100%;height:100%}
 .brand strong{display:block;font-size:1.05rem;letter-spacing:-.015em}
 .brand small{display:block;color:var(--muted);font-size:.69rem;margin-top:3px;font-weight:650}
-.mode-switch{display:flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--soft)}
+.mode-switch{display:flex;gap:5px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--soft)}
+.mode-switch .btn{min-height:34px;padding:0 10px;border-radius:9px;font-size:.7rem}
+.mode-switch .btn.active{background:linear-gradient(135deg,#efe8ff,#f7ecff);border-color:#bca7df;color:#6530b5;box-shadow:inset 0 0 0 1px #fff}
 .top-actions{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .btn{
   min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:11px;
@@ -94,7 +96,31 @@ main{
 .safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
 .safe-outline.visible{display:block}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
+.android-status,.android-nav{display:none;position:absolute;left:0;right:0;z-index:6;pointer-events:none;color:#fff}
+.android-status{top:0;height:28px;background:#6f42c1;align-items:center;justify-content:space-between;padding:0 8px;font-size:9px;font-weight:800}
+.android-status .icons{display:flex;gap:5px;font-size:8px}
+.android-nav{bottom:0;height:24px;background:#000;align-items:center;justify-content:center}
+.android-nav::after{content:"";width:92px;height:4px;border-radius:999px;background:#fff;opacity:.92}
+.device.android-exact .android-status,.device.android-exact .android-nav{display:flex}
+.device.android-exact iframe{position:absolute;left:0;right:0;top:28px;height:calc(100% - 52px)}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
+
+.preview-exit{display:none;position:fixed;z-index:2000;right:16px;top:16px;padding:8px 11px;border:1px solid #ffffff55;border-radius:999px;background:#21182fd9;color:#fff;font-size:.72rem;font-weight:800;box-shadow:0 8px 24px #0004}
+body.preview-mode,body.android-mode{background:#111;overflow:hidden}
+body.preview-mode header,body.android-mode header,
+body.preview-mode .side,body.android-mode .side{display:none!important}
+body.preview-mode main,body.android-mode main{display:block;height:100vh;padding:0;overflow:hidden}
+body.preview-mode .workspace,body.android-mode .workspace{
+  width:100vw;height:100vh;min-height:0;padding:0;border:0;border-radius:0;box-shadow:none;background:#111;
+  display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+body.preview-mode .stage,body.android-mode .stage{padding:0}
+body.preview-mode .ruler-x,body.preview-mode .ruler-y,body.preview-mode .ruler-corner,
+body.android-mode .ruler-x,body.android-mode .ruler-y,body.android-mode .ruler-corner{display:none}
+body.preview-mode .device,body.android-mode .device{border:0;border-radius:0;box-shadow:none}
+body.preview-mode .safe-outline,body.android-mode .safe-outline{display:none!important}
+body.preview-mode .device:before,body.android-mode .device:before{display:none!important}
+body.preview-mode .preview-exit,body.android-mode .preview-exit{display:block}
 .side{
   height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;
   display:flex;flex-direction:column;gap:0;padding:6px;
@@ -202,6 +228,17 @@ kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radi
 .source-choice:hover{transform:translateY(-2px);border-color:#baa4d6;background:#fff;box-shadow:0 12px 26px rgba(55,36,88,.1)}
 .source-choice b{display:block;margin-bottom:6px;color:#6030ad;font-size:.8rem}
 .source-choice span{display:block;font-size:.67rem;color:var(--muted);line-height:1.35}
+.device-kind-wrap{margin-bottom:16px;padding:12px;border:1px solid var(--line);border-radius:15px;background:#faf8fc}
+.device-kind-title{font-size:.72rem;color:#5c4a6f;font-weight:850;margin-bottom:8px}
+.device-kind-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.device-kind{
+  min-height:70px;padding:8px;border:1px solid var(--line);border-radius:11px;background:#fff;color:#5c4a6f;
+  display:grid;place-items:center;text-align:center;gap:3px;font-size:.67rem;font-weight:800
+}
+.device-kind b{font-size:1.1rem;line-height:1}
+.device-kind.active{border-color:#a98dd8;background:#f1eaff;color:#6530b5;box-shadow:inset 0 0 0 1px #fff}
+.custom-device-fields{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.custom-device-fields.visible{display:grid}
 .native-note{margin-top:12px;padding:10px;border-radius:10px;background:#f5f2f8;color:#6f6478;font-size:.69rem;line-height:1.4}
 #textCard.disabled{opacity:.54}
 #textCard.disabled .text-controls{pointer-events:none}
@@ -255,10 +292,17 @@ body.desktop .desktop-badge{display:inline-flex}
     <button class="btn primary desktop-only" id="changeSourceBtn">Ouvrir une application</button>
   </div>
 
+  <div class="mode-switch" id="modeSwitch">
+    <button class="btn active" data-preview-mode="edit">Édition</button>
+    <button class="btn" data-preview-mode="preview">Aperçu plein écran</button>
+    <button class="btn" data-preview-mode="android">Android exact</button>
+  </div>
+
   <div class="top-actions">
     <button class="btn desktop-only" id="openProjectBtn">Ouvrir</button>
     <button class="btn desktop-only" id="saveProjectBtn">Enregistrer</button>
     <button class="btn primary desktop-only" id="exportChatGPTBtn">Exporter pour ChatGPT</button>
+    <button class="btn desktop-only" id="openAsAppBtn">Ouvrir comme appli</button>
     <button class="btn" id="settingsBtn">⚙ Paramètres</button>
     <button class="btn" id="reloadBtn">Recharger</button>
   </div>
@@ -280,6 +324,20 @@ body.desktop .desktop-badge{display:inline-flex}
         <span>Choisis la source à modifier visuellement.</span>
       </div>
       <button class="source-close" id="sourceCloseBtn" type="button">×</button>
+    </div>
+    <div class="device-kind-wrap">
+      <div class="device-kind-title">1. Choisis d’abord le type d’écran à reproduire</div>
+      <div class="device-kind-grid" id="deviceKindGrid">
+        <button class="device-kind active" type="button" data-device-kind="smartphone"><b>▯</b><span>Smartphone</span></button>
+        <button class="device-kind" type="button" data-device-kind="tablet"><b>▭</b><span>Tablette</span></button>
+        <button class="device-kind" type="button" data-device-kind="tv"><b>▰</b><span>Télé / TV</span></button>
+        <button class="device-kind" type="button" data-device-kind="desktop"><b>▱</b><span>Bureau</span></button>
+        <button class="device-kind" type="button" data-device-kind="custom"><b>⌗</b><span>Autre</span></button>
+      </div>
+      <div class="custom-device-fields" id="customDeviceFields">
+        <label class="field"><span>Largeur logique</span><input id="customDeviceWidth" type="number" min="240" value="412"></label>
+        <label class="field"><span>Hauteur logique</span><input id="customDeviceHeight" type="number" min="240" value="915"></label>
+      </div>
     </div>
     <label class="source-url">
       <span>URL d’une application web / PWA</span>
@@ -336,6 +394,8 @@ body.desktop .desktop-badge{display:inline-flex}
   </div>
 </div>
 
+<div class="preview-exit" id="previewExit">Échap · retour à l’édition</div>
+
 <main>
   <section class="workspace">
     <div class="stage" id="stage">
@@ -343,7 +403,9 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="ruler-x" id="rulerX"></div>
       <div class="ruler-y" id="rulerY"></div>
       <div class="device" id="device">
+        <div class="android-status" id="androidStatus"><span id="androidClock">12:00</span><span class="icons">● ◒ ▰</span></div>
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
+        <div class="android-nav" id="androidNav"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
       </div>
     </div>
@@ -359,9 +421,14 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="390x844">390 × 844</option>
           <option value="360x800">Téléphone compact · 360 × 800</option>
           <option value="768x1024">Tablette · 768 × 1024</option>
+          <option value="1280x720">Télé / TV HD · 1280 × 720</option>
+          <option value="1920x1080">Télé / TV Full HD · 1920 × 1080</option>
           <option value="1024x768">Bureau compact · 1024 × 768</option>
           <option value="1366x768">Bureau · 1366 × 768</option>
+          <option value="1440x900">Bureau large · 1440 × 900</option>
+          <option value="custom">Autre / personnalisé</option>
         </select></div>
+        <div class="field" id="customScreenSize" style="display:none"><label>Dimensions personnalisées</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px"><input id="screenCustomW" type="number" min="240" value="412"><input id="screenCustomH" type="number" min="240" value="915"></div></div>
         <div class="field"><label>Zoom PC</label><select id="zoom">
           <option value="1">100 %</option><option value=".9">90 %</option><option value=".8">80 %</option><option value=".7">70 %</option>
         </select></div>
