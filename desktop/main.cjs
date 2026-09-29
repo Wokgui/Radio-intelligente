@@ -903,9 +903,6 @@ ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
   }catch(error){return {ok:false,error:'Matrice de tests impossible : '+String(error&&error.message||error),results}}
 });
 
-ipcMain.handle('source:open-url'');
-}
-
 function hashText(value){
   return crypto.createHash('sha256').update(String(value||''),'utf8').digest('hex');
 }
