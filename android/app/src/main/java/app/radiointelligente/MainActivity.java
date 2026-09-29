@@ -48,6 +48,8 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(111, 66, 193));
         getWindow().setNavigationBarColor(Color.BLACK);
 
+        WebView.setWebContentsDebuggingEnabled(true);
+
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
