@@ -2,10 +2,10 @@
   'use strict';
 
   const panel = document.getElementById('uiPanel');
-  if (!panel || document.getElementById('veLauncher')) return;
+  if (document.getElementById('veLauncher')) return;
 
   const params = new URLSearchParams(location.search);
-  const hosted = params.get('visual-editor') === '1';
+  const hosted = params.get('visual-editor') === '1' || window.__APP_INTERFACE_STUDIO_HOSTED__ === true;
   const GUIDE_THRESHOLD = 5;
 
   const launcher = document.createElement('button');
@@ -13,7 +13,11 @@
   launcher.className = 've-launcher';
   launcher.type = 'button';
   launcher.textContent = '✥ Activer l’éditeur visuel';
-  panel.appendChild(launcher);
+  if (panel) panel.appendChild(launcher);
+  else {
+    launcher.classList.add('ve-launcher-generic');
+    document.body.appendChild(launcher);
+  }
 
   const toolbar = document.createElement('aside');
   toolbar.className = 've-toolbar';
@@ -70,7 +74,7 @@
   function emit(type, payload) {
     if (window.parent === window) return;
     try {
-      window.parent.postMessage({ source: 'radio-visual-editor', type: type, payload: payload || {} }, location.origin);
+      window.parent.postMessage({ source: 'app-visual-editor', type: type, payload: payload || {} }, '*');
     } catch (_) {}
   }
 
@@ -868,7 +872,7 @@
 
   function exportProject() {
     return {
-      format: 'radio-layout-project',
+      format: 'app-layout-project',
       version: 1,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -878,7 +882,7 @@
   }
 
   function importProject(project) {
-    if (!project || project.format !== 'radio-layout-project') return false;
+    if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -1075,9 +1079,9 @@
   }, true);
 
   window.addEventListener('message', function (event) {
-    if (event.origin !== location.origin) return;
+    if (event.source !== window.parent) return;
     const data = event.data || {};
-    if (data.source !== 'radio-layout-host') return;
+    if (data.source !== 'app-layout-host' && data.source !== 'radio-layout-host') return;
     const payload = data.payload || {};
 
     if (data.type === 'enable') enable();

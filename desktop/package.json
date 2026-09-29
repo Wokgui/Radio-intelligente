@@ -1,8 +1,8 @@
 {
-  "name": "radio-interface-studio",
-  "version": "1.0.0",
+  "name": "app-interface-studio",
+  "version": "2.0.0",
   "private": true,
-  "description": "Éditeur visuel Windows pour Radio intelligente",
+  "description": "Éditeur visuel universel Windows pour applications web, PWA et interfaces HTML",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
@@ -14,8 +14,8 @@
     "electron-builder": "24.13.3"
   },
   "build": {
-    "appId": "fr.wokgui.radiointerfacestudio",
-    "productName": "Radio Interface Studio",
+    "appId": "fr.wokgui.appinterfacestudio",
+    "productName": "App Interface Studio",
     "directories": {
       "output": "dist"
     },
@@ -63,6 +63,6 @@
         }
       ]
     },
-    "artifactName": "Radio-Interface-Studio-${version}-portable-${arch}.${ext}"
+    "artifactName": "App-Interface-Studio-${version}-portable-${arch}.${ext}"
   }
 }
