@@ -1628,7 +1628,21 @@ body.desktop .desktop-badge{display:inline-flex}
       darkMode:document.getElementById('systemDarkMode').checked,
       keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
     });
-    postTo(rec.iframe,'disable');
+    postTo(rec.iframe,activeMultiRec===rec?'enable':'disable');
+  }
+
+  function activateMultiEditor(rec){
+    if(!rec)return;
+    if(activeMultiRec&&activeMultiRec!==rec)postTo(activeMultiRec.iframe,'disable');
+    activeMultiRec=rec;
+    multiFrames.forEach(function(item){
+      if(item.card)item.card.classList.toggle('editing',item===rec);
+      if(item.editButton)item.editButton.textContent=item===rec?'Édition active':'Éditer ici';
+    });
+    postTo(frame,'disable');
+    sendMultiProject(rec);
+    postTo(rec.iframe,'enable');
+    setStatus('Édition multi-écrans active : '+rec.name+'. Les outils de droite modifient ce viewport.');
   }
 
   async function syncMultiPreview(){
@@ -1639,7 +1653,8 @@ body.desktop .desktop-badge{display:inline-flex}
       if(project){
         project.source=currentSource;
         multiProject=project;
-        multiFrames.forEach(sendMultiProject);
+        if(activeMultiRec)postTo(frame,'load-project',{project:project});
+        multiFrames.forEach(function(rec){if(rec!==activeMultiRec)sendMultiProject(rec)});
       }
     }finally{multiSyncBusy=false}
   }
@@ -1665,12 +1680,17 @@ body.desktop .desktop-badge{display:inline-flex}
     ];
     configs.forEach(function(cfg){
       var card=document.createElement('div');card.className='multi-card';
-      var head=document.createElement('div');head.className='multi-card-head';head.innerHTML='<strong>'+cfg.name+'</strong><span>'+cfg.width+' × '+cfg.height+'</span>';
+      var head=document.createElement('div');head.className='multi-card-head';
+      var title=document.createElement('strong');title.textContent=cfg.name;
+      var sizeLabel=document.createElement('span');sizeLabel.textContent=cfg.width+' × '+cfg.height;
+      var editButton=document.createElement('button');editButton.className='multi-edit-btn';editButton.textContent='Éditer ici';
+      head.append(title,sizeLabel,editButton);
       var viewport=document.createElement('div');viewport.className='multi-viewport';
       var inner=document.createElement('div');inner.className='multi-inner';
       var iframe=document.createElement('iframe');iframe.title=cfg.name;iframe.src=currentSource.url;
       inner.appendChild(iframe);viewport.appendChild(inner);card.append(head,viewport);multiPreviewGrid.appendChild(card);
-      var rec={iframe:iframe,viewport:viewport,inner:inner,width:cfg.width,height:cfg.height,name:cfg.name};
+      var rec={iframe:iframe,viewport:viewport,inner:inner,width:cfg.width,height:cfg.height,name:cfg.name,card:card,editButton:editButton};
+      editButton.addEventListener('click',function(){activateMultiEditor(rec)});
       multiFrames.push(rec);
       requestAnimationFrame(function(){fitMultiRecord(rec)});
     });
@@ -1678,7 +1698,14 @@ body.desktop .desktop-badge{display:inline-flex}
     setTimeout(function(){multiFrames.forEach(fitMultiRecord);if(desktop&&desktop.injectEditor)desktop.injectEditor()},350);
   }
 
-  function closeMultiPreview(){
+  async function closeMultiPreview(){
+    if(activeMultiRec){
+      var project=await requestProject();
+      if(project){multiProject=project;postTo(frame,'load-project',{project:project})}
+      postTo(activeMultiRec.iframe,'disable');
+      activeMultiRec=null;
+      postTo(frame,'enable');
+    }
     multiPreviewModal.classList.remove('visible');
     multiPreviewGrid.innerHTML='';
     multiFrames=[];
@@ -2020,8 +2047,12 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.source!=='app-visual-editor'&&data.source!=='radio-visual-editor')return;
     var p=data.payload||{};
 
-    if(multiRec){
+    if(multiRec&&multiRec!==activeMultiRec){
       if(data.type==='ready')sendMultiProject(multiRec);
+      return;
+    }
+    if(multiRec===activeMultiRec&&data.type==='ready'){
+      sendMultiProject(multiRec);
       return;
     }
 
