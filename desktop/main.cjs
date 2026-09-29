@@ -8,7 +8,9 @@ let studioBaseUrl = '';
 let targetServer;
 let targetBaseUrl = '';
 let mainWindow;
+const previewWindows = new Set();
 const injectedFrames = new Set();
+let editorPreviewProfile = { mode:'edit' };
 
 const MIME = {
   '.html':'text/html; charset=utf-8',
@@ -111,6 +113,76 @@ function normalizeUrl(value){
   }catch(_){return null}
 }
 
+
+function androidWebViewUserAgent(){
+  const chrome=process.versions.chrome||'127.0.0.0';
+  return 'Mozilla/5.0 (Linux; Android 16; SM-S918B Build/BP2A.250705.008; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/'+chrome+' Mobile Safari/537.36';
+}
+
+function androidRuntimeProfile(source, options){
+  const opts=options||{};
+  const label=String((source&&source.label)||'');
+  const url=String((source&&source.url)||'');
+  const radio=/radio-intelligente|radio intelligente|app\.local/i.test(label+' '+url);
+  return {
+    mode:'android',
+    userAgent:androidWebViewUserAgent(),
+    topInset:Math.max(0,Number(opts.topInset)||28),
+    bottomInset:Math.max(0,Number(opts.bottomInset)||24),
+    leftInset:Math.max(0,Number(opts.leftInset)||0),
+    rightInset:Math.max(0,Number(opts.rightInset)||0),
+    statusBarColor:opts.statusBarColor||(radio?'#6f42c1':'#111111'),
+    navigationBarColor:opts.navigationBarColor||'#000000',
+    backgroundColor:opts.backgroundColor||'#ffffff',
+    mainActivity:{
+      profile:radio?'radio-intelligente':'generic-webview',
+      javaScriptEnabled:true,
+      domStorageEnabled:true,
+      databaseEnabled:true,
+      allowFileAccess:true,
+      allowContentAccess:true,
+      mediaPlaybackRequiresUserGesture:false,
+      loadWithOverviewMode:false,
+      useWideViewPort:false,
+      builtInZoomControls:false,
+      displayZoomControls:false,
+      mixedContentMode:'always-allow',
+      overScrollMode:'never',
+      externalMainFrameLinks:true,
+      fileChooser:true
+    }
+  };
+}
+
+async function applyPreviewProfileToFrame(frame, profile){
+  if(!frame)return false;
+  const p=profile||{mode:'edit'};
+  try{
+    const payload=JSON.stringify(p);
+    await frame.executeJavaScript(
+      "(function(){"+
+      "var p="+payload+";"+
+      "window.__APP_INTERFACE_STUDIO_RUNTIME__=p;"+
+      "window.__MAIN_ACTIVITY_PROFILE__=p.mainActivity||null;"+
+      "if(!window.__AIS_ORIGINAL_UA__)window.__AIS_ORIGINAL_UA__=navigator.userAgent;"+
+      "try{Object.defineProperty(navigator,'userAgent',{configurable:true,get:function(){return p.userAgent||window.__AIS_ORIGINAL_UA__;}});}catch(e){}"+
+      "var old=document.getElementById('app-interface-runtime-style');if(old)old.remove();"+
+      "if(p.mode==='preview'||p.mode==='android'){"+
+      "var s=document.createElement('style');s.id='app-interface-runtime-style';"+
+      "s.textContent='html{scrollbar-width:none!important;overscroll-behavior:none!important;}html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}body{overscroll-behavior:none!important;}';"+
+      "(document.head||document.documentElement).appendChild(s);"+
+      "}"+
+      "var root=document.documentElement;"+
+      "root.style.setProperty('--ais-safe-top',(p.topInset||0)+'px');"+
+      "root.style.setProperty('--ais-safe-right',(p.rightInset||0)+'px');"+
+      "root.style.setProperty('--ais-safe-bottom',(p.bottomInset||0)+'px');"+
+      "root.style.setProperty('--ais-safe-left',(p.leftInset||0)+'px');"+
+      "})();"
+    );
+    return true;
+  }catch(_){return false}
+}
+
 function editorAssets(){
   return {
     js:fs.readFileSync(path.join(webRoot(),'visual-editor.js'),'utf8'),
@@ -132,6 +204,7 @@ async function injectEditorIntoFrame(frame){
       "})();"
     );
     await frame.executeJavaScript(assets.js);
+    await applyPreviewProfileToFrame(frame,editorPreviewProfile);
     injectedFrames.add(frame.routingId);
     return true;
   }catch(error){
@@ -210,7 +283,8 @@ function createWindow(){
       nodeIntegration:false,
       sandbox:true,
       webSecurity:false,
-      allowRunningInsecureContent:true
+      allowRunningInsecureContent:true,
+      autoplayPolicy:'no-user-gesture-required'
     }
   });
 
@@ -245,6 +319,105 @@ function createWindow(){
     return {action:'deny'};
   });
 }
+
+
+function openAsAppWindow(payload){
+  const data=payload||{};
+  const source=data.source||{};
+  const target=normalizeUrl(source.url);
+  if(!target)return {ok:false,error:'Aucune application valide à ouvrir.'};
+
+  const width=Math.max(240,Math.round(Number(data.width)||412));
+  const height=Math.max(320,Math.round(Number(data.height)||915));
+  const android=!!data.androidExact;
+  const profile=android
+    ? androidRuntimeProfile(source,data.profile||{})
+    : {
+        mode:'preview',
+        userAgent:null,
+        topInset:Math.max(0,Number(data.profile&&data.profile.topInset)||0),
+        rightInset:Math.max(0,Number(data.profile&&data.profile.rightInset)||0),
+        bottomInset:Math.max(0,Number(data.profile&&data.profile.bottomInset)||0),
+        leftInset:Math.max(0,Number(data.profile&&data.profile.leftInset)||0)
+      };
+
+  const runtimeUrl=new URL(studioBaseUrl+'/app-runtime.html');
+  runtimeUrl.searchParams.set('target',target);
+  runtimeUrl.searchParams.set('mode',android?'android':'preview');
+  runtimeUrl.searchParams.set('top',String(profile.topInset||0));
+  runtimeUrl.searchParams.set('bottom',String(profile.bottomInset||0));
+  runtimeUrl.searchParams.set('left',String(profile.leftInset||0));
+  runtimeUrl.searchParams.set('right',String(profile.rightInset||0));
+  runtimeUrl.searchParams.set('status',profile.statusBarColor||'#111111');
+  runtimeUrl.searchParams.set('nav',profile.navigationBarColor||'#000000');
+  runtimeUrl.searchParams.set('background',profile.backgroundColor||'#ffffff');
+
+  const win=new BrowserWindow({
+    width,
+    height,
+    useContentSize:true,
+    frame:false,
+    resizable:false,
+    maximizable:false,
+    fullscreenable:true,
+    backgroundColor:profile.backgroundColor||'#000000',
+    title:(source.label||'Application')+' — aperçu',
+    autoHideMenuBar:true,
+    webPreferences:{
+      contextIsolation:true,
+      nodeIntegration:false,
+      sandbox:true,
+      webSecurity:false,
+      allowRunningInsecureContent:true,
+      autoplayPolicy:'no-user-gesture-required',
+      backgroundThrottling:false
+    }
+  });
+  previewWindows.add(win);
+  if(profile.userAgent)win.webContents.setUserAgent(profile.userAgent);
+
+  win.webContents.on('before-input-event',(event,input)=>{
+    if(input.key==='Escape'){
+      event.preventDefault();
+      win.close();
+    }
+  });
+  win.webContents.setWindowOpenHandler(({url})=>{
+    if(/^https?:/i.test(url))shell.openExternal(url);
+    return {action:'deny'};
+  });
+  win.webContents.on('did-frame-finish-load',(_event,isMainFrame,processId,routingId)=>{
+    if(isMainFrame)return;
+    try{
+      const frame=webFrameMain.fromId(processId,routingId);
+      if(frame)applyPreviewProfileToFrame(frame,profile);
+    }catch(_){}
+  });
+  win.on('closed',()=>previewWindows.delete(win));
+  win.loadURL(runtimeUrl.href);
+  return {ok:true,width,height,androidExact:android};
+}
+
+ipcMain.handle('preview:set-mode',async (_event,payload)=>{
+  const mode=String(payload&&payload.mode||'edit');
+  if(mode==='android')editorPreviewProfile=androidRuntimeProfile(payload&&payload.source,payload&&payload.profile);
+  else editorPreviewProfile={
+    mode:mode==='preview'?'preview':'edit',
+    userAgent:null,
+    topInset:Math.max(0,Number(payload&&payload.profile&&payload.profile.topInset)||0),
+    rightInset:Math.max(0,Number(payload&&payload.profile&&payload.profile.rightInset)||0),
+    bottomInset:Math.max(0,Number(payload&&payload.profile&&payload.profile.bottomInset)||0),
+    leftInset:Math.max(0,Number(payload&&payload.profile&&payload.profile.leftInset)||0)
+  };
+  let frames=[];
+  try{frames=mainWindow?mainWindow.webContents.mainFrame.frames||[]:[]}catch(_){}
+  for(const frame of frames)await applyPreviewProfileToFrame(frame,editorPreviewProfile);
+  return {ok:true,profile:editorPreviewProfile};
+});
+
+ipcMain.handle('preview:open-app',async (_event,payload)=>{
+  try{return openAsAppWindow(payload)}catch(error){return {ok:false,error:String(error&&error.message||error)}}
+});
 
 ipcMain.handle('source:open-url',async (_event,value)=>{
   const url=normalizeUrl(value);
