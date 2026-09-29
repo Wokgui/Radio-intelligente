@@ -2411,7 +2411,7 @@
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 5,
+      version: 6,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
       editingBreakpoint: editingBreakpoint,
