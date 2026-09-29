@@ -172,7 +172,14 @@ body.desktop .desktop-badge{display:inline-flex}
 <body>
 <header>
   <div class="brand">
-    <div class="brand-logo">✥</div>
+    <div class="brand-logo"><svg viewBox="0 0 64 64" aria-hidden="true">
+  <defs><linearGradient id="aisg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#6D4AFF"/><stop offset=".55" stop-color="#8F4BFF"/><stop offset="1" stop-color="#D85CFF"/></linearGradient></defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#aisg)"/>
+  <path d="M15 21h34M15 32h34M15 43h34M21 15v34M32 15v34M43 15v34" stroke="#fff" stroke-opacity=".18" stroke-width="1.6"/>
+  <rect x="18" y="18" width="28" height="28" rx="7" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".32"/>
+  <path d="M23.3 22.5l15.2 7.1-6.2 2.5 4.9 9.7-4.1 2.1-5-9.9-4.8 5V22.5z" fill="#fff" stroke="#fff" stroke-width=".9" stroke-linejoin="round"/>
+  <circle cx="45" cy="18.8" r="3.1" fill="#FFF4C2"/><path d="M45 13.7v2.2M45 21.7v2.2M39.9 18.8h2.2M47.9 18.8h2.2" stroke="#FFF4C2" stroke-width="1.7" stroke-linecap="round"/>
+</svg></div>
     <div>
       <strong>App Interface Studio <span class="desktop-badge">Windows</span></strong>
       <small>Éditeur visuel universel pour applications web et interfaces HTML</small>
@@ -195,6 +202,14 @@ body.desktop .desktop-badge{display:inline-flex}
 <div class="source-modal" id="sourceModal" hidden>
   <div class="source-dialog">
     <div class="source-dialog-head">
+      <div class="source-dialog-logo"><svg viewBox="0 0 64 64" aria-hidden="true">
+  <defs><linearGradient id="aisg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#6D4AFF"/><stop offset=".55" stop-color="#8F4BFF"/><stop offset="1" stop-color="#D85CFF"/></linearGradient></defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#aisg)"/>
+  <path d="M15 21h34M15 32h34M15 43h34M21 15v34M32 15v34M43 15v34" stroke="#fff" stroke-opacity=".18" stroke-width="1.6"/>
+  <rect x="18" y="18" width="28" height="28" rx="7" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".32"/>
+  <path d="M23.3 22.5l15.2 7.1-6.2 2.5 4.9 9.7-4.1 2.1-5-9.9-4.8 5V22.5z" fill="#fff" stroke="#fff" stroke-width=".9" stroke-linejoin="round"/>
+  <circle cx="45" cy="18.8" r="3.1" fill="#FFF4C2"/><path d="M45 13.7v2.2M45 21.7v2.2M39.9 18.8h2.2M47.9 18.8h2.2" stroke="#FFF4C2" stroke-width="1.7" stroke-linecap="round"/>
+</svg></div>
       <div>
         <strong>Ouvrir une application</strong>
         <span>Choisis la source à modifier visuellement.</span>
@@ -235,7 +250,10 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="412x915">Galaxy S23 Ultra · 412 × 915</option>
           <option value="384x854">Android · 384 × 854</option>
           <option value="390x844">390 × 844</option>
-          <option value="360x800">360 × 800</option>
+          <option value="360x800">Téléphone compact · 360 × 800</option>
+          <option value="768x1024">Tablette · 768 × 1024</option>
+          <option value="1024x768">Bureau compact · 1024 × 768</option>
+          <option value="1366x768">Bureau · 1366 × 768</option>
         </select></div>
         <div class="field"><label>Zoom PC</label><select id="zoom">
           <option value="1">100 %</option><option value=".9">90 %</option><option value=".8">80 %</option><option value=".7">70 %</option>
@@ -443,6 +461,7 @@ body.desktop .desktop-badge{display:inline-flex}
     device.style.width=w+'px';
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
+    device.classList.toggle('wide',w>=700);
     rulerX.style.width=w+'px';
     rulerY.style.height=h+'px';
     stage.style.width=(31+w*z+20)+'px';
