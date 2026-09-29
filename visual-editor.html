@@ -1860,6 +1860,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('breakpoint-edit',{breakpoint:breakpointEdit.value||'base'});
       post('get-css');
       post('get-layers');
+      post('get-components');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
@@ -1878,7 +1879,12 @@ body.desktop .desktop-badge{display:inline-flex}
       document.getElementById('spacingDetail').textContent='Bords les plus proches — gauche : '+near(p.left)+' · haut : '+near(p.top)+' · droite : '+near(p.right)+' · bas : '+near(p.bottom)+'. Marges du parent : '+Math.round(q.left||0)+' / '+Math.round(q.top||0)+' / '+Math.round(q.right||0)+' / '+Math.round(q.bottom||0)+' px.';
     }
     if(data.type==='layers')renderLayers(p.tree||[]);
+    if(data.type==='components')renderComponents(p.items||[]);
+    if(data.type==='tokens')syncTokenInputs(p.tokens||{});
+    if(data.type==='prototype')prototypeStatus.textContent='Prototype : '+Object.keys(p.links||{}).length+' lien(s) enregistré(s).';
     if(data.type==='audit')renderAudit(p);
+    if(data.type==='audit-fixed'){setStatus((p.count||0)+' correction(s) automatique(s) appliquée(s).');post('get-css')}
+    if(data.type==='stress')setStatus(p.mode==='normal'?'Contenu normal restauré.':'Test de contenu : '+p.mode);
     if(data.type==='alt-measure'){
       document.getElementById('spacingDetail').textContent='Alt · '+(p.selector||'objet')+' : horizontal '+Math.round(p.horizontal||0)+' px · vertical '+Math.round(p.vertical||0)+' px.';
     }
