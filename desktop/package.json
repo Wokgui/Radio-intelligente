@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows responsive avec multi-écrans, calques, Flex/Grid, audit et comparaison Android",
+  "description": "Éditeur visuel universel Windows avec composants, design tokens, prototype, régression visuelle et GitHub",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",

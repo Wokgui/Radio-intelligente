@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, clipboard, shell, session, webFrameMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, clipboard, shell, session, webFrameMain, nativeImage } = require('electron');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -538,6 +538,153 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
     }
     return {ok:true,cssPath,htmlPath:local.html,backupPath};
   }catch(error){return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}}
+});
+
+
+function sourceRoot(source){
+  const local=localSourceEntry(source);
+  if(!local)return null;
+  return local.root||path.dirname(local.html);
+}
+
+function commandExists(command){
+  try{
+    const finder=process.platform==='win32'?'where.exe':'which';
+    execFileSync(finder,[command],{encoding:'utf8',windowsHide:true,timeout:3000});
+    return true;
+  }catch(_){return false}
+}
+
+ipcMain.handle('source:git-status',async (_event,payload)=>{
+  const root=sourceRoot(payload&&payload.source);
+  if(!root)return {ok:false,error:'GitHub direct nécessite un dossier ou fichier HTML local dans un dépôt Git.'};
+  try{
+    const inside=execFileSync('git',['-C',root,'rev-parse','--is-inside-work-tree'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(inside!=='true')return {ok:false,error:'Le dossier local n’est pas un dépôt Git.'};
+    const branch=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    const remote=execFileSync('git',['-C',root,'remote','get-url','origin'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    const status=execFileSync('git',['-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    return {ok:true,root,branch,remote,status,ghAvailable:commandExists('gh')};
+  }catch(error){return {ok:false,error:'Git indisponible ou dépôt invalide : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('source:git-publish',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Publication GitHub disponible uniquement pour une source HTML locale.'};
+  const root=local.root||path.dirname(local.html);
+  const branch=String(payload&&payload.branch||('app-interface-studio-'+Date.now())).replace(/[^a-zA-Z0-9._\/-]/g,'-');
+  const title=String(payload&&payload.title||'Mise à jour interface App Interface Studio');
+  const body=String(payload&&payload.body||'Modifications visuelles générées avec App Interface Studio.');
+  try{
+    execFileSync('git',['-C',root,'rev-parse','--is-inside-work-tree'],{encoding:'utf8',windowsHide:true,timeout:5000});
+    const current=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(current!==branch){
+      try{execFileSync('git',['-C',root,'checkout','-b',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
+      catch(_){execFileSync('git',['-C',root,'checkout',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
+    }
+    const files=[path.relative(root,local.html)];
+    const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
+    if(fs.existsSync(generated))files.push(path.relative(root,generated));
+    execFileSync('git',['-C',root,'add','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
+    const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
+    execFileSync('git',['-C',root,'commit','-m',title],{encoding:'utf8',windowsHide:true,timeout:15000});
+    execFileSync('git',['-C',root,'push','-u','origin',branch],{encoding:'utf8',windowsHide:true,timeout:30000});
+
+    let prUrl='';
+    if(commandExists('gh')){
+      try{
+        prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
+      }catch(_){}
+    }
+    return {ok:true,branch,staged,prUrl};
+  }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
+});
+
+async function captureSourceAtSize(source,width,height,css){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)throw new Error('Source invalide.');
+  const win=new BrowserWindow({
+    show:false,
+    width:Math.max(240,Math.round(width)),
+    height:Math.max(240,Math.round(height)),
+    useContentSize:true,
+    frame:false,
+    webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}
+  });
+  try{
+    await win.loadURL(target);
+    await new Promise(resolve=>setTimeout(resolve,450));
+    if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */'){
+      await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
+      await new Promise(resolve=>setTimeout(resolve,120));
+    }
+    const image=await win.webContents.capturePage({x:0,y:0,width:Math.round(width),height:Math.round(height)});
+    return image;
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('capture:batch',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const configs=Array.isArray(payload&&payload.configs)?payload.configs:[];
+  if(!source||!source.url||!configs.length)return {ok:false,error:'Source ou formats de capture manquants.'};
+  const dirResult=await dialog.showOpenDialog({title:'Dossier des captures multi-écrans',properties:['openDirectory','createDirectory']});
+  if(dirResult.canceled||!dirResult.filePaths[0])return {ok:false,canceled:true};
+  const dir=dirResult.filePaths[0];
+  const files=[];
+  try{
+    for(const cfg of configs){
+      const width=Math.max(240,Number(cfg.width)||412),height=Math.max(240,Number(cfg.height)||915);
+      const image=await captureSourceAtSize(source,width,height,payload.css);
+      const safeName=String(cfg.name||width+'x'+height).replace(/[^a-zA-Z0-9_-]+/g,'-');
+      const file=path.join(dir,safeName+'-'+width+'x'+height+'.png');
+      fs.writeFileSync(file,image.toPNG());
+      files.push(file);
+    }
+    return {ok:true,dir,files};
+  }catch(error){return {ok:false,error:'Capture multi-écrans impossible : '+String(error&&error.message||error)}}
+});
+
+function imageFromPayload(value){
+  if(!value)return null;
+  if(String(value).startsWith('data:'))return nativeImage.createFromDataURL(String(value));
+  if(fs.existsSync(String(value)))return nativeImage.createFromPath(String(value));
+  return null;
+}
+
+ipcMain.handle('regression:compare',async (_event,payload)=>{
+  try{
+    const baseline=imageFromPayload(payload&&payload.baseline);
+    const current=imageFromPayload(payload&&payload.current);
+    if(!baseline||baseline.isEmpty()||!current||current.isEmpty())return {ok:false,error:'Images de comparaison invalides.'};
+    const size=baseline.getSize();
+    const cur=current.resize({width:size.width,height:size.height,quality:'best'});
+    const a=baseline.toBitmap(),b=cur.toBitmap();
+    if(a.length!==b.length)return {ok:false,error:'Tailles bitmap incompatibles.'};
+    const diff=Buffer.alloc(a.length);
+    let changed=0,total=size.width*size.height;
+    for(let i=0;i<a.length;i+=4){
+      const db=Math.abs(a[i]-b[i]),dg=Math.abs(a[i+1]-b[i+1]),dr=Math.abs(a[i+2]-b[i+2]);
+      const delta=(dr+dg+db)/3;
+      if(delta>12)changed+=1;
+      if(delta>12){diff[i]=40;diff[i+1]=40;diff[i+2]=230;diff[i+3]=255}
+      else{
+        const g=Math.round((a[i]+a[i+1]+a[i+2])/3*.45+120);
+        diff[i]=g;diff[i+1]=g;diff[i+2]=g;diff[i+3]=150;
+      }
+    }
+    const diffImage=nativeImage.createFromBitmap(diff,{width:size.width,height:size.height,scaleFactor:1});
+    return {ok:true,changedPixels:changed,totalPixels:total,differencePercent:Math.round(changed/Math.max(1,total)*10000)/100,diffDataUrl:diffImage.toDataURL()};
+  }catch(error){return {ok:false,error:'Comparaison visuelle impossible : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('capture:current-source',async (_event,payload)=>{
+  try{
+    const width=Math.max(240,Number(payload&&payload.width)||412),height=Math.max(240,Number(payload&&payload.height)||915);
+    const image=await captureSourceAtSize(payload&&payload.source,width,height,payload&&payload.css);
+    return {ok:true,dataUrl:image.toDataURL(),width,height};
+  }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
 
 ipcMain.handle('source:open-url',async (_event,value)=>{

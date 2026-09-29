@@ -292,6 +292,18 @@ body.desktop .desktop-badge{display:inline-flex}
 .compare-controls{display:grid;gap:7px}
 .compare-status{font-size:.68rem;color:var(--muted);line-height:1.4}
 .layout-note{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#69567c;font-size:.67rem;line-height:1.4}
+
+.token-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.token-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.component-list,.version-list{display:grid;gap:6px;max-height:230px;overflow:auto;margin-top:8px}
+.component-item,.version-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.component-item strong,.version-item strong{font-size:.69rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.component-item small,.version-item small{display:block;color:var(--muted);font-size:.62rem;margin-top:2px}
+.mini-actions{display:flex;gap:4px}
+.mini-actions button{min-width:28px;height:28px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:.62rem;font-weight:800}
+.regression-preview{display:none;width:100%;max-height:220px;object-fit:contain;margin-top:8px;border:1px solid var(--line);border-radius:10px;background:#eee}
+.regression-preview.visible{display:block}
+.prototype-status{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#665572;font-size:.67rem;line-height:1.4}
 @media(max-width:1100px){
   body{overflow:auto}
   main{height:auto;min-height:calc(100vh - 76px);grid-template-columns:1fr;overflow:visible}
@@ -696,6 +708,108 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
 
+
+    <section class="card">
+      <h2>Design system <small>tokens globaux</small></h2>
+      <div class="token-grid">
+        <div class="field"><label>Unité d’espacement</label><input id="tokenSpacing" type="number" min="1" value="8"></div>
+        <div class="field"><label>Rayon des cartes</label><input id="tokenRadius" type="number" min="0" value="12"></div>
+        <div class="field"><label>Titre</label><input id="tokenTitle" type="number" min="8" value="20"></div>
+        <div class="field"><label>Couleur principale</label><input id="tokenPrimary" type="color" value="#6f49f5"></div>
+        <div class="field"><label>Surface</label><input id="tokenSurface" type="color" value="#ffffff"></div>
+      </div>
+      <button class="btn primary" id="applyTokensBtn" style="width:100%;margin-top:8px">Appliquer les tokens globaux</button>
+      <div class="token-actions">
+        <button class="tool" data-token-apply="primary">Couleur</button>
+        <button class="tool" data-token-apply="surface">Surface</button>
+        <button class="tool" data-token-apply="title">Titre</button>
+        <button class="tool" data-token-apply="radius">Rayon</button>
+        <button class="tool" data-token-apply="spacing">Gap</button>
+        <button class="tool" id="snapToTokenGrid">Grille = unité</button>
+      </div>
+      <p>Les valeurs deviennent des variables CSS réutilisables. La grille d’espacement peut suivre directement l’unité choisie.</p>
+    </section>
+
+    <section class="card">
+      <h2>Composants <small>réutilisables + variantes</small></h2>
+      <div class="fields">
+        <div class="field"><label>Nom du composant</label><input id="componentName" type="text" placeholder="Bouton principal"></div>
+        <div class="field"><label>Variante</label><input id="variantName" type="text" placeholder="Désactivé"></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn wide" id="createComponentBtn">Créer depuis sélection</button>
+        <button class="btn wide" id="linkComponentBtn">Lier comme instance</button>
+        <button class="btn wide" id="updateComponentBtn">Mettre à jour toutes</button>
+      </div>
+      <div class="toolbar" style="margin-top:6px">
+        <button class="btn wide" id="saveVariantBtn">Enregistrer variante</button>
+        <button class="btn wide" id="applyVariantBtn">Appliquer variante</button>
+        <button class="btn wide" id="applyVariantAllBtn">Variante à toutes</button>
+      </div>
+      <div class="component-list" id="componentList"><div class="hint">Aucun composant.</div></div>
+    </section>
+
+    <section class="card">
+      <h2>États et animations <small>prototype interactif</small></h2>
+      <div class="fields">
+        <div class="field"><label>État à simuler</label><select id="interactiveState">
+          <option value="normal">Normal</option><option value="hover">Survol</option><option value="active">Appuyé</option><option value="focus">Focus</option><option value="disabled">Désactivé</option>
+        </select></div>
+        <div class="field"><label>Propriété animée</label><select id="animationProperty">
+          <option value="all">Tout</option><option value="transform">Transform</option><option value="opacity">Opacité</option><option value="background-color">Fond</option><option value="color">Texte</option>
+        </select></div>
+        <div class="field"><label>Durée ms</label><input id="animationDuration" type="number" min="0" value="180"></div>
+        <div class="field"><label>Easing</label><select id="animationEasing">
+          <option value="ease">ease</option><option value="ease-in-out">ease-in-out</option><option value="linear">linear</option><option value="cubic-bezier(.2,.8,.2,1)">fluide</option>
+        </select></div>
+      </div>
+      <button class="btn" id="applyAnimationBtn" style="width:100%;margin-top:8px">Appliquer animation</button>
+      <div class="field" style="margin-top:9px"><label>Cible du clic · sélecteur</label><input id="prototypeTarget" type="text" placeholder="#settings ou .page-player"></div>
+      <button class="btn" id="setPrototypeBtn" style="width:100%;margin-top:7px">Créer le lien de prototype</button>
+      <div class="prototype-status" id="prototypeStatus" style="margin-top:7px">En mode Aperçu, cliquer l’objet déclenchera sa cible.</div>
+    </section>
+
+
+    <section class="card">
+      <h2>Tests de contenu <small>cas extrêmes</small></h2>
+      <div class="pro-grid">
+        <button class="tool" data-stress="long-text">Textes très longs</button>
+        <button class="tool" data-stress="no-images">Images absentes</button>
+        <button class="tool" data-stress="empty">Contenu vide</button>
+        <button class="tool" data-stress="many-items">Beaucoup d’éléments</button>
+      </div>
+      <button class="btn" id="resetStressBtn" style="width:100%;margin-top:7px">Revenir au contenu normal</button>
+    </section>
+
+    <section class="card">
+      <h2>Historique visuel <small>points de contrôle</small></h2>
+      <div class="field"><label>Nom de la version</label><input id="versionName" type="text" placeholder="Avant refonte du lecteur"></div>
+      <button class="btn primary" id="saveNamedVersionBtn" style="width:100%;margin-top:7px">Créer un point de contrôle</button>
+      <div class="version-list" id="versionList"><div class="hint">Aucun point de contrôle.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Captures et régression <small>comparaison visuelle</small></h2>
+      <div class="toolbar">
+        <button class="btn wide" id="batchCaptureBtn">Capturer tous les formats</button>
+        <button class="btn wide" id="saveBaselineBtn">Définir référence</button>
+      </div>
+      <button class="btn" id="compareRegressionBtn" style="width:100%;margin-top:7px">Comparer à la référence</button>
+      <div class="compare-status" id="regressionStatus">Aucune référence visuelle.</div>
+      <img class="regression-preview" id="regressionDiff" alt="Différence visuelle">
+    </section>
+
+    <section class="card desktop-only">
+      <h2>GitHub <small>branche et Pull Request</small></h2>
+      <div class="field"><label>Branche</label><input id="gitBranch" type="text" value="app-interface-studio/ui-update"></div>
+      <div class="field" style="margin-top:7px"><label>Titre du commit / PR</label><input id="gitTitle" type="text" value="Mettre à jour l’interface"></div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="gitStatusBtn">Vérifier Git</button>
+        <button class="btn primary wide" id="gitPublishBtn">Publier branche et PR</button>
+      </div>
+      <div class="compare-status" id="gitStatusText">Disponible pour une application ouverte depuis un dossier Git local.</div>
+    </section>
+
     <section class="card">
       <h2>Simulation système <small>Android / accessibilité</small></h2>
       <div class="fields">
@@ -707,12 +821,15 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
       </div>
       <label class="checkline"><input id="systemDarkMode" type="checkbox"> Simuler le thème sombre</label>
+      <div class="field" style="margin-top:8px"><label>Clavier Android</label><select id="systemKeyboard">
+        <option value="0">Fermé</option><option value="220">Petit · 220 px</option><option value="280">Normal · 280 px</option><option value="340">Grand · 340 px</option>
+      </select></div>
       <p>Teste les interfaces avec les réglages système qui font souvent apparaître les textes coupés ou les chevauchements.</p>
     </section>
 
     <section class="card">
       <h2>Vérifier l’interface <small>audit automatique</small></h2>
-      <button class="btn primary" id="auditBtn" style="width:100%">Analyser l’écran actuel</button>
+      <div class="toolbar"><button class="btn primary wide" id="auditBtn">Analyser l’écran actuel</button><button class="btn wide" id="auditFixBtn">Corriger automatiquement</button></div>
       <div class="audit-summary" id="auditSummary"></div>
       <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
     </section>
@@ -844,6 +961,12 @@ body.desktop .desktop-badge{display:inline-flex}
   var compareStatus=document.getElementById('compareStatus');
   var multiPreviewModal=document.getElementById('multiPreviewModal');
   var multiPreviewGrid=document.getElementById('multiPreviewGrid');
+  var componentList=document.getElementById('componentList');
+  var versionList=document.getElementById('versionList');
+  var prototypeStatus=document.getElementById('prototypeStatus');
+  var regressionStatus=document.getElementById('regressionStatus');
+  var regressionDiff=document.getElementById('regressionDiff');
+  var gitStatusText=document.getElementById('gitStatusText');
 
   var hasSelection=false;
   var lastState=null;
@@ -856,6 +979,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var multiProject=null;
   var multiSyncTimer=null;
   var multiSyncBusy=false;
+  var namedVersions=[];
+  var componentCatalog=[];
+  var regressionBaseline=null;
 
   function postTo(target,type,payload){
     if(!target||!target.contentWindow)return;
@@ -1241,6 +1367,16 @@ body.desktop .desktop-badge{display:inline-flex}
 
     updateResponsiveControls(p);
     updateLayoutControls(p.parentLayout);
+    if(p.tokens)syncTokenInputs(p.tokens);
+    if(p.animation){
+      document.getElementById('animationProperty').value=p.animation.property||'all';
+      document.getElementById('animationDuration').value=Number(p.animation.duration)||0;
+      var easingOptions=Array.from(document.getElementById('animationEasing').options);
+      if(easingOptions.some(function(o){return o.value===p.animation.easing}))document.getElementById('animationEasing').value=p.animation.easing;
+    }
+    if(p.interactiveState)document.getElementById('interactiveState').value=p.interactiveState;
+    document.getElementById('prototypeTarget').value=p.prototypeTarget||'';
+    if(p.componentName)document.getElementById('componentName').value=p.componentName;
     if(selectionCount>1){
       responsiveSummary.textContent='Sélection multiple : déplace le groupe avec la souris ou les flèches. Les propriétés individuelles restent attachées à l’objet principal.';
     }
@@ -1279,7 +1415,7 @@ body.desktop .desktop-badge{display:inline-flex}
   function renderAudit(payload){
     payload=payload||{};
     var summary=payload.summary||{};
-    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span>';
+    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>';
     auditList.innerHTML='';
     var issues=payload.issues||[];
     if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
@@ -1337,7 +1473,8 @@ body.desktop .desktop-badge{display:inline-flex}
     postTo(rec.iframe,'environment-set',{
       fontScale:Number(document.getElementById('systemFontScale').value)||1,
       displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-      darkMode:document.getElementById('systemDarkMode').checked
+      darkMode:document.getElementById('systemDarkMode').checked,
+      keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
     });
     postTo(rec.iframe,'disable');
   }
@@ -1430,6 +1567,154 @@ body.desktop .desktop-badge{display:inline-flex}
     else setStatus((result&&result.error)||'Application au code impossible.',true);
   }
 
+
+  function renderComponents(items){
+    componentCatalog=Array.isArray(items)?items:[];
+    componentList.innerHTML='';
+    if(!componentCatalog.length){componentList.innerHTML='<div class="hint">Aucun composant.</div>';return}
+    componentCatalog.forEach(function(item){
+      var row=document.createElement('div');row.className='component-item';
+      var text=document.createElement('button');text.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit';
+      text.innerHTML='<strong></strong><small></small>';
+      text.querySelector('strong').textContent=item.name;
+      text.querySelector('small').textContent=(item.count||0)+' instance(s) · '+((item.variants||[]).length)+' variante(s)';
+      text.addEventListener('click',function(){document.getElementById('componentName').value=item.name});
+      var actions=document.createElement('div');actions.className='mini-actions';
+      var del=document.createElement('button');del.textContent='×';del.title='Supprimer le composant';
+      del.addEventListener('click',function(){post('component-delete',{name:item.name})});
+      actions.appendChild(del);row.append(text,actions);componentList.appendChild(row);
+    });
+  }
+
+  function renderVersions(){
+    versionList.innerHTML='';
+    if(!namedVersions.length){versionList.innerHTML='<div class="hint">Aucun point de contrôle.</div>';return}
+    namedVersions.slice().reverse().forEach(function(item){
+      var row=document.createElement('div');row.className='version-item';
+      var text=document.createElement('div');text.innerHTML='<strong></strong><small></small>';
+      text.querySelector('strong').textContent=item.name;
+      text.querySelector('small').textContent=new Date(item.createdAt).toLocaleString();
+      if(item.thumbnail){
+        var thumb=document.createElement('img');
+        thumb.src=item.thumbnail;thumb.alt='Aperçu '+item.name;
+        thumb.style.cssText='display:block;width:78px;height:48px;object-fit:cover;border-radius:6px;margin-top:5px;border:1px solid var(--line)';
+        text.appendChild(thumb);
+      }
+      var actions=document.createElement('div');actions.className='mini-actions';
+      var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer';
+      restore.addEventListener('click',function(){post('load-project',{project:item.project});setStatus('Version restaurée : '+item.name)});
+      var del=document.createElement('button');del.textContent='×';del.title='Supprimer';
+      del.addEventListener('click',function(){namedVersions=namedVersions.filter(function(v){return v.id!==item.id});renderVersions()});
+      actions.append(restore,del);row.append(text,actions);versionList.appendChild(row);
+    });
+  }
+
+  async function saveNamedVersion(){
+    var project=await requestProject();
+    if(!project)return;
+    var name=String(document.getElementById('versionName').value||'').trim()||('Version '+(namedVersions.length+1));
+    var thumbnail=null;
+    if(desktop&&desktop.captureCurrentSource&&currentSource){
+      try{
+        var size=currentDeviceSize();
+        var shot=await desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project.css||cssOut.value});
+        if(shot&&shot.ok)thumbnail=shot.dataUrl;
+      }catch(_){}
+    }
+    namedVersions.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:project,thumbnail:thumbnail});
+    if(namedVersions.length>20)namedVersions.shift();
+    renderVersions();setStatus('Point de contrôle créé : '+name);
+  }
+
+  function syncTokenInputs(tokens){
+    tokens=tokens||{};
+    if(tokens.spacingUnit!==undefined)document.getElementById('tokenSpacing').value=tokens.spacingUnit;
+    if(tokens.radiusCard!==undefined)document.getElementById('tokenRadius').value=tokens.radiusCard;
+    if(tokens.textTitle!==undefined)document.getElementById('tokenTitle').value=tokens.textTitle;
+    if(tokens.colorPrimary)document.getElementById('tokenPrimary').value=tokens.colorPrimary;
+    if(tokens.colorSurface)document.getElementById('tokenSurface').value=tokens.colorSurface;
+  }
+
+  function tokenPayload(){
+    return {
+      spacingUnit:Number(document.getElementById('tokenSpacing').value)||8,
+      radiusCard:Number(document.getElementById('tokenRadius').value)||12,
+      textTitle:Number(document.getElementById('tokenTitle').value)||20,
+      colorPrimary:document.getElementById('tokenPrimary').value||'#6f49f5',
+      colorSurface:document.getElementById('tokenSurface').value||'#ffffff'
+    };
+  }
+
+  async function captureAllFormats(){
+    if(!desktop||!desktop.captureBatch||!currentSource){setStatus('Captures automatiques disponibles dans l’application Windows.',true);return}
+    var project=await requestProject();
+    var result=await desktop.captureBatch({
+      source:currentSource,
+      css:project&&project.css||cssOut.value,
+      configs:[
+        {name:'telephone-compact',width:360,height:800},
+        {name:'grand-telephone',width:412,height:915},
+        {name:'tablette',width:768,height:1024},
+        {name:'bureau',width:1366,height:768},
+        {name:'tv-full-hd',width:1920,height:1080}
+      ]
+    });
+    if(result&&result.ok)setStatus(result.files.length+' captures enregistrées dans '+result.dir);
+    else if(result&&!result.canceled)setStatus(result.error||'Capture impossible.',true);
+  }
+
+  async function captureCurrentForRegression(){
+    if(!desktop||!desktop.captureCurrentSource||!currentSource)return null;
+    var size=currentDeviceSize();
+    var project=await requestProject();
+    return desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project&&project.css||cssOut.value});
+  }
+
+  async function saveRegressionBaseline(){
+    var result=await captureCurrentForRegression();
+    if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Capture de référence impossible.';return}
+    regressionBaseline=result.dataUrl;
+    regressionStatus.textContent='Référence enregistrée pour '+result.width+' × '+result.height+'.';
+    regressionDiff.classList.remove('visible');
+  }
+
+  async function compareRegression(){
+    if(!regressionBaseline){regressionStatus.textContent='Commence par définir une référence.';return}
+    var current=await captureCurrentForRegression();
+    if(!current||!current.ok){regressionStatus.textContent=current&&current.error||'Capture actuelle impossible.';return}
+    var result=await desktop.compareRegression({baseline:regressionBaseline,current:current.dataUrl});
+    if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Comparaison impossible.';return}
+    regressionStatus.textContent='Différence visuelle : '+result.differencePercent+' % · '+result.changedPixels+' pixels modifiés.';
+    regressionDiff.src=result.diffDataUrl;regressionDiff.classList.add('visible');
+  }
+
+  async function checkGit(){
+    if(!desktop||!desktop.gitStatus){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
+    var result=await desktop.gitStatus({source:currentSource});
+    if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Git indisponible.';return}
+    gitStatusText.textContent='Branche : '+(result.branch||'—')+' · '+(result.status?'modifications locales détectées':'propre')+(result.ghAvailable?' · GitHub CLI disponible':' · GitHub CLI absent');
+  }
+
+  async function publishGit(){
+    if(!desktop||!desktop.gitPublish){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre le dépôt en dossier/fichier HTML local pour publier.';return}
+    gitStatusText.textContent='Préparation du patch puis publication…';
+    if(desktop.applyCssToSource){
+      var project=await requestProject();
+      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value});
+      if(!applied||!applied.ok){gitStatusText.textContent=applied&&applied.error||'Impossible de préparer le patch local.';return}
+    }
+    var result=await desktop.gitPublish({
+      source:currentSource,
+      branch:document.getElementById('gitBranch').value,
+      title:document.getElementById('gitTitle').value,
+      body:'Modifications visuelles générées avec App Interface Studio 4.'
+    });
+    if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
+    gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
+    if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
+  }
+
   function requestProject(){
     return new Promise(function(resolve){
       projectResolver=resolve;
@@ -1447,7 +1732,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Implémente ces intentions nativement dans le layout (Flex/Grid/constraints/WindowInsets selon la technologie), pas avec les coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid, les composants et leurs variantes, les design tokens, les animations, les liens de prototype, l’accessibilité, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Implémente ces intentions nativement dans le layout (Flex/Grid/constraints/WindowInsets selon la technologie), pas avec les coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -1467,7 +1752,8 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'3.0.0'};
+    project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
+    project.studio={name:'App Interface Studio',version:'4.0.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -1500,7 +1786,10 @@ body.desktop .desktop-badge{display:inline-flex}
         document.getElementById('systemFontScale').value=String(project.environment.fontScale||1);
         document.getElementById('systemDisplayScale').value=String(project.environment.displayScale||1);
         document.getElementById('systemDarkMode').checked=!!project.environment.darkMode;
+        document.getElementById('systemKeyboard').value=String(project.environment.keyboardHeight||0);
       }
+      namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
+      renderVersions();
       if(project.editingBreakpoint&&Array.from(breakpointEdit.options).some(function(o){return o.value===project.editingBreakpoint})){
         breakpointEdit.value=project.editingBreakpoint;
       }
@@ -1521,7 +1810,8 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-    project.studio={name:'App Interface Studio',version:'3.0.0'};
+    project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
+    project.studio={name:'App Interface Studio',version:'4.0.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -1591,11 +1881,13 @@ body.desktop .desktop-badge{display:inline-flex}
       post('environment-set',{
         fontScale:Number(document.getElementById('systemFontScale').value)||1,
         displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-        darkMode:document.getElementById('systemDarkMode').checked
+        darkMode:document.getElementById('systemDarkMode').checked,
+        keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
       });
       post('breakpoint-edit',{breakpoint:breakpointEdit.value||'base'});
       post('get-css');
       post('get-layers');
+      post('get-components');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
@@ -1614,7 +1906,12 @@ body.desktop .desktop-badge{display:inline-flex}
       document.getElementById('spacingDetail').textContent='Bords les plus proches — gauche : '+near(p.left)+' · haut : '+near(p.top)+' · droite : '+near(p.right)+' · bas : '+near(p.bottom)+'. Marges du parent : '+Math.round(q.left||0)+' / '+Math.round(q.top||0)+' / '+Math.round(q.right||0)+' / '+Math.round(q.bottom||0)+' px.';
     }
     if(data.type==='layers')renderLayers(p.tree||[]);
+    if(data.type==='components')renderComponents(p.items||[]);
+    if(data.type==='tokens')syncTokenInputs(p.tokens||{});
+    if(data.type==='prototype')prototypeStatus.textContent='Prototype : '+Object.keys(p.links||{}).length+' lien(s) enregistré(s).';
     if(data.type==='audit')renderAudit(p);
+    if(data.type==='audit-fixed'){setStatus((p.count||0)+' correction(s) automatique(s) appliquée(s).');post('get-css')}
+    if(data.type==='stress')setStatus(p.mode==='normal'?'Contenu normal restauré.':'Test de contenu : '+p.mode);
     if(data.type==='alt-measure'){
       document.getElementById('spacingDetail').textContent='Alt · '+(p.selector||'objet')+' : horizontal '+Math.round(p.horizontal||0)+' px · vertical '+Math.round(p.vertical||0)+' px.';
     }
@@ -1738,19 +2035,86 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   });
 
+
+  document.getElementById('applyTokensBtn').addEventListener('click',function(){
+    var payload=tokenPayload();
+    post('tokens-set',payload);
+    setStatus('Design tokens appliqués.');
+  });
+  document.querySelectorAll('[data-token-apply]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('token-apply',{kind:btn.dataset.tokenApply})});
+  });
+  document.getElementById('snapToTokenGrid').addEventListener('click',function(){
+    var unit=Math.max(1,Number(document.getElementById('tokenSpacing').value)||8);
+    var option=Array.from(grid.options).find(function(o){return Number(o.value)===unit});
+    if(!option){
+      option=document.createElement('option');option.value=String(unit);option.textContent='Design system · '+unit+' px';grid.appendChild(option);
+    }
+    grid.value=String(unit);post('grid',{grid:unit});setStatus('Accrochage réglé sur '+unit+' px.');
+  });
+
+  document.getElementById('createComponentBtn').addEventListener('click',function(){
+    var name=document.getElementById('componentName').value.trim();
+    if(!name){setStatus('Donne un nom au composant.',true);return}
+    post('component-create',{name:name});
+  });
+  document.getElementById('linkComponentBtn').addEventListener('click',function(){
+    post('component-link',{name:document.getElementById('componentName').value.trim()});
+  });
+  document.getElementById('updateComponentBtn').addEventListener('click',function(){
+    post('component-update',{name:document.getElementById('componentName').value.trim()});
+  });
+  document.getElementById('saveVariantBtn').addEventListener('click',function(){
+    post('component-variant-save',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim()});
+  });
+  document.getElementById('applyVariantBtn').addEventListener('click',function(){
+    post('component-variant-apply',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim(),allInstances:false});
+  });
+  document.getElementById('applyVariantAllBtn').addEventListener('click',function(){
+    post('component-variant-apply',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim(),allInstances:true});
+  });
+
+  document.getElementById('interactiveState').addEventListener('change',function(){post('interactive-state',{state:this.value})});
+  document.getElementById('applyAnimationBtn').addEventListener('click',function(){
+    post('animation-set',{
+      property:document.getElementById('animationProperty').value,
+      duration:Number(document.getElementById('animationDuration').value)||0,
+      easing:document.getElementById('animationEasing').value,
+      delay:0
+    });
+  });
+  document.getElementById('setPrototypeBtn').addEventListener('click',function(){
+    post('prototype-set',{target:document.getElementById('prototypeTarget').value.trim(),trigger:'click'});
+  });
+
+  document.querySelectorAll('[data-stress]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('stress-test',{mode:btn.dataset.stress})});
+  });
+  document.getElementById('resetStressBtn').addEventListener('click',function(){post('stress-test',{mode:'normal'})});
+  document.getElementById('saveNamedVersionBtn').addEventListener('click',saveNamedVersion);
+
+  document.getElementById('batchCaptureBtn').addEventListener('click',captureAllFormats);
+  document.getElementById('saveBaselineBtn').addEventListener('click',saveRegressionBaseline);
+  document.getElementById('compareRegressionBtn').addEventListener('click',compareRegression);
+  document.getElementById('gitStatusBtn').addEventListener('click',checkGit);
+  document.getElementById('gitPublishBtn').addEventListener('click',publishGit);
+
   function sendEnvironment(){
     post('environment-set',{
       fontScale:Number(document.getElementById('systemFontScale').value)||1,
       displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-      darkMode:document.getElementById('systemDarkMode').checked
+      darkMode:document.getElementById('systemDarkMode').checked,
+      keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
     });
     scheduleMultiSync();
   }
   document.getElementById('systemFontScale').addEventListener('change',sendEnvironment);
   document.getElementById('systemDisplayScale').addEventListener('change',sendEnvironment);
   document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
+  document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
+  document.getElementById('auditFixBtn').addEventListener('click',function(){post('audit-fix')});
   document.getElementById('adbCaptureBtn').addEventListener('click',captureAdbReference);
   document.getElementById('loadReferenceBtn').addEventListener('click',loadReferenceImage);
   document.getElementById('referenceOpacity').addEventListener('input',function(){

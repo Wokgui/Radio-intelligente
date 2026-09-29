@@ -73,11 +73,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "app-interface-studio-v3.0.0"
+          $tag = "app-interface-studio-v4.0.0"
           $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $file.FullName --clobber
           } else {
-            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v3.0.0" --notes "Version majeure : comparaison multi-écrans, breakpoints téléphone/tablette/grand écran, arbre des calques, édition Flex/Grid, contraintes visuelles, alignement et distribution de sélections multiples, mesure Alt au survol, rotation portrait/paysage, simulation taille de texte/échelle/thème sombre, audit automatique, comparaison avec un téléphone réel via ADB et application réversible des ajustements CSS à une source HTML locale."
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v4.0.0" --notes "Ajoute composants réutilisables et variantes, design tokens globaux, historique visuel avec points de contrôle, états interactifs, animations, prototype cliquable, simulation clavier Android, tests de contenu extrême, audit accessibilité enrichi avec autocorrections sûres, captures multi-formats, régression visuelle et publication GitHub depuis une source locale."
           }

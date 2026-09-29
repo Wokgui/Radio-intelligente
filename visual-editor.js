@@ -77,7 +77,19 @@
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
   let editingBreakpoint = 'base';
-  let environment = { fontScale: 1, displayScale: 1, darkMode: false };
+  let environment = { fontScale: 1, displayScale: 1, darkMode: false, keyboardHeight: 0 };
+  let designTokens = {
+    spacingUnit: 8,
+    radiusCard: 12,
+    textTitle: 20,
+    colorPrimary: '#6f49f5',
+    colorSurface: '#ffffff'
+  };
+  let components = {};
+  let prototypeLinks = {};
+  let activeInteractiveState = 'normal';
+  let lastAuditIssues = [];
+  let stressBackup = null;
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -131,13 +143,13 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
       };
     });
-    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null };
+    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null, originalAriaLabel: element.getAttribute('aria-label') };
     registry.set(selector, entry);
     return entry;
   }
@@ -178,6 +190,19 @@
       deleted: false,
       layoutAdjusted: false,
       layout: {},
+      tokenStyles: {},
+      accessibilityAdjusted: false,
+      accessibilityLabel: element.getAttribute('aria-label') || '',
+      animationAdjusted: false,
+      animation: {
+        property: 'all',
+        duration: 180,
+        easing: 'ease',
+        delay: 0
+      },
+      prototypeTarget: '',
+      componentName: '',
+      componentInstance: false,
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
@@ -647,6 +672,28 @@
       layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
     }
 
+    const tokenProps=['border-radius','min-width','min-height','white-space','overflow','overflow-x','text-overflow','max-width'];
+    tokenProps.forEach(function(prop){
+      if(state.tokenStyles&&state.tokenStyles[prop])setInline(element,prop,state.tokenStyles[prop]);
+      else if(!((prop==='min-width'||prop==='min-height'||prop==='max-width')&&state.resized))restoreOriginalProp(state.selector,prop);
+    });
+    if(state.accessibilityAdjusted)element.setAttribute('aria-label',state.accessibilityLabel||'Action');
+    else {
+      const regAria=registry.get(state.selector);
+      if(regAria&&regAria.originalAriaLabel!==null)element.setAttribute('aria-label',regAria.originalAriaLabel);
+      else element.removeAttribute('aria-label');
+    }
+
+    const animationProps = ['transition-property','transition-duration','transition-timing-function','transition-delay'];
+    if (state.animationAdjusted && state.animation) {
+      setInline(element,'transition-property',state.animation.property || 'all');
+      setInline(element,'transition-duration',Math.max(0,Number(state.animation.duration)||0)+'ms');
+      setInline(element,'transition-timing-function',state.animation.easing || 'ease');
+      setInline(element,'transition-delay',Math.max(0,Number(state.animation.delay)||0)+'ms');
+    } else {
+      animationProps.forEach(function(prop){restoreOriginalProp(state.selector,prop)});
+    }
+
     if (update !== false) updateOverlay();
   }
 
@@ -658,6 +705,8 @@
       else entry.element.style.removeProperty(prop);
     });
     if (entry.originalText !== null) entry.element.textContent = entry.originalText;
+    if (entry.originalAriaLabel !== null) entry.element.setAttribute('aria-label',entry.originalAriaLabel);
+    else entry.element.removeAttribute('aria-label');
   }
 
   function hideGuides() {
@@ -800,6 +849,14 @@
         deleted: state.deleted,
         layoutAdjusted: !!state.layoutAdjusted,
         layout: Object.assign({}, state.layout || {}),
+        tokenStyles: Object.assign({}, state.tokenStyles || {}),
+        accessibilityAdjusted: !!state.accessibilityAdjusted,
+        accessibilityLabel: state.accessibilityLabel || '',
+        animationAdjusted: !!state.animationAdjusted,
+        animation: Object.assign({}, state.animation || {}),
+        prototypeTarget: state.prototypeTarget || '',
+        componentName: state.componentName || '',
+        componentInstance: !!state.componentInstance,
         responsiveDx: state.responsiveDx || 0,
         responsiveDy: state.responsiveDy || 0,
         responsive: cloneResponsive(state.responsive)
@@ -878,6 +935,14 @@
         deleted: !!saved.deleted,
         layoutAdjusted: !!saved.layoutAdjusted,
         layout: Object.assign({}, saved.layout || {}),
+        tokenStyles: Object.assign({}, saved.tokenStyles || {}),
+        accessibilityAdjusted: !!saved.accessibilityAdjusted,
+        accessibilityLabel: saved.accessibilityLabel || '',
+        animationAdjusted: !!saved.animationAdjusted,
+        animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
+        prototypeTarget: saved.prototypeTarget || '',
+        componentName: saved.componentName || '',
+        componentInstance: !!saved.componentInstance,
         responsiveDx: Number(saved.responsiveDx) || 0,
         responsiveDy: Number(saved.responsiveDy) || 0,
         responsive: cloneResponsive(saved.responsive)
@@ -943,6 +1008,12 @@
 
   function cssText() {
     const rules = [];
+    rules.push(':root {\n'+
+      '  --ais-space: '+Math.max(1,Number(designTokens.spacingUnit)||8)+'px;\n'+
+      '  --ais-radius-card: '+Math.max(0,Number(designTokens.radiusCard)||12)+'px;\n'+
+      '  --ais-text-title: '+Math.max(8,Number(designTokens.textTitle)||20)+'px;\n'+
+      '  --ais-color-primary: '+String(designTokens.colorPrimary||'#6f49f5')+';\n'+
+      '  --ais-color-surface: '+String(designTokens.colorSurface||'#ffffff')+';\n}');
     const mediaRules = { phone:[], tablet:[], desktop:[] };
     touched.forEach(function (state) {
       const declarations = [];
@@ -1001,6 +1072,17 @@
             const value = state.layout[prop];
             if (value !== undefined && value !== null && value !== '') declarations.push('  ' + prop + ': ' + value + ' !important;');
           });
+        }
+        if (state.tokenStyles) {
+          Object.keys(state.tokenStyles).forEach(function(prop){
+            if(state.tokenStyles[prop])declarations.push('  '+prop+': '+state.tokenStyles[prop]+' !important;');
+          });
+        }
+        if (state.animationAdjusted && state.animation) {
+          declarations.push('  transition-property: ' + (state.animation.property || 'all') + ' !important;');
+          declarations.push('  transition-duration: ' + Math.max(0,Number(state.animation.duration)||0) + 'ms !important;');
+          declarations.push('  transition-timing-function: ' + (state.animation.easing || 'ease') + ' !important;');
+          declarations.push('  transition-delay: ' + Math.max(0,Number(state.animation.delay)||0) + 'ms !important;');
         }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
@@ -1213,6 +1295,319 @@
     commitHistory();
   }
 
+
+  function cloneStateForComponent(state) {
+    return {
+      width:state.width,height:state.height,resized:!!state.resized,
+      fontSize:state.fontSize,fontFamily:state.fontFamily,fontWeight:state.fontWeight,fontStyle:state.fontStyle,
+      textDecoration:state.textDecoration,textAlign:state.textAlign,letterSpacing:state.letterSpacing,lineHeight:state.lineHeight,
+      fontAdjusted:!!state.fontAdjusted,color:state.color,backgroundColor:state.backgroundColor,borderColor:state.borderColor,
+      colorAdjusted:!!state.colorAdjusted,backgroundAdjusted:!!state.backgroundAdjusted,borderAdjusted:!!state.borderAdjusted,
+      zIndex:state.zIndex,zAdjusted:!!state.zAdjusted,layoutAdjusted:!!state.layoutAdjusted,layout:Object.assign({},state.layout||{}),
+      tokenStyles:Object.assign({},state.tokenStyles||{}),accessibilityAdjusted:!!state.accessibilityAdjusted,accessibilityLabel:state.accessibilityLabel||'',
+      animationAdjusted:!!state.animationAdjusted,animation:Object.assign({},state.animation||{}),
+      responsive:cloneResponsive(state.responsive)
+    };
+  }
+
+  function applyComponentState(element, saved) {
+    if(!element||!saved)return;
+    const state=remember(element);
+    state.width=saved.width;state.height=saved.height;state.resized=!!saved.resized;
+    state.fontSize=saved.fontSize;state.fontFamily=saved.fontFamily;state.fontWeight=saved.fontWeight;state.fontStyle=saved.fontStyle;
+    state.textDecoration=saved.textDecoration;state.textAlign=saved.textAlign;state.letterSpacing=saved.letterSpacing;state.lineHeight=saved.lineHeight;
+    state.fontAdjusted=!!saved.fontAdjusted;state.color=saved.color;state.backgroundColor=saved.backgroundColor;state.borderColor=saved.borderColor;
+    state.colorAdjusted=!!saved.colorAdjusted;state.backgroundAdjusted=!!saved.backgroundAdjusted;state.borderAdjusted=!!saved.borderAdjusted;
+    state.zIndex=saved.zIndex;state.zAdjusted=!!saved.zAdjusted;state.layoutAdjusted=!!saved.layoutAdjusted;state.layout=Object.assign({},saved.layout||{});
+    state.tokenStyles=Object.assign({},saved.tokenStyles||{});state.accessibilityAdjusted=!!saved.accessibilityAdjusted;state.accessibilityLabel=saved.accessibilityLabel||'';
+    state.animationAdjusted=!!saved.animationAdjusted;state.animation=Object.assign({property:'all',duration:180,easing:'ease',delay:0},saved.animation||{});
+    state.responsive=cloneResponsive(saved.responsive);
+    applyState(element,state,false);
+  }
+
+  function componentSummary() {
+    return Object.keys(components).sort().map(function(name){
+      const item=components[name];
+      return {name:name,count:(item.instances||[]).length,variants:Object.keys(item.variants||{}).sort()};
+    });
+  }
+
+  function emitComponents() {
+    emit('components',{items:componentSummary()});
+  }
+
+  function createComponent(name) {
+    name=String(name||'').trim();
+    const items=selectionElements();
+    if(!name||!items.length)return;
+    const selectors=items.map(selectorFor).filter(Boolean);
+    const states=items.map(function(el){return cloneStateForComponent(remember(el))});
+    components[name]={name:name,states:states,instances:[selectors],variants:{}};
+    items.forEach(function(el){const st=remember(el);st.componentName=name;st.componentInstance=true});
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function linkComponentInstance(name) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    if(!component||!items.length)return;
+    const selectors=items.map(selectorFor).filter(Boolean);
+    const count=Math.min(items.length,component.states.length);
+    for(let i=0;i<count;i+=1){
+      applyComponentState(items[i],component.states[i]);
+      const st=remember(items[i]);st.componentName=component.name;st.componentInstance=true;
+    }
+    if(!(component.instances||[]).some(function(list){return JSON.stringify(list)===JSON.stringify(selectors)})){
+      component.instances.push(selectors);
+    }
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function updateComponentFromSelection(name) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    if(!component||!items.length)return;
+    component.states=items.map(function(el){return cloneStateForComponent(remember(el))});
+    (component.instances||[]).forEach(function(selectors){
+      selectors.forEach(function(sel,index){
+        let el=null;try{el=document.querySelector(sel)}catch(_){}
+        if(el&&component.states[index])applyComponentState(el,component.states[index]);
+      });
+    });
+    commitHistory();emitComponents();updateOverlay();
+  }
+
+  function saveComponentVariant(name,variantName) {
+    const component=components[String(name||'')];
+    const items=selectionElements();
+    variantName=String(variantName||'').trim();
+    if(!component||!variantName||!items.length)return;
+    component.variants=component.variants||{};
+    component.variants[variantName]=items.map(function(el){return cloneStateForComponent(remember(el))});
+    emitComponents();
+  }
+
+  function applyComponentVariant(name,variantName,allInstances) {
+    const component=components[String(name||'')];
+    const variant=component&&component.variants&&component.variants[String(variantName||'')];
+    if(!component||!variant)return;
+    const groups=allInstances?(component.instances||[]):[selectionElements().map(selectorFor).filter(Boolean)];
+    groups.forEach(function(selectors){
+      selectors.forEach(function(sel,index){
+        let el=null;try{el=document.querySelector(sel)}catch(_){}
+        if(el&&variant[index])applyComponentState(el,variant[index]);
+      });
+    });
+    commitHistory();updateOverlay();
+  }
+
+  function deleteComponent(name) {
+    delete components[String(name||'')];
+    emitComponents();
+  }
+
+  function applyDesignTokens(payload) {
+    designTokens=Object.assign({},designTokens,payload||{});
+    const root=document.documentElement;
+    root.style.setProperty('--ais-space',Math.max(1,Number(designTokens.spacingUnit)||8)+'px');
+    root.style.setProperty('--ais-radius-card',Math.max(0,Number(designTokens.radiusCard)||12)+'px');
+    root.style.setProperty('--ais-text-title',Math.max(8,Number(designTokens.textTitle)||20)+'px');
+    root.style.setProperty('--ais-color-primary',String(designTokens.colorPrimary||'#6f49f5'));
+    root.style.setProperty('--ais-color-surface',String(designTokens.colorSurface||'#ffffff'));
+    emit('tokens',{tokens:Object.assign({},designTokens)});
+  }
+
+  function applyTokenToSelection(kind) {
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      const st=remember(el);if(!st||st.locked)return;
+      if(kind==='primary'){st.colorAdjusted=true;st.color='var(--ais-color-primary)'}
+      if(kind==='surface'){st.backgroundAdjusted=true;st.backgroundColor='var(--ais-color-surface)'}
+      if(kind==='title'){st.fontAdjusted=true;st.fontSize=Number(designTokens.textTitle)||20}
+      if(kind==='radius'){st.tokenStyles=st.tokenStyles||{};st.tokenStyles['border-radius']='var(--ais-radius-card)'}
+      if(kind==='spacing'&&el.parentElement){
+        const parent=el.parentElement,pst=remember(parent);
+        pst.layoutAdjusted=true;pst.layout=pst.layout||{};pst.layout.gap='var(--ais-space)';applyState(parent,pst,false);
+      }
+      applyState(el,st,false);
+    });
+    commitHistory();updateOverlay();
+  }
+
+  function setAnimation(payload) {
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      const st=remember(el);if(!st||st.locked)return;
+      st.animationAdjusted=true;
+      st.animation=Object.assign({},st.animation||{},{
+        property:String(payload.property||'all'),
+        duration:Math.max(0,Number(payload.duration)||0),
+        easing:String(payload.easing||'ease'),
+        delay:Math.max(0,Number(payload.delay)||0)
+      });
+      applyState(el,st,false);
+    });
+    commitHistory();updateOverlay();
+  }
+
+  function buildForcedStateStyle() {
+    let style=document.getElementById('ve-forced-state-style');
+    if(!style){style=document.createElement('style');style.id='ve-forced-state-style';document.head.appendChild(style)}
+    const chunks=[];
+    function walkRules(rules){
+      Array.from(rules||[]).forEach(function(rule){
+        if(rule.cssRules){try{walkRules(rule.cssRules)}catch(_){};return}
+        if(!rule.selectorText||!rule.style)return;
+        [
+          [':hover','.ais-state-hover'],
+          [':active','.ais-state-active'],
+          [':focus-visible','.ais-state-focus'],
+          [':focus','.ais-state-focus'],
+          [':disabled','.ais-state-disabled']
+        ].forEach(function(pair){
+          if(rule.selectorText.indexOf(pair[0])<0)return;
+          const selector=rule.selectorText.split(',').map(function(s){return s.replaceAll(pair[0],pair[1])}).join(',');
+          chunks.push(selector+'{'+rule.style.cssText+'}');
+        });
+      });
+    }
+    Array.from(document.styleSheets||[]).forEach(function(sheet){try{walkRules(sheet.cssRules)}catch(_){}});
+    chunks.push('.ais-state-focus{outline:2px solid #6f49f5!important;outline-offset:2px!important}');
+    chunks.push('.ais-state-disabled{opacity:.5!important;filter:grayscale(.25)}');
+    style.textContent=chunks.join('\n');
+  }
+
+  function setInteractiveState(stateName) {
+    activeInteractiveState=String(stateName||'normal');
+    buildForcedStateStyle();
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      if(el.dataset.aisOriginalDisabled===undefined&&'disabled' in el)el.dataset.aisOriginalDisabled=el.disabled?'1':'0';
+      if(el.dataset.aisOriginalAriaDisabled===undefined)el.dataset.aisOriginalAriaDisabled=el.getAttribute('aria-disabled')||'';
+      el.classList.remove('ais-state-hover','ais-state-active','ais-state-focus','ais-state-disabled');
+      if(activeInteractiveState==='hover')el.classList.add('ais-state-hover');
+      if(activeInteractiveState==='active')el.classList.add('ais-state-active');
+      if(activeInteractiveState==='focus'){el.classList.add('ais-state-focus');if(el.focus)try{el.focus({preventScroll:true})}catch(_){}}
+      if(activeInteractiveState==='disabled'){
+        el.classList.add('ais-state-disabled');
+        if('disabled' in el)el.disabled=true;
+        else el.setAttribute('aria-disabled','true');
+      }else{
+        if('disabled' in el&&el.dataset.aisOriginalDisabled!==undefined)el.disabled=el.dataset.aisOriginalDisabled==='1';
+        const originalAria=el.dataset.aisOriginalAriaDisabled;
+        if(originalAria)el.setAttribute('aria-disabled',originalAria);
+        else el.removeAttribute('aria-disabled');
+      }
+    });
+    emit('interactive-state',{state:activeInteractiveState});
+  }
+
+
+  function setPrototypeLink(payload) {
+    if(!selected)return;
+    const target=String(payload.target||'').trim();
+    const trigger=String(payload.trigger||'click');
+    const selector=selectorFor(selected);
+    if(!selector)return;
+    prototypeLinks[selector]={target:target,trigger:trigger};
+    const st=remember(selected);st.prototypeTarget=target;
+    emit('prototype',{links:Object.assign({},prototypeLinks)});
+    updateOverlay();
+  }
+
+  function runPrototypeTarget(sourceEl) {
+    let node=sourceEl,link=null;
+    while(node&&node!==document.body){
+      const selector=selectorFor(node);
+      if(prototypeLinks[selector]){link=prototypeLinks[selector];break}
+      node=node.parentElement;
+    }
+    if(!link||!link.target)return false;
+    let target=null;try{target=document.querySelector(link.target)}catch(_){}
+    if(!target)return false;
+    if(target.scrollIntoView)target.scrollIntoView({behavior:'smooth',block:'center'});
+    if(target.click&&/button|a|input/i.test(target.tagName))try{target.click()}catch(_){}
+    target.animate&&target.animate([{outline:'3px solid #6f49f5'},{outline:'0 solid transparent'}],{duration:700});
+    return true;
+  }
+
+  function stressTest(mode) {
+    mode=String(mode||'normal');
+    if(mode==='normal'){
+      if(stressBackup){
+        stressBackup.texts.forEach(function(item){if(document.documentElement.contains(item.el))item.el.textContent=item.text});
+        stressBackup.images.forEach(function(item){if(document.documentElement.contains(item.el))item.el.style.visibility=item.visibility});
+        stressBackup.clones.forEach(function(el){el.remove()});
+      }
+      stressBackup=null;reflowResponsive();emit('stress',{mode:'normal'});return;
+    }
+
+    if(!stressBackup){
+      stressBackup={texts:[],images:[],clones:[]};
+      Array.from(document.body.querySelectorAll('*')).slice(0,700).forEach(function(el){
+        if(isEditorNode(el))return;
+        if(el.children.length===0&&String(el.textContent||'').trim())stressBackup.texts.push({el:el,text:el.textContent});
+        if(el.tagName==='IMG')stressBackup.images.push({el:el,visibility:el.style.visibility});
+      });
+    }
+    if(mode==='long-text'){
+      stressBackup.texts.forEach(function(item){
+        if(!document.documentElement.contains(item.el))return;
+        const base=String(item.text||'Texte');
+        item.el.textContent=(base+' — contenu exceptionnellement long pour tester toutes les traductions et les petits écrans').slice(0,180);
+      });
+    }
+    if(mode==='no-images')stressBackup.images.forEach(function(item){if(document.documentElement.contains(item.el))item.el.style.visibility='hidden'});
+    if(mode==='empty')stressBackup.texts.forEach(function(item){if(document.documentElement.contains(item.el))item.el.textContent=''});
+    if(mode==='many-items'){
+      const list=document.querySelector('ul,ol,[role="list"],.list,.items,.articles,.tracks');
+      if(list&&list.children.length){
+        const source=list.children[0];
+        for(let i=0;i<12;i+=1){const clone=source.cloneNode(true);clone.dataset.aisStressClone='1';list.appendChild(clone);stressBackup.clones.push(clone)}
+      }
+    }
+    reflowResponsive();emit('stress',{mode:mode});
+  }
+
+  function autoFixAudit() {
+    const fixed=[];
+    (lastAuditIssues||[]).forEach(function(issue){
+      let el=null;try{el=issue.selector==='html'?document.documentElement:document.querySelector(issue.selector)}catch(_){}
+      if(!el)return;
+      const st=remember(el);
+      if(!st)return;
+      st.tokenStyles=st.tokenStyles||{};
+      if(issue.type==='touch-target'){
+        st.tokenStyles['min-width']='44px';
+        st.tokenStyles['min-height']='44px';
+        fixed.push(issue);
+      }
+      if(issue.type==='text-clipped'){
+        st.tokenStyles['white-space']='normal';
+        st.tokenStyles['overflow']='visible';
+        st.tokenStyles['text-overflow']='clip';
+        fixed.push(issue);
+      }
+      if(issue.type==='overflow-x'){
+        st.tokenStyles['max-width']='100vw';
+        st.tokenStyles['overflow-x']='hidden';
+        fixed.push(issue);
+      }
+      if(issue.type==='accessible-name'){
+        const text=String(el.textContent||el.getAttribute('title')||'Action').trim().slice(0,80);
+        st.accessibilityAdjusted=true;
+        st.accessibilityLabel=text||'Action';
+        fixed.push(issue);
+      }
+      applyState(el,st,false);
+    });
+    if(fixed.length)commitHistory();
+    updateOverlay();
+    auditInterface();
+    emit('audit-fixed',{count:fixed.length});
+  }
+
+
   function parseRgb(value) {
     const m = String(value || '').match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/i);
     if (!m) return null;
@@ -1244,47 +1639,68 @@
 
   function auditInterface() {
     const issues = [];
+    const spacingUnit=Math.max(1,Number(designTokens.spacingUnit)||8);
     const nodes = Array.from(document.body.querySelectorAll('*')).filter(function (el) {
       if (isEditorNode(el) || /^SCRIPT|STYLE|LINK|META$/i.test(el.tagName)) return false;
       const cs=getComputedStyle(el),r=el.getBoundingClientRect();
       return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>1&&r.height>1;
-    }).slice(0,650);
+    }).slice(0,750);
 
     if (document.documentElement.scrollWidth > innerWidth + 2) {
-      issues.push({severity:'error',type:'overflow-x',selector:'html',message:'La page dépasse horizontalement le viewport de '+Math.round(document.documentElement.scrollWidth-innerWidth)+' px.'});
+      issues.push({severity:'error',type:'overflow-x',selector:'html',message:'La page dépasse horizontalement le viewport de '+Math.round(document.documentElement.scrollWidth-innerWidth)+' px.',fixable:true});
     }
 
     const interactive = [];
+    const focusable=[];
     nodes.forEach(function (el) {
       const r=el.getBoundingClientRect();
       const cs=getComputedStyle(el);
       const selector=selectorFor(el);
-      const isInteractive=/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)||el.getAttribute('role')==='button';
+      const role=el.getAttribute('role')||'';
+      const isInteractive=/^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/.test(el.tagName)||role==='button'||role==='link';
+      const tabindex=el.getAttribute('tabindex');
+      const isFocusable=isInteractive||(tabindex!==null&&Number(tabindex)>=0);
 
       if (el.children.length===0 && String(el.textContent||'').trim()) {
         const clipped=(el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2) &&
           (/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY)||cs.whiteSpace==='nowrap');
-        if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.'});
+        if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.',fixable:true});
 
         const fg=parseRgb(cs.color),bg=solidBackground(el);
         if(fg&&bg&&fg.a>.8){
           const ratio=contrastRatio(fg,bg);
           const min=parseFloat(cs.fontSize)>=18?3:4.5;
-          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).'});
+          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).',fixable:false});
         }
       }
 
       if(isInteractive){
         interactive.push({el:el,rect:r,selector:selector});
-        if(r.width<44||r.height<44)issues.push({severity:'warning',type:'touch-target',selector:selector,message:'Zone tactile '+Math.round(r.width)+' × '+Math.round(r.height)+' px, sous 44 × 44.'});
+        const accessible=String(el.getAttribute('aria-label')||el.getAttribute('aria-labelledby')||el.getAttribute('title')||el.textContent||el.value||'').trim();
+        if(!accessible)issues.push({severity:'error',type:'accessible-name',selector:selector,message:'Contrôle interactif sans nom accessible.',fixable:true});
+        if(r.width<44||r.height<44)issues.push({severity:'warning',type:'touch-target',selector:selector,message:'Zone tactile '+Math.round(r.width)+' × '+Math.round(r.height)+' px, sous 44 × 44.',fixable:true});
         if(r.top<safeArea.top-1||r.left<safeArea.left-1||r.right>innerWidth-safeArea.right+1||r.bottom>innerHeight-safeArea.bottom+1){
-          issues.push({severity:'error',type:'safe-area',selector:selector,message:'Élément interactif en dehors de la zone sûre.'});
+          issues.push({severity:'error',type:'safe-area',selector:selector,message:'Élément interactif en dehors de la zone sûre.',fixable:false});
         }
       }
+
+      if(isFocusable)focusable.push({el:el,selector:selector,tabindex:tabindex===null?0:Number(tabindex)||0});
+      if(tabindex!==null&&Number(tabindex)>0)issues.push({severity:'warning',type:'tab-order',selector:selector,message:'tabindex positif ('+tabindex+') : ordre clavier potentiellement artificiel.',fixable:false});
+
+      const margins=[parseFloat(cs.marginLeft)||0,parseFloat(cs.marginRight)||0,parseFloat(cs.marginTop)||0,parseFloat(cs.marginBottom)||0];
+      margins.forEach(function(v){
+        if(v>0&&Math.abs(v/spacingUnit-Math.round(v/spacingUnit))>.16){
+          issues.push({severity:'info',type:'spacing-token',selector:selector,message:'Espacement '+Math.round(v*10)/10+' px hors grille '+spacingUnit+' px.',fixable:false});
+        }
+      });
     });
 
-    for(let i=0;i<interactive.length&&i<90;i+=1){
-      for(let j=i+1;j<interactive.length&&j<90;j+=1){
+    if(focusable.length>0&&!focusable.some(function(x){return x.el===document.activeElement})){
+      issues.push({severity:'info',type:'keyboard-navigation',selector:'body',message:focusable.length+' éléments sont accessibles au clavier. Utilise le mode Focus pour vérifier leur parcours.',fixable:false});
+    }
+
+    for(let i=0;i<interactive.length&&i<100;i+=1){
+      for(let j=i+1;j<interactive.length&&j<100;j+=1){
         const a=interactive[i],b=interactive[j];
         if(a.el.contains(b.el)||b.el.contains(a.el))continue;
         const iw=Math.max(0,Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left));
@@ -1292,34 +1708,54 @@
         const area=iw*ih;
         const minArea=Math.min(a.rect.width*a.rect.height,b.rect.width*b.rect.height);
         if(area>0&&minArea>0&&area/minArea>.25){
-          issues.push({severity:'warning',type:'overlap',selector:a.selector,message:'Chevauchement important avec '+b.selector+'.'});
+          issues.push({severity:'warning',type:'overlap',selector:a.selector,message:'Chevauchement important avec '+b.selector+'.',fixable:false});
         }
       }
     }
 
+    const seen=new Set();
+    const deduped=issues.filter(function(issue){
+      const key=issue.type+'|'+issue.selector+'|'+issue.message;
+      if(seen.has(key))return false;seen.add(key);return true;
+    });
     const order={error:0,warning:1,info:2};
-    issues.sort(function(a,b){return order[a.severity]-order[b.severity]});
-    emit('audit',{issues:issues.slice(0,120),summary:{
-      errors:issues.filter(function(i){return i.severity==='error'}).length,
-      warnings:issues.filter(function(i){return i.severity==='warning'}).length
+    deduped.sort(function(a,b){return order[a.severity]-order[b.severity]});
+    lastAuditIssues=deduped.slice(0,160);
+    emit('audit',{issues:lastAuditIssues,summary:{
+      errors:lastAuditIssues.filter(function(i){return i.severity==='error'}).length,
+      warnings:lastAuditIssues.filter(function(i){return i.severity==='warning'}).length,
+      info:lastAuditIssues.filter(function(i){return i.severity==='info'}).length,
+      fixable:lastAuditIssues.filter(function(i){return i.fixable}).length
     }});
   }
+
 
   function applyEnvironment(payload) {
     environment = {
       fontScale: Math.max(.75,Math.min(2,Number(payload.fontScale)||1)),
       displayScale: Math.max(.75,Math.min(1.6,Number(payload.displayScale)||1)),
-      darkMode: !!payload.darkMode
+      darkMode: !!payload.darkMode,
+      keyboardHeight: Math.max(0,Math.min(innerHeight*.75,Number(payload.keyboardHeight)||0))
     };
     let style=document.getElementById('ve-environment-style');
     if(!style){style=document.createElement('style');style.id='ve-environment-style';document.head.appendChild(style);}
     style.textContent=
       'html{-webkit-text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;color-scheme:'+(environment.darkMode?'dark':'light')+';}'+
-      'body{zoom:'+environment.displayScale+';}';
+      'body{zoom:'+environment.displayScale+';}'+
+      (environment.keyboardHeight>0?'html,body{height:calc(100vh - '+environment.keyboardHeight+'px)!important;overflow:auto!important;}':'');
     document.documentElement.dataset.aisTheme=environment.darkMode?'dark':'light';
+
+    let keyboard=document.getElementById('ve-keyboard-sim');
+    if(environment.keyboardHeight>0){
+      if(!keyboard){keyboard=document.createElement('div');keyboard.id='ve-keyboard-sim';keyboard.setAttribute('aria-hidden','true');document.documentElement.appendChild(keyboard)}
+      keyboard.style.cssText='position:fixed!important;left:0!important;right:0!important;bottom:0!important;height:'+environment.keyboardHeight+'px!important;z-index:2147483000!important;background:linear-gradient(#d8d9df,#c7c8cf)!important;border-top:1px solid #aaa!important;pointer-events:none!important;';
+      keyboard.innerHTML='<div style="height:34px;display:grid;place-items:center;color:#555;font:700 11px system-ui">Clavier Android simulé · '+Math.round(environment.keyboardHeight)+' px</div>';
+    }else if(keyboard)keyboard.remove();
+
     reflowResponsive();
     emit('environment',{environment:Object.assign({},environment)});
   }
+
 
   function currentPayload() {
     if (!selected || !document.documentElement.contains(selected)) {
@@ -1365,6 +1801,14 @@
       parentLayout: parentLayoutPayload(selected),
       safeArea: Object.assign({}, safeArea),
       environment: Object.assign({}, environment),
+      animation: Object.assign({}, state.animation || {}),
+      animationAdjusted: !!state.animationAdjusted,
+      componentName: state.componentName || '',
+      componentInstance: !!state.componentInstance,
+      prototypeTarget: state.prototypeTarget || '',
+      interactiveState: activeInteractiveState,
+      tokens: Object.assign({}, designTokens),
+      components: componentSummary(),
       css: cssText(),
       grid: grid
     };
@@ -1741,11 +2185,14 @@
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
       editingBreakpoint: editingBreakpoint,
       environment: Object.assign({}, environment),
+      designTokens: Object.assign({}, designTokens),
+      components: JSON.parse(JSON.stringify(components)),
+      prototypeLinks: JSON.parse(JSON.stringify(prototypeLinks)),
       snapshot: snapshot(),
       css: cssText()
     };
@@ -1756,6 +2203,11 @@
     if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
     if (project.editingBreakpoint) setEditingBreakpoint(project.editingBreakpoint);
     if (project.environment) applyEnvironment(project.environment);
+    if (project.designTokens) applyDesignTokens(project.designTokens);
+    components = project.components ? JSON.parse(JSON.stringify(project.components)) : {};
+    prototypeLinks = project.prototypeLinks ? JSON.parse(JSON.stringify(project.prototypeLinks)) : {};
+    emitComponents();
+    emit('prototype',{links:Object.assign({},prototypeLinks)});
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -1960,6 +2412,12 @@
     });
   });
 
+  window.addEventListener('click', function(event){
+    if(active||isEditorNode(event.target))return;
+    const source=event.target&&event.target.closest?event.target.closest('*'):event.target;
+    if(source&&runPrototypeTarget(source)){event.preventDefault();event.stopImmediatePropagation()}
+  },true);
+
   window.addEventListener('click', function (event) {
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
@@ -2061,7 +2519,21 @@
     if (data.type === 'parent-layout') setParentLayout(payload);
     if (data.type === 'distribute') distributeSelection(String(payload.mode || ''), payload.gap);
     if (data.type === 'audit') auditInterface();
+    if (data.type === 'audit-fix') autoFixAudit();
     if (data.type === 'environment-set') applyEnvironment(payload);
+    if (data.type === 'tokens-set') applyDesignTokens(payload);
+    if (data.type === 'token-apply') applyTokenToSelection(String(payload.kind||''));
+    if (data.type === 'animation-set') setAnimation(payload);
+    if (data.type === 'interactive-state') setInteractiveState(payload.state);
+    if (data.type === 'stress-test') stressTest(payload.mode);
+    if (data.type === 'component-create') createComponent(payload.name);
+    if (data.type === 'component-link') linkComponentInstance(payload.name);
+    if (data.type === 'component-update') updateComponentFromSelection(payload.name);
+    if (data.type === 'component-delete') deleteComponent(payload.name);
+    if (data.type === 'component-variant-save') saveComponentVariant(payload.name,payload.variant);
+    if (data.type === 'component-variant-apply') applyComponentVariant(payload.name,payload.variant,!!payload.allInstances);
+    if (data.type === 'get-components') emitComponents();
+    if (data.type === 'prototype-set') setPrototypeLink(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -2121,13 +2593,27 @@
     setParentLayout: setParentLayout,
     distributeSelection: distributeSelection,
     auditInterface: auditInterface,
+    autoFixAudit: autoFixAudit,
     applyEnvironment: applyEnvironment,
+    applyDesignTokens: applyDesignTokens,
+    applyTokenToSelection: applyTokenToSelection,
+    setAnimation: setAnimation,
+    setInteractiveState: setInteractiveState,
+    stressTest: stressTest,
+    createComponent: createComponent,
+    linkComponentInstance: linkComponentInstance,
+    updateComponentFromSelection: updateComponentFromSelection,
+    saveComponentVariant: saveComponentVariant,
+    applyComponentVariant: applyComponentVariant,
+    setPrototypeLink: setPrototypeLink,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,
     state: currentPayload
   };
 
+  applyDesignTokens(designTokens);
+  buildForcedStateStyle();
   emit('ready', { hosted: hosted });
   if (hosted) setTimeout(enable, 80);
 })();
