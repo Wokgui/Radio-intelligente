@@ -1371,7 +1371,14 @@
     state.layoutAdjusted=true;state.layout=state.layout||{};
     const map={display:'display',flexDirection:'flex-direction',justifyContent:'justify-content',alignItems:'align-items',gap:'gap',gridTemplateColumns:'grid-template-columns'};
     Object.keys(layout).forEach(function(key){if(map[key])state.layout[map[key]]=String(layout[key])});
-    items.forEach(function(el){const st=remember(el);if(st){st.dx=0;st.dy=0;st.responsiveDx=0;st.responsiveDy=0}});
+    items.forEach(function(el){
+      const st=remember(el);
+      if(st){
+        st.dx=0;st.dy=0;st.responsiveDx=0;st.responsiveDy=0;
+        st.responsive.enabled=false;
+        applyState(el,st,false);
+      }
+    });
     applyState(parent,state,false);commitHistory();updateOverlay();
   }
 
@@ -2404,7 +2411,7 @@
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 4,
+      version: 5,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
       editingBreakpoint: editingBreakpoint,
