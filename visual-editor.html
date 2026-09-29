@@ -2583,17 +2583,22 @@ body.desktop .desktop-badge{display:inline-flex}
 
   async function loadSource(source){
     if(!source||!source.url)return false;
-    closeMultiPreview();
+    await closeMultiPreview();
     currentSource=source;
+    pendingDirectDiff=null;pendingNativeDiff=null;pendingDiffKind=null;
     await setPreviewMode('edit');
     document.getElementById('sourceName').textContent=source.label||source.url||'Application';
     document.getElementById('sourceModal').hidden=true;
     selector.textContent='Chargement de l’application…';
     cssOut.value='/* Aucun ajustement. */';
+    directSourceStatus.textContent=source.type==='android-project'
+      ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
+      : (['folder','html'].indexOf(source.type)>=0?'Sélectionne un objet puis prépare le diff de sa vraie règle CSS.':'L’édition source directe nécessite une source locale.');
     frame.src=source.url;
     var ready=await waitForReady(8000);
     if(!ready)setStatus('Application chargée, mais le moteur d’édition n’a pas répondu. Clique sur Recharger pour relancer l’injection.',true);
-    else setStatus('Éditeur prêt : clique directement sur un élément de l’application.');
+    else setStatus(source.type==='android-project'?'Projet Android natif chargé : sélection visuelle + édition source XML/Compose.':'Éditeur prêt : clique directement sur un élément de l’application.');
+    await refreshNativeTree();
     return ready;
   }
 
