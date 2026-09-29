@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const crypto = require('crypto');
 
 let studioServer;
 let studioBaseUrl = '';
