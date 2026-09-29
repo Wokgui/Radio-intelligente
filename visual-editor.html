@@ -963,6 +963,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var multiPreviewGrid=document.getElementById('multiPreviewGrid');
   var componentList=document.getElementById('componentList');
   var versionList=document.getElementById('versionList');
+  var prototypeStatus=document.getElementById('prototypeStatus');
   var regressionStatus=document.getElementById('regressionStatus');
   var regressionDiff=document.getElementById('regressionDiff');
   var gitStatusText=document.getElementById('gitStatusText');
@@ -1696,7 +1697,13 @@ body.desktop .desktop-badge{display:inline-flex}
 
   async function publishGit(){
     if(!desktop||!desktop.gitPublish){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
-    gitStatusText.textContent='Publication…';
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre le dépôt en dossier/fichier HTML local pour publier.';return}
+    gitStatusText.textContent='Préparation du patch puis publication…';
+    if(desktop.applyCssToSource){
+      var project=await requestProject();
+      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value});
+      if(!applied||!applied.ok){gitStatusText.textContent=applied&&applied.error||'Impossible de préparer le patch local.';return}
+    }
     var result=await desktop.gitPublish({
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
