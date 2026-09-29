@@ -1554,6 +1554,134 @@ body.desktop .desktop-badge{display:inline-flex}
     else setStatus((result&&result.error)||'Application au code impossible.',true);
   }
 
+
+  function renderComponents(items){
+    componentCatalog=Array.isArray(items)?items:[];
+    componentList.innerHTML='';
+    if(!componentCatalog.length){componentList.innerHTML='<div class="hint">Aucun composant.</div>';return}
+    componentCatalog.forEach(function(item){
+      var row=document.createElement('div');row.className='component-item';
+      var text=document.createElement('button');text.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit';
+      text.innerHTML='<strong></strong><small></small>';
+      text.querySelector('strong').textContent=item.name;
+      text.querySelector('small').textContent=(item.count||0)+' instance(s) · '+((item.variants||[]).length)+' variante(s)';
+      text.addEventListener('click',function(){document.getElementById('componentName').value=item.name});
+      var actions=document.createElement('div');actions.className='mini-actions';
+      var del=document.createElement('button');del.textContent='×';del.title='Supprimer le composant';
+      del.addEventListener('click',function(){post('component-delete',{name:item.name})});
+      actions.appendChild(del);row.append(text,actions);componentList.appendChild(row);
+    });
+  }
+
+  function renderVersions(){
+    versionList.innerHTML='';
+    if(!namedVersions.length){versionList.innerHTML='<div class="hint">Aucun point de contrôle.</div>';return}
+    namedVersions.slice().reverse().forEach(function(item){
+      var row=document.createElement('div');row.className='version-item';
+      var text=document.createElement('div');text.innerHTML='<strong></strong><small></small>';
+      text.querySelector('strong').textContent=item.name;
+      text.querySelector('small').textContent=new Date(item.createdAt).toLocaleString();
+      var actions=document.createElement('div');actions.className='mini-actions';
+      var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer';
+      restore.addEventListener('click',function(){post('load-project',{project:item.project});setStatus('Version restaurée : '+item.name)});
+      var del=document.createElement('button');del.textContent='×';del.title='Supprimer';
+      del.addEventListener('click',function(){namedVersions=namedVersions.filter(function(v){return v.id!==item.id});renderVersions()});
+      actions.append(restore,del);row.append(text,actions);versionList.appendChild(row);
+    });
+  }
+
+  async function saveNamedVersion(){
+    var project=await requestProject();
+    if(!project)return;
+    var name=String(document.getElementById('versionName').value||'').trim()||('Version '+(namedVersions.length+1));
+    namedVersions.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:project});
+    if(namedVersions.length>20)namedVersions.shift();
+    renderVersions();setStatus('Point de contrôle créé : '+name);
+  }
+
+  function syncTokenInputs(tokens){
+    tokens=tokens||{};
+    if(tokens.spacingUnit!==undefined)document.getElementById('tokenSpacing').value=tokens.spacingUnit;
+    if(tokens.radiusCard!==undefined)document.getElementById('tokenRadius').value=tokens.radiusCard;
+    if(tokens.textTitle!==undefined)document.getElementById('tokenTitle').value=tokens.textTitle;
+    if(tokens.colorPrimary)document.getElementById('tokenPrimary').value=tokens.colorPrimary;
+    if(tokens.colorSurface)document.getElementById('tokenSurface').value=tokens.colorSurface;
+  }
+
+  function tokenPayload(){
+    return {
+      spacingUnit:Number(document.getElementById('tokenSpacing').value)||8,
+      radiusCard:Number(document.getElementById('tokenRadius').value)||12,
+      textTitle:Number(document.getElementById('tokenTitle').value)||20,
+      colorPrimary:document.getElementById('tokenPrimary').value||'#6f49f5',
+      colorSurface:document.getElementById('tokenSurface').value||'#ffffff'
+    };
+  }
+
+  async function captureAllFormats(){
+    if(!desktop||!desktop.captureBatch||!currentSource){setStatus('Captures automatiques disponibles dans l’application Windows.',true);return}
+    var project=await requestProject();
+    var result=await desktop.captureBatch({
+      source:currentSource,
+      css:project&&project.css||cssOut.value,
+      configs:[
+        {name:'telephone-compact',width:360,height:800},
+        {name:'grand-telephone',width:412,height:915},
+        {name:'tablette',width:768,height:1024},
+        {name:'bureau',width:1366,height:768},
+        {name:'tv-full-hd',width:1920,height:1080}
+      ]
+    });
+    if(result&&result.ok)setStatus(result.files.length+' captures enregistrées dans '+result.dir);
+    else if(result&&!result.canceled)setStatus(result.error||'Capture impossible.',true);
+  }
+
+  async function captureCurrentForRegression(){
+    if(!desktop||!desktop.captureCurrentSource||!currentSource)return null;
+    var size=currentDeviceSize();
+    var project=await requestProject();
+    return desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project&&project.css||cssOut.value});
+  }
+
+  async function saveRegressionBaseline(){
+    var result=await captureCurrentForRegression();
+    if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Capture de référence impossible.';return}
+    regressionBaseline=result.dataUrl;
+    regressionStatus.textContent='Référence enregistrée pour '+result.width+' × '+result.height+'.';
+    regressionDiff.classList.remove('visible');
+  }
+
+  async function compareRegression(){
+    if(!regressionBaseline){regressionStatus.textContent='Commence par définir une référence.';return}
+    var current=await captureCurrentForRegression();
+    if(!current||!current.ok){regressionStatus.textContent=current&&current.error||'Capture actuelle impossible.';return}
+    var result=await desktop.compareRegression({baseline:regressionBaseline,current:current.dataUrl});
+    if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Comparaison impossible.';return}
+    regressionStatus.textContent='Différence visuelle : '+result.differencePercent+' % · '+result.changedPixels+' pixels modifiés.';
+    regressionDiff.src=result.diffDataUrl;regressionDiff.classList.add('visible');
+  }
+
+  async function checkGit(){
+    if(!desktop||!desktop.gitStatus){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
+    var result=await desktop.gitStatus({source:currentSource});
+    if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Git indisponible.';return}
+    gitStatusText.textContent='Branche : '+(result.branch||'—')+' · '+(result.status?'modifications locales détectées':'propre')+(result.ghAvailable?' · GitHub CLI disponible':' · GitHub CLI absent');
+  }
+
+  async function publishGit(){
+    if(!desktop||!desktop.gitPublish){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
+    gitStatusText.textContent='Publication…';
+    var result=await desktop.gitPublish({
+      source:currentSource,
+      branch:document.getElementById('gitBranch').value,
+      title:document.getElementById('gitTitle').value,
+      body:'Modifications visuelles générées avec App Interface Studio 4.'
+    });
+    if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
+    gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
+    if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
+  }
+
   function requestProject(){
     return new Promise(function(resolve){
       projectResolver=resolve;
