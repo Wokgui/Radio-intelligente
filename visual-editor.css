@@ -204,3 +204,19 @@ body.ve-hosted.ve-active .ve-selection-secondary{
   background:#22a3ff0c;
 }
 .ve-selection-secondary .ve-handle{display:none!important}
+
+
+body.ve-active .ve-constraint-badge{
+  position:fixed;z-index:2147483647;display:none;pointer-events:none;
+  padding:4px 7px;border-radius:7px;background:#6f49f5;color:#fff;
+  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 5px 14px #2d205c33
+}
+body.ve-active .ve-alt-target{
+  position:fixed;z-index:2147483646;display:none;pointer-events:none;
+  border:2px dashed #ff4fad;background:#ff4fad0c;border-radius:4px
+}
+body.ve-active .ve-alt-measure{
+  position:fixed;z-index:2147483647;display:none;pointer-events:none;
+  padding:6px 8px;border-radius:8px;background:#21182fe8;color:#fff;
+  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 6px 18px #0004
+}
