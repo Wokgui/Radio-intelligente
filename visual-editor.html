@@ -45,6 +45,7 @@ header{
 .btn.active{border-color:#b89adb;background:#f1e9fa;color:#6530b5}
 .desktop-only{display:none}
 body.desktop .desktop-only{display:inline-flex}
+body.desktop .desktop-only.card{display:block}
 main{
   min-height:calc(100vh - 70px);
   display:grid;grid-template-columns:minmax(560px,1fr) 390px;gap:14px;padding:14px
@@ -291,7 +292,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche ; les marges du parent sont aussi calculées.</p>
     </section>
 
-    <section class="card desktop-only" style="display:none">
+    <section class="card desktop-only">
       <h2>Projet PC <small>fichier local</small></h2>
       <div class="toolbar">
         <button class="btn wide" id="saveProjectBtn2">Enregistrer projet</button>
