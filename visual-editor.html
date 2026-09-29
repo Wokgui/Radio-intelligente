@@ -305,6 +305,19 @@ body.desktop .desktop-badge{display:inline-flex}
 .regression-preview.visible{display:block}
 .prototype-status{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#665572;font-size:.67rem;line-height:1.4}
 
+.layer-search{width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);outline:none}
+.layer-search:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
+.command-palette{position:fixed;inset:0;z-index:3200;background:#17131f99;display:grid;place-items:start center;padding-top:min(12vh,110px);backdrop-filter:blur(8px)}
+.command-palette[hidden]{display:none}
+.command-dialog{width:min(680px,calc(100vw - 32px));max-height:min(72vh,720px);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;border:1px solid #ffffff22;border-radius:18px;background:#fff;color:var(--ink);box-shadow:0 28px 90px #17131f55}
+.command-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
+.command-head input{flex:1;min-width:0;border:1px solid var(--line);border-radius:11px;padding:11px 13px;outline:none;background:#faf9fc}
+.command-head input:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
+.command-list{overflow:auto;padding:7px}
+.command-item{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:0;border-radius:11px;background:transparent;padding:10px 12px;text-align:left;color:var(--ink)}
+.command-item:hover,.command-item:focus{background:var(--accentSoft);outline:none}
+.command-item span{font-size:.75rem;color:var(--muted)}
+.command-foot{padding:9px 13px;border-top:1px solid var(--line);font-size:.7rem;color:var(--muted);background:#faf9fc}
 .diff-modal,.flow-modal,.matrix-modal,.repair-modal{
   position:fixed;inset:0;z-index:2700;background:#17131ff2;display:none;grid-template-rows:auto 1fr;color:#fff
 }
@@ -376,6 +389,7 @@ body.desktop .desktop-badge{display:inline-flex}
     <button class="btn desktop-only" id="saveProjectBtn">Enregistrer</button>
     <button class="btn primary desktop-only" id="exportChatGPTBtn">Exporter pour ChatGPT</button>
     <button class="btn desktop-only" id="openAsAppBtn">Ouvrir comme appli</button>
+    <button class="btn" id="commandsBtn">⌘ Commandes</button>
     <button class="btn" id="settingsBtn">⚙ Paramètres</button>
     <button class="btn" id="reloadBtn">Recharger</button>
   </div>
@@ -508,11 +522,31 @@ body.desktop .desktop-badge{display:inline-flex}
         <label class="checkline" style="margin-top:0"><input id="rememberPanels" type="checkbox"> Mémoriser les panneaux ouverts</label>
         <div class="settings-note">Par défaut, toutes les sections de droite sont repliées au lancement pour garder une colonne claire.</div>
       </div>
+      <div class="settings-row">
+        <label>Récupération automatique</label>
+        <label class="checkline" style="margin-top:0"><input id="autoRecovery" type="checkbox" checked> Conserver automatiquement le dernier état de travail</label>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn wide" id="restoreRecoveryBtn" type="button">Restaurer le dernier état</button>
+          <button class="btn wide" id="clearRecoveryBtn" type="button">Effacer</button>
+        </div>
+        <div class="settings-note" id="recoveryStatus">Aucun état de récupération enregistré.</div>
+      </div>
     </div>
     <div class="settings-actions">
       <button class="btn" id="resetUiSettings">Réinitialiser</button>
       <button class="btn primary" id="settingsDoneBtn">Terminé</button>
     </div>
+  </div>
+</div>
+
+<div class="command-palette" id="commandPalette" hidden>
+  <div class="command-dialog" role="dialog" aria-modal="true" aria-label="Palette de commandes">
+    <div class="command-head">
+      <input id="commandSearch" type="search" placeholder="Rechercher une commande…" autocomplete="off">
+      <button class="source-close" id="commandCloseBtn" type="button">×</button>
+    </div>
+    <div class="command-list" id="commandList"></div>
+    <div class="command-foot">Ctrl+K / Ctrl+Maj+P · Ctrl+S enregistrer · Ctrl+0 ajuster · ? aide</div>
   </div>
 </div>
 
@@ -553,7 +587,10 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
         <div class="field" id="customScreenSize" style="display:none"><label>Dimensions personnalisées</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px"><input id="screenCustomW" type="number" min="240" value="412"><input id="screenCustomH" type="number" min="240" value="915"></div></div>
         <div class="field"><label>Zoom PC</label><select id="zoom">
-          <option value="1">100 %</option><option value=".9">90 %</option><option value=".8">80 %</option><option value=".7">70 %</option>
+          <option value="fit">Ajuster à l’écran</option>
+          <option value="1.5">150 %</option><option value="1.25">125 %</option><option value="1.1">110 %</option>
+          <option value="1" selected>100 %</option><option value=".9">90 %</option><option value=".8">80 %</option>
+          <option value=".7">70 %</option><option value=".6">60 %</option><option value=".5">50 %</option>
         </select></div>
         <div class="field"><label>Accrochage</label><select id="grid">
           <option value="1">Libre · 1 px</option><option value="4">Grille · 4 px</option><option value="8">Grille · 8 px</option>
@@ -738,6 +775,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     <section class="card">
       <h2>Calques <small>arbre des éléments</small></h2>
+      <input class="layer-search" id="layerSearch" type="search" placeholder="Rechercher un calque, id, classe…" autocomplete="off">
       <div class="layer-tree" id="layerTree"><div class="hint">Chargement de l’arbre…</div></div>
       <div class="toolbar" style="margin-top:7px">
         <button class="btn wide" id="refreshLayersBtn">Actualiser</button>
@@ -1008,6 +1046,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var frame=document.getElementById('appFrame');
   var device=document.getElementById('device');
   var stage=document.getElementById('stage');
+  var workspace=document.querySelector('.workspace');
   var rulerX=document.getElementById('rulerX');
   var rulerY=document.getElementById('rulerY');
   var preset=document.getElementById('devicePreset');
@@ -1074,6 +1113,15 @@ body.desktop .desktop-badge{display:inline-flex}
   var breakpointEdit=document.getElementById('breakpointEdit');
   var breakpointActive=document.getElementById('breakpointActive');
   var layerTree=document.getElementById('layerTree');
+  var layerSearch=document.getElementById('layerSearch');
+  var lastLayerTree=[];
+  var commandPalette=document.getElementById('commandPalette');
+  var commandSearch=document.getElementById('commandSearch');
+  var commandList=document.getElementById('commandList');
+  var autoRecovery=document.getElementById('autoRecovery');
+  var recoveryStatus=document.getElementById('recoveryStatus');
+  var recoveryTimer=null;
+  var recoveryBusy=false;
   var layoutDisplay=document.getElementById('layoutDisplay');
   var layoutGap=document.getElementById('layoutGap');
   var layoutFlexDirection=document.getElementById('layoutFlexDirection');
@@ -1146,7 +1194,8 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   var PREF_KEY='app-interface-studio.preferences.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[]};
+  var RECOVERY_KEY='app-interface-studio.recovery.v1';
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1167,7 +1216,79 @@ body.desktop .desktop-badge{display:inline-flex}
     uiAnimations.checked=prefs.animations!==false;
     defaultResponsivePref.checked=prefs.defaultResponsive!==false;
     rememberPanels.checked=!!prefs.rememberPanels;
+    autoRecovery.checked=prefs.autoRecovery!==false;
     post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
+  }
+
+  function recoveryPreview(project){
+    if(!project)return 'Aucun état de récupération enregistré.';
+    var when=project.recoveredAt||project.exportedAt;
+    var label=project.source&&project.source.label?project.source.label:'projet';
+    return 'Dernier état : '+label+(when?' · '+new Date(when).toLocaleString():'');
+  }
+
+  function refreshRecoveryStatus(){
+    try{recoveryStatus.textContent=recoveryPreview(JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null'))}
+    catch(_){recoveryStatus.textContent='État de récupération illisible.'}
+  }
+
+  function scheduleRecovery(){
+    if(prefs.autoRecovery===false||!currentSource)return;
+    if(recoveryTimer)clearTimeout(recoveryTimer);
+    recoveryTimer=setTimeout(saveRecovery,1200);
+  }
+
+  async function saveRecovery(){
+    if(recoveryBusy||prefs.autoRecovery===false||!currentSource)return;
+    recoveryBusy=true;
+    try{
+      var project=await requestProject();
+      if(!project)return;
+      project.source=currentSource;
+      project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
+      project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
+      project.studio={name:'App Interface Studio',version:'6.0.0'};
+      project.recoveredAt=new Date().toISOString();
+      localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
+      refreshRecoveryStatus();
+    }catch(_){}
+    finally{recoveryBusy=false}
+  }
+
+  async function restoreRecovery(){
+    var project=null;
+    try{project=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null')}catch(_){}
+    if(!project){setStatus('Aucun état de récupération disponible.',true);return}
+    if(project.source){
+      if(desktop&&desktop.restoreSource){
+        var restored=await desktop.restoreSource(project.source);
+        if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Source du projet introuvable.',true);return}
+        await loadSource(restored.source);
+      }else if(project.source.url){
+        await loadSource(project.source);
+      }
+    }
+    if(project.preview){
+      selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
+      if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
+      if(project.preview.size&&preset.value==='custom'){
+        screenCustomW.value=project.preview.size.width||412;
+        screenCustomH.value=project.preview.size.height||915;
+      }
+      if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
+      setDevice();
+    }
+    namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
+    renderVersions();
+    post('load-project',{project:project});
+    setStatus('Dernier état de travail restauré.');
+    settingsModal.hidden=true;
+  }
+
+  function clearRecovery(){
+    try{localStorage.removeItem(RECOVERY_KEY)}catch(_){}
+    refreshRecoveryStatus();
+    setStatus('État de récupération effacé.');
   }
 
   function cardKey(card,index){
@@ -1381,11 +1502,18 @@ body.desktop .desktop-badge{display:inline-flex}
     var size=currentDeviceSize();
     var w=size.width,h=size.height;
     customScreenSize.style.display=preset.value==='custom'?'grid':'none';
-    var z=Number(zoom.value);
+    var z;
     if(currentPreviewMode!=='edit'){
       z=Math.min(window.innerWidth/w,window.innerHeight/h);
-      if(!Number.isFinite(z)||z<=0)z=1;
+    }else if(zoom.value==='fit'){
+      var availW=Math.max(240,(workspace&&workspace.clientWidth||window.innerWidth)-82);
+      var availH=Math.max(240,(workspace&&workspace.clientHeight||window.innerHeight)-82);
+      z=Math.min(availW/w,availH/h,1.5);
+    }else{
+      z=Number(zoom.value);
     }
+    if(!Number.isFinite(z)||z<=0)z=1;
+    z=Math.max(.2,z);
     device.style.width=w+'px';
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
@@ -1549,10 +1677,19 @@ body.desktop .desktop-badge{display:inline-flex}
 
 
   function renderLayers(tree){
+    lastLayerTree=Array.isArray(tree)?tree:lastLayerTree;
     layerTree.innerHTML='';
     var frag=document.createDocumentFragment();
+    var query=String(layerSearch&&layerSearch.value||'').trim().toLowerCase();
+    function nodeMatches(node){
+      if(!query)return true;
+      var own=[node.title,node.tag,node.selector].join(' ').toLowerCase();
+      if(own.indexOf(query)>=0)return true;
+      return (node.children||[]).some(nodeMatches);
+    }
     function add(nodes){
       (nodes||[]).forEach(function(node){
+        if(!nodeMatches(node))return;
         var row=document.createElement('div');
         row.className='layer-row'+(node.selected?' selected':'');
         var main=document.createElement('button');
@@ -1571,8 +1708,8 @@ body.desktop .desktop-badge{display:inline-flex}
         add(node.children);
       });
     }
-    add(tree);
-    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">Aucun élément visible.</div>';
+    add(lastLayerTree);
+    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">'+(query?'Aucun calque ne correspond à la recherche.':'Aucun élément visible.')+'</div>';
     else layerTree.appendChild(frag);
   }
 
@@ -2084,7 +2221,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 5.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2129,7 +2266,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'5.0.0'};
+    project.studio={name:'App Interface Studio',version:'6.0.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2187,7 +2324,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'5.0.0'};
+    project.studio={name:'App Interface Studio',version:'6.0.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2207,11 +2344,23 @@ body.desktop .desktop-badge{display:inline-flex}
   function sendKeyboard(event){
     var key=event.key;
     var modifier=event.ctrlKey||event.metaKey;
-    if(modifier&&key.toLowerCase()==='s'){
+    var lower=String(key||'').toLowerCase();
+    if(modifier&&(lower==='k'||(event.shiftKey&&lower==='p'))){
+      event.preventDefault();openCommandPalette();return;
+    }
+    if(modifier&&lower==='s'){
       event.preventDefault();saveProject();return;
+    }
+    if(modifier&&lower==='0'){
+      event.preventDefault();zoom.value='fit';setDevice();setStatus('Zoom ajusté à l’écran.');return;
+    }
+    if(modifier&&lower==='o'){
+      event.preventDefault();sourceModal.hidden=false;return;
     }
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+    if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
+    if(key==='Escape'&&!commandPalette.hidden){event.preventDefault();closeCommandPalette();return}
     var relevant=key.indexOf('Arrow')===0||key==='Delete'||key==='Backspace'||(modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
     if(!relevant)return;
     event.preventDefault();
@@ -2231,6 +2380,48 @@ body.desktop .desktop-badge{display:inline-flex}
       if(key==='ArrowDown')post('move',{dx:0,dy:amount,commit:false});
     }
   }
+  var commands=[
+    {label:'Ouvrir une application',hint:'Ctrl+O',run:function(){sourceModal.hidden=false}},
+    {label:'Enregistrer le projet',hint:'Ctrl+S',run:saveProject},
+    {label:'Ajuster le zoom à l’écran',hint:'Ctrl+0',run:function(){zoom.value='fit';setDevice()}},
+    {label:'Mode Édition',hint:'',run:function(){setPreviewMode('edit')}},
+    {label:'Aperçu plein écran',hint:'',run:function(){setPreviewMode('preview')}},
+    {label:'Android exact',hint:'',run:function(){setPreviewMode('android')}},
+    {label:'Comparer plusieurs écrans',hint:'',run:openMultiPreview},
+    {label:'Analyser l’interface',hint:'',run:function(){post('audit')}},
+    {label:'Réparer avec aperçu',hint:'',run:function(){post('repair-suggest');repairModal.classList.add('visible')}},
+    {label:'Flow de navigation',hint:'',run:openFlow},
+    {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
+    {label:'Raccourcis clavier : flèches déplacer · Maj+flèches redimensionner',hint:'?',run:function(){}}
+  ];
+
+  function renderCommands(filter){
+    var q=String(filter||'').trim().toLowerCase();
+    commandList.innerHTML='';
+    commands.filter(function(item){return !q||item.label.toLowerCase().indexOf(q)>=0||String(item.hint||'').toLowerCase().indexOf(q)>=0}).forEach(function(item){
+      var btn=document.createElement('button');
+      btn.className='command-item';
+      btn.type='button';
+      var label=document.createElement('b');label.textContent=item.label;
+      var hint=document.createElement('span');hint.textContent=item.hint||'';
+      btn.append(label,hint);
+      btn.addEventListener('click',function(){closeCommandPalette();item.run()});
+      commandList.appendChild(btn);
+    });
+    if(!commandList.childNodes.length)commandList.innerHTML='<div class="hint" style="padding:14px">Aucune commande trouvée.</div>';
+  }
+
+  function openCommandPalette(filter){
+    commandPalette.hidden=false;
+    commandSearch.value=filter||'';
+    renderCommands(commandSearch.value);
+    setTimeout(function(){commandSearch.focus();commandSearch.select()},0);
+  }
+
+  function closeCommandPalette(){
+    commandPalette.hidden=true;
+  }
+
   function finishKeyboard(event){
     if(event.key&&event.key.indexOf('Arrow')===0)post('keyboard-commit');
   }
@@ -2275,7 +2466,7 @@ body.desktop .desktop-badge{display:inline-flex}
       undoBtn.disabled=!p.canUndo;
       redoBtn.disabled=!p.canRedo;
     }
-    if(data.type==='state'){updateState(p);scheduleMultiSync()}
+    if(data.type==='state'){updateState(p);scheduleMultiSync();scheduleRecovery()}
     if(data.type==='spacing'){
       document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
       document.getElementById('spaceR').textContent=p.right?Math.round(p.right.gap)+' px':'—';
@@ -2662,7 +2853,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
   },true);
   window.addEventListener('resize',function(){
-    if(currentPreviewMode!=='edit')setDevice();
+    if(currentPreviewMode!=='edit'||zoom.value==='fit')setDevice();
     multiFrames.forEach(fitMultiRecord);
   });
 
@@ -2676,7 +2867,13 @@ body.desktop .desktop-badge{display:inline-flex}
   loadPrefs();
   applyPrefs();
   initializeCards();
+  refreshRecoveryStatus();
 
+  document.getElementById('commandsBtn').addEventListener('click',function(){openCommandPalette()});
+  document.getElementById('commandCloseBtn').addEventListener('click',closeCommandPalette);
+  commandSearch.addEventListener('input',function(){renderCommands(commandSearch.value)});
+  commandPalette.addEventListener('click',function(e){if(e.target===commandPalette)closeCommandPalette()});
+  layerSearch.addEventListener('input',function(){renderLayers(lastLayerTree)});
   document.getElementById('settingsBtn').addEventListener('click',function(){settingsModal.hidden=false});
   document.getElementById('settingsCloseBtn').addEventListener('click',function(){settingsModal.hidden=true});
   document.getElementById('settingsDoneBtn').addEventListener('click',function(){settingsModal.hidden=true});
@@ -2694,6 +2891,13 @@ body.desktop .desktop-badge{display:inline-flex}
     else syncOpenPanels();
     savePrefs();
   });
+  autoRecovery.addEventListener('change',function(){
+    prefs.autoRecovery=autoRecovery.checked;
+    savePrefs();
+    if(prefs.autoRecovery)scheduleRecovery();
+  });
+  document.getElementById('restoreRecoveryBtn').addEventListener('click',restoreRecovery);
+  document.getElementById('clearRecoveryBtn').addEventListener('click',clearRecovery);
   document.getElementById('resetUiSettings').addEventListener('click',function(){
     prefs=Object.assign({},defaultPrefs);
     savePrefs();applyPrefs();
