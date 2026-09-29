@@ -17,6 +17,13 @@ expect(html,"post('responsive-capture'","responsive capture command");
 expect(engine,"data.type === 'responsive-set'","responsive engine command");
 expect(engine,"data.type === 'safe-area'","safe-area engine command");
 expect(engine,"function reflowResponsive()","responsive reflow");
+expect(engine,"const selectedSet = new Set()","multi selection state");
+expect(engine,"function measurementCandidates()","edge spacing measurement");
+expect(engine,"function moveResponsiveState","relative movement");
+expect(html,'id="settingsBtn"','settings button');
+expect(html,'id="uiFontScale"','interface font scale');
+expect(html,"function initializeCards()","collapsible right panels");
+expect(html,"Maj+clic","multi selection help");
 expect(engine,"version: 2","project format v2");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);

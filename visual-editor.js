@@ -61,11 +61,14 @@
 
   let active = false;
   let selected = null;
+  const selectedSet = new Set();
+  const secondaryOutlines = new Map();
   let drag = null;
   let resizeDrag = null;
   let grid = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
+  let defaultResponsive = true;
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -167,7 +170,7 @@
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
-        enabled: false,
+        enabled: defaultResponsive,
         hAnchor: 'free',
         vAnchor: 'free',
         widthMode: 'auto',
@@ -184,7 +187,97 @@
       }
     };
     touched.set(element, state);
+    if (defaultResponsive) {
+      captureResponsiveFromCurrent(element, state, false);
+      const bounds = responsiveBounds(element, state);
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const rx = bounds.width > 0 ? (cx - bounds.left) / bounds.width : .5;
+      const ry = bounds.height > 0 ? (cy - bounds.top) / bounds.height : .5;
+      state.responsive.hAnchor = rx < .34 ? 'left' : (rx > .66 ? 'right' : 'center');
+      state.responsive.vAnchor = ry < .34 ? 'top' : (ry > .66 ? 'bottom' : 'center');
+      if (rect.width >= bounds.width * .78) {
+        state.responsive.widthMode = 'fill';
+        state.responsive.hAnchor = 'stretch';
+      }
+    }
     return state;
+  }
+
+
+  function selectionElements() {
+    const list = Array.from(selectedSet).filter(function (el) {
+      const state = touched.get(el);
+      return document.documentElement.contains(el) && !(state && state.deleted);
+    });
+    if (selected && document.documentElement.contains(selected) && !list.includes(selected)) list.push(selected);
+    return list;
+  }
+
+  function selectionBounds() {
+    const items = selectionElements();
+    if (!items.length) return null;
+    const rects = items.map(function (el) { return el.getBoundingClientRect(); });
+    const left = Math.min.apply(null, rects.map(function (r) { return r.left; }));
+    const top = Math.min.apply(null, rects.map(function (r) { return r.top; }));
+    const right = Math.max.apply(null, rects.map(function (r) { return r.right; }));
+    const bottom = Math.max.apply(null, rects.map(function (r) { return r.bottom; }));
+    return { left:left, top:top, right:right, bottom:bottom, width:right-left, height:bottom-top };
+  }
+
+  function ensureSecondaryOutline(element) {
+    if (secondaryOutlines.has(element)) return secondaryOutlines.get(element);
+    const box = document.createElement('div');
+    box.className = 've-selection ve-selection-secondary';
+    document.body.appendChild(box);
+    secondaryOutlines.set(element, box);
+    return box;
+  }
+
+  function clearSecondaryOutlines() {
+    secondaryOutlines.forEach(function (box) { box.remove(); });
+    secondaryOutlines.clear();
+  }
+
+  function syncSecondaryOutlines() {
+    const keep = new Set();
+    selectionElements().forEach(function (el) {
+      if (el === selected) return;
+      const box = ensureSecondaryOutline(el);
+      const r = el.getBoundingClientRect();
+      box.style.display = active ? 'block' : 'none';
+      box.style.left = r.left + 'px';
+      box.style.top = r.top + 'px';
+      box.style.width = r.width + 'px';
+      box.style.height = r.height + 'px';
+      keep.add(el);
+    });
+    Array.from(secondaryOutlines.entries()).forEach(function (entry) {
+      if (!keep.has(entry[0])) {
+        entry[1].remove();
+        secondaryOutlines.delete(entry[0]);
+      }
+    });
+  }
+
+  function moveResponsiveState(element, state, dx, dy) {
+    const cfg = state.responsive;
+    if (!cfg || !cfg.enabled) {
+      state.dx = snapGrid(state.dx + dx);
+      state.dy = snapGrid(state.dy + dy);
+      return;
+    }
+    if (cfg.hAnchor === 'left' || cfg.hAnchor === 'stretch') cfg.marginLeft = snapGrid(cfg.marginLeft + dx);
+    else if (cfg.hAnchor === 'right') cfg.marginRight = snapGrid(cfg.marginRight - dx);
+    else if (cfg.hAnchor === 'center') cfg.centerOffsetX = snapGrid(cfg.centerOffsetX + dx);
+    else state.dx = snapGrid(state.dx + dx);
+
+    if (cfg.vAnchor === 'top' || cfg.vAnchor === 'stretch') cfg.marginTop = snapGrid(cfg.marginTop + dy);
+    else if (cfg.vAnchor === 'bottom') cfg.marginBottom = snapGrid(cfg.marginBottom - dy);
+    else if (cfg.vAnchor === 'center') cfg.centerOffsetY = snapGrid(cfg.centerOffsetY + dy);
+    else state.dy = snapGrid(state.dy + dy);
+
+    applyState(element, state, false);
   }
 
   function snapGrid(value) {
@@ -640,7 +733,8 @@
     items.sort(function (a, b) { return a.selector.localeCompare(b.selector); });
     return {
       items: items,
-      selectedSelector: selected ? selectorFor(selected) : ''
+      selectedSelector: selected ? selectorFor(selected) : '',
+      selectedSelectors: selectionElements().map(selectorFor).filter(Boolean)
     };
   }
 
@@ -715,11 +809,19 @@
       applyState(element, state, false);
     });
 
-    selected = snap.selectedSelector ? document.querySelector(snap.selectedSelector) : null;
+    selectedSet.clear();
+    const restoredSelectors = Array.isArray(snap.selectedSelectors) ? snap.selectedSelectors : (snap.selectedSelector ? [snap.selectedSelector] : []);
+    restoredSelectors.forEach(function (sel) {
+      const el = document.querySelector(sel);
+      const st = el ? touched.get(el) : null;
+      if (el && !(st && st.deleted)) selectedSet.add(el);
+    });
+    selected = snap.selectedSelector ? document.querySelector(snap.selectedSelector) : (selectedSet.values().next().value || null);
     if (selected) {
       const st = touched.get(selected);
       if (st && st.deleted) selected = null;
     }
+    if (selected && !selectedSet.has(selected)) selectedSet.add(selected);
     applyingHistory = false;
     hideGuides();
     updateOverlay();
@@ -742,6 +844,8 @@
     registry.forEach(restoreEntry);
     touched.clear();
     selected = null;
+    selectedSet.clear();
+    clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
     commitHistory();
@@ -812,14 +916,16 @@
     const state = remember(selected);
     if (!state || state.deleted) return { active: active, selected: false, css: cssText(), grid: grid };
     const rect = selected.getBoundingClientRect();
+    const selectedItems = selectionElements();
+    const payloadRect = selectedItems.length > 1 ? selectionBounds() : rect;
     return {
       active: active,
       selected: true,
       selector: state.selector,
-      x: Math.round(rect.left),
-      y: Math.round(rect.top),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
+      x: Math.round(payloadRect.left),
+      y: Math.round(payloadRect.top),
+      width: Math.round(payloadRect.width),
+      height: Math.round(payloadRect.height),
       fontSize: Math.round(state.fontSize * 10) / 10,
       fontFamily: state.fontFamily,
       fontWeight: state.fontWeight,
@@ -838,6 +944,8 @@
       zIndex: state.zIndex,
       dx: state.dx,
       dy: state.dy,
+      selectionCount: selectionElements().length,
+      selectedSelectors: selectionElements().map(selectorFor).filter(Boolean),
       responsive: cloneResponsive(state.responsive),
       safeArea: Object.assign({}, safeArea),
       css: cssText(),
@@ -848,6 +956,7 @@
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
+      clearSecondaryOutlines();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -867,31 +976,51 @@
     outline.style.top = rect.top + 'px';
     outline.style.width = rect.width + 'px';
     outline.style.height = rect.height + 'px';
-    targetLabel.textContent = state.selector;
-    metrics.textContent = 'X ' + Math.round(rect.left) + ' · Y ' + Math.round(rect.top) +
-      ' · L ' + Math.round(rect.width) + ' · H ' + Math.round(rect.height) +
-      ' · texte ' + Math.round(state.fontSize * 10) / 10 + ' px';
+    syncSecondaryOutlines();
+    const count = selectionElements().length;
+    const groupRect = count > 1 ? selectionBounds() : rect;
+    targetLabel.textContent = count > 1 ? (count + ' objets sélectionnés') : state.selector;
+    metrics.textContent = 'X ' + Math.round(groupRect.left) + ' · Y ' + Math.round(groupRect.top) +
+      ' · L ' + Math.round(groupRect.width) + ' · H ' + Math.round(groupRect.height) +
+      (count > 1 ? ' · sélection multiple' : ' · texte ' + Math.round(state.fontSize * 10) / 10 + ' px');
     emit('state', currentPayload());
   }
 
-  function select(element) {
+  function select(element, additive) {
     if (!element || isEditorNode(element)) return;
     if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
       element = element.closest('svg');
     }
-    selected = element;
     remember(element);
+
+    if (!additive) {
+      selectedSet.clear();
+      selectedSet.add(element);
+      selected = element;
+    } else if (selectedSet.has(element)) {
+      if (selectedSet.size > 1) {
+        selectedSet.delete(element);
+        if (selected === element) selected = Array.from(selectedSet).pop() || null;
+      } else {
+        selected = element;
+      }
+    } else {
+      selectedSet.add(element);
+      selected = element;
+    }
+
     hideGuides();
     updateOverlay();
   }
 
   function adjustMove(dx, dy, commit) {
     if (!active || !selected) return;
-    const state = remember(selected);
-    if (state.locked) return;
-    state.dx = snapGrid(state.dx + dx);
-    state.dy = snapGrid(state.dy + dy);
-    applyState(selected, state, false);
+    const items = selectionElements();
+    items.forEach(function (element) {
+      const state = remember(element);
+      if (!state || state.locked) return;
+      moveResponsiveState(element, state, dx, dy);
+    });
     hideGuides();
     updateOverlay();
     if (commit !== false) commitHistory();
@@ -971,14 +1100,10 @@
 
   function setExactPosition(x, y) {
     if (!active || !selected) return;
-    const state = remember(selected);
-    if (state.locked) return;
-    const rect = selected.getBoundingClientRect();
-    if (Number.isFinite(Number(x))) state.dx = snapGrid(state.dx + Number(x) - rect.left);
-    if (Number.isFinite(Number(y))) state.dy = snapGrid(state.dy + Number(y) - rect.top);
-    applyState(selected, state);
-    updateOverlay();
-    commitHistory();
+    const rect = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
+    const dx = Number.isFinite(Number(x)) ? snapGrid(Number(x) - rect.left) : 0;
+    const dy = Number.isFinite(Number(y)) ? snapGrid(Number(y) - rect.top) : 0;
+    adjustMove(dx, dy, true);
   }
 
   function alignSelected(mode) {
@@ -988,18 +1113,31 @@
     const rect = selected.getBoundingClientRect();
     const parent = selected.parentElement;
     const parentRect = parent ? parent.getBoundingClientRect() : {left:0,top:0,width:innerWidth,height:innerHeight};
-    let dx = 0, dy = 0;
-    if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
-    if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
-    if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
-    if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
-    if (mode === 'parent-both') {
-      dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
-      dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    const responsive = state.responsive && state.responsive.enabled;
+
+    if (responsive && (mode === 'parent-x' || mode === 'parent-y' || mode === 'parent-both')) {
+      if (mode === 'parent-x' || mode === 'parent-both') {
+        state.responsive.hAnchor = 'center';
+        state.responsive.centerOffsetX = 0;
+      }
+      if (mode === 'parent-y' || mode === 'parent-both') {
+        state.responsive.vAnchor = 'center';
+        state.responsive.centerOffsetY = 0;
+      }
+      applyState(selected, state, false);
+    } else {
+      let dx = 0, dy = 0;
+      if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
+      if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
+      if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+      if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+      if (mode === 'parent-both') {
+        dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+        dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+      }
+      moveResponsiveState(selected, state, dx, dy);
     }
-    state.dx = snapGrid(state.dx + dx);
-    state.dy = snapGrid(state.dy + dy);
-    applyState(selected, state, false);
+
     hideGuides();
     if (mode === 'screen-x') showVerticalGuide(innerWidth / 2, 'Centre écran');
     if (mode === 'screen-y') showHorizontalGuide(innerHeight / 2, 'Milieu écran');
@@ -1044,44 +1182,67 @@
     commitHistory();
   }
 
+  function intervalGap(a1, a2, b1, b2) {
+    if (a2 < b1) return b1 - a2;
+    if (b2 < a1) return a1 - b2;
+    return 0;
+  }
+
+  function measurementCandidates() {
+    const selectedItems = selectionElements();
+    const selectedLookup = new Set(selectedItems);
+    const scope = selected && (selected.closest('.track,.cover,.music-player,.player,.app-page,[data-page],main,section') || document.body);
+    return Array.from((scope || document.body).querySelectorAll('*')).filter(function (el) {
+      if (!el || selectedLookup.has(el) || isEditorNode(el) || !el.getBoundingClientRect) return false;
+      if (selectedItems.some(function (sel) { return sel.contains(el) || el.contains(sel); })) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return false;
+      if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return false;
+      return true;
+    });
+  }
+
   function measureSpacing() {
     if (!active || !selected) return;
-    const rect = selected.getBoundingClientRect();
+    const rect = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
     const parent = selected.parentElement;
     const parentRect = parent ? parent.getBoundingClientRect() : {left:0,right:innerWidth,top:0,bottom:innerHeight};
-    const peers = parent ? Array.from(parent.children).filter(function(el){
-      if (el === selected || !el.getBoundingClientRect || isEditorNode(el)) return false;
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
-    }) : [];
+    const candidates = measurementCandidates();
+
     let left = null, right = null, top = null, bottom = null;
-    peers.forEach(function(el){
+
+    function consider(current, gap, crossGap, el) {
+      const score = Math.max(0, gap) + Math.max(0, crossGap) * 0.35;
+      const next = {gap:Math.max(0,gap), crossGap:Math.max(0,crossGap), score:score, selector:selectorFor(el)};
+      if (!current || next.score < current.score || (next.score === current.score && next.gap < current.gap)) return next;
+      return current;
+    }
+
+    candidates.forEach(function (el) {
       const r = el.getBoundingClientRect();
-      const verticalOverlap = Math.min(rect.bottom,r.bottom) - Math.max(rect.top,r.top) > 0;
-      const horizontalOverlap = Math.min(rect.right,r.right) - Math.max(rect.left,r.left) > 0;
-      if (verticalOverlap && r.right <= rect.left) {
-        const gap = rect.left - r.right;
-        if (!left || gap < left.gap) left = {gap:gap, selector:selectorFor(el)};
+
+      if (r.right <= rect.left) {
+        left = consider(left, rect.left - r.right, intervalGap(rect.top, rect.bottom, r.top, r.bottom), el);
       }
-      if (verticalOverlap && r.left >= rect.right) {
-        const gap = r.left - rect.right;
-        if (!right || gap < right.gap) right = {gap:gap, selector:selectorFor(el)};
+      if (r.left >= rect.right) {
+        right = consider(right, r.left - rect.right, intervalGap(rect.top, rect.bottom, r.top, r.bottom), el);
       }
-      if (horizontalOverlap && r.bottom <= rect.top) {
-        const gap = rect.top - r.bottom;
-        if (!top || gap < top.gap) top = {gap:gap, selector:selectorFor(el)};
+      if (r.bottom <= rect.top) {
+        top = consider(top, rect.top - r.bottom, intervalGap(rect.left, rect.right, r.left, r.right), el);
       }
-      if (horizontalOverlap && r.top >= rect.bottom) {
-        const gap = r.top - rect.bottom;
-        if (!bottom || gap < bottom.gap) bottom = {gap:gap, selector:selectorFor(el)};
+      if (r.top >= rect.bottom) {
+        bottom = consider(bottom, r.top - rect.bottom, intervalGap(rect.left, rect.right, r.left, r.right), el);
       }
     });
+
     emit('spacing', {
       left: left,
       right: right,
       top: top,
       bottom: bottom,
+      selectionCount: selectionElements().length,
       parent: {
         left: Math.round(rect.left - parentRect.left),
         right: Math.round(parentRect.right - rect.right),
@@ -1133,11 +1294,15 @@
 
   function deleteSelected() {
     if (!active || !selected) return;
-    const element = selected;
-    const state = remember(element);
-    state.deleted = true;
-    applyState(element, state, false);
+    selectionElements().forEach(function (element) {
+      const state = remember(element);
+      if (!state || state.locked) return;
+      state.deleted = true;
+      applyState(element, state, false);
+    });
     selected = null;
+    selectedSet.clear();
+    clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
     commitHistory();
@@ -1216,6 +1381,7 @@
     resizeDrag = null;
     document.body.classList.remove('ve-active');
     outline.style.display = 'none';
+    clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
   }
@@ -1224,20 +1390,39 @@
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    select(event.target);
-    const state = remember(selected);
-    if (state.locked) return;
-    drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: state.dx, dy: state.dy };
+    select(event.target, !!event.shiftKey);
+    if (!selected) return;
+    const movable = selectionElements().filter(function (element) {
+      const state = remember(element);
+      return state && !state.locked;
+    });
+    if (!movable.length) return;
+    drag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      lastDx: 0,
+      lastDy: 0
+    };
   }, true);
 
   window.addEventListener('pointermove', function (event) {
     if (!active || !drag || event.pointerId !== drag.pointerId || !selected) return;
     event.preventDefault();
-    const state = remember(selected);
-    state.dx = snapGrid(drag.dx + event.clientX - drag.x);
-    state.dy = snapGrid(drag.dy + event.clientY - drag.y);
-    applyState(selected, state, false);
-    smartSnap(selected, state);
+    const totalDx = snapGrid(event.clientX - drag.x);
+    const totalDy = snapGrid(event.clientY - drag.y);
+    const stepDx = totalDx - drag.lastDx;
+    const stepDy = totalDy - drag.lastDy;
+    if (stepDx || stepDy) {
+      selectionElements().forEach(function (element) {
+        const state = remember(element);
+        if (!state || state.locked) return;
+        moveResponsiveState(element, state, stepDx, stepDy);
+      });
+      drag.lastDx = totalDx;
+      drag.lastDy = totalDy;
+    }
+    hideGuides();
     updateOverlay();
   }, true);
 
@@ -1384,6 +1569,9 @@
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
     if (data.type === 'responsive-capture') captureResponsiveRules();
     if (data.type === 'safe-area') setSafeArea(payload);
+    if (data.type === 'preferences') {
+      if (payload.defaultResponsive !== undefined) defaultResponsive = !!payload.defaultResponsive;
+    }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
     if (data.type === 'set-position') setExactPosition(payload.x, payload.y);

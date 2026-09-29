@@ -188,3 +188,19 @@ body.ve-active .ve-selection{
   left:8px;
   transform:translateY(-50%);
 }
+
+
+body.ve-active .ve-selection-secondary{
+  position:fixed;
+  z-index:2147483645;
+  display:block;
+  border:2px dashed #22a3ff;
+  background:#22a3ff0c;
+  box-shadow:0 0 0 1px #ffffffaa;
+  pointer-events:none;
+}
+body.ve-hosted.ve-active .ve-selection-secondary{
+  border-color:#22a3ff;
+  background:#22a3ff0c;
+}
+.ve-selection-secondary .ve-handle{display:none!important}
