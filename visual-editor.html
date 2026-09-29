@@ -1592,6 +1592,12 @@ body.desktop .desktop-badge{display:inline-flex}
       var text=document.createElement('div');text.innerHTML='<strong></strong><small></small>';
       text.querySelector('strong').textContent=item.name;
       text.querySelector('small').textContent=new Date(item.createdAt).toLocaleString();
+      if(item.thumbnail){
+        var thumb=document.createElement('img');
+        thumb.src=item.thumbnail;thumb.alt='Aperçu '+item.name;
+        thumb.style.cssText='display:block;width:78px;height:48px;object-fit:cover;border-radius:6px;margin-top:5px;border:1px solid var(--line)';
+        text.appendChild(thumb);
+      }
       var actions=document.createElement('div');actions.className='mini-actions';
       var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer';
       restore.addEventListener('click',function(){post('load-project',{project:item.project});setStatus('Version restaurée : '+item.name)});
