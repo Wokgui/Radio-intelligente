@@ -7,6 +7,8 @@
 <style>
 :root{
   color-scheme:light;
+  --ui-font-scale:1;
+  --panel-pad:12px;
   --ink:#1f1c2b;
   --muted:#777184;
   --line:#e5dfec;
@@ -22,7 +24,9 @@
   --shadowStrong:0 26px 70px rgba(44,31,72,.18);
 }
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;font:600 14px/1.35 system-ui,-apple-system,"Segoe UI Variable","Segoe UI",sans-serif;color:var(--ink);background:
+html{font-size:calc(14px * var(--ui-font-scale))}
+html,body{margin:0;min-height:100%}
+body{font:600 1rem/1.35 system-ui,-apple-system,"Segoe UI Variable","Segoe UI",sans-serif;color:var(--ink);overflow:hidden;background:
   radial-gradient(circle at 18% -10%,#efe7ff 0,transparent 32%),
   radial-gradient(circle at 105% 18%,#f9eaff 0,transparent 26%),
   var(--desk)}
@@ -56,11 +60,11 @@ header{
 body.desktop .desktop-only{display:inline-flex}
 body.desktop .desktop-only.card{display:block}
 main{
-  min-height:calc(100vh - 76px);
-  display:grid;grid-template-columns:minmax(590px,1fr) 404px;gap:16px;padding:16px
+  height:calc(100vh - 76px);
+  display:grid;grid-template-columns:minmax(590px,1fr) 404px;gap:16px;padding:16px;overflow:hidden
 }
 .workspace{
-  min-width:0;display:flex;align-items:flex-start;justify-content:center;overflow:auto;
+  min-width:0;height:100%;display:flex;align-items:flex-start;justify-content:center;overflow:auto;
   padding:18px;border:1px solid rgba(219,212,228,.95);border-radius:22px;
   background:
     linear-gradient(90deg,rgba(156,145,173,.12) 1px,transparent 1px),
@@ -91,11 +95,33 @@ main{
 .safe-outline.visible{display:block}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
 iframe{display:block;width:100%;height:100%;border:0;background:white}
-.side{display:grid;gap:12px;align-content:start;max-height:calc(100vh - 104px);overflow:auto;padding:1px 3px 18px 1px;scrollbar-gutter:stable}
-.card{border:1px solid rgba(227,220,235,.94);border-radius:18px;background:rgba(255,255,255,.97);padding:15px;box-shadow:var(--shadow)}
-.card h2{display:flex;align-items:center;gap:8px;min-height:22px;font-size:.9rem;line-height:1.15;margin:0 0 12px;letter-spacing:-.01em}
+.side{
+  height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;
+  display:flex;flex-direction:column;gap:0;padding:6px;
+  border:1px solid rgba(225,219,233,.96);border-radius:20px;
+  background:rgba(255,255,255,.78);backdrop-filter:blur(16px);
+  box-shadow:0 14px 36px rgba(44,31,72,.07)
+}
+.card{
+  flex:0 0 auto;border:0;border-bottom:1px solid rgba(228,221,236,.95);border-radius:0;
+  background:transparent;padding:0;box-shadow:none
+}
+.card:last-child{border-bottom:0}
+.card h2{
+  display:flex;align-items:center;gap:8px;min-height:47px;font-size:.9rem;line-height:1.15;
+  margin:0;padding:0 10px;letter-spacing:-.01em;cursor:pointer;user-select:none
+}
 .card h2 small{margin-left:auto;color:var(--muted);font-size:.67rem;line-height:1;font-weight:750}
+.card h2::after{content:"⌄";font-size:1rem;color:#8c7b9e;transition:transform .16s ease;margin-left:2px}
+.card.collapsed h2::after{transform:rotate(-90deg)}
+.card-body{padding:0 10px var(--panel-pad)}
+.card.collapsed .card-body{display:none}
 .card p{margin:9px 0 0;color:var(--muted);font-size:.72rem;line-height:1.48;font-weight:650}
+body[data-density="compact"]{--panel-pad:8px}
+body[data-density="compact"] .card h2{min-height:41px}
+body[data-density="comfortable"]{--panel-pad:16px}
+body[data-density="comfortable"] .card h2{min-height:54px}
+body.no-animations *,body.no-animations *::before,body.no-animations *::after{transition:none!important;animation:none!important}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .fields.four{grid-template-columns:repeat(4,1fr)}
 .field{display:grid;gap:5px;align-content:start}
@@ -145,6 +171,13 @@ iframe{display:block;width:100%;height:100%;border:0;background:white}
 .responsive-summary{margin-top:9px;padding:9px 10px;border-radius:10px;background:#f3eefc;color:#624c7a;font-size:.68rem;line-height:1.4}
 .responsive-card.off .responsive-body{opacity:.5}
 .responsive-card.off .responsive-body{pointer-events:none}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.settings-row{display:grid;gap:6px}
+.settings-row label{font-size:.72rem;color:var(--muted);font-weight:750}
+.settings-row select,.settings-row input[type="range"]{width:100%}
+.settings-value{font-size:.72rem;color:#5d4a72;font-weight:800}
+.settings-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.settings-note{padding:10px 11px;border-radius:10px;background:#f7f2fc;color:#684c82;font-size:.7rem;line-height:1.45}
 kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 10px system-ui}
 .source-bar{display:flex;align-items:center;gap:7px;min-width:0}
 .source-pill{max-width:310px;min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(#fff,#faf8fc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5f526a;font-size:.72rem;line-height:1;font-weight:750;box-shadow:0 3px 9px rgba(50,34,77,.04);display:inline-flex;align-items:center}
@@ -188,8 +221,10 @@ body.desktop .desktop-badge{display:inline-flex}
 #fontFamily,#fontSize,#letterSpacing,#lineHeight,#zIndex,#posX,#posY,#sizeW,#sizeH{font-size:.76rem}
 .status{font-size:.7rem;line-height:1.35}
 @media(max-width:1100px){
-  main{grid-template-columns:1fr}
-  .side{max-height:none;grid-template-columns:repeat(2,minmax(0,1fr))}
+  body{overflow:auto}
+  main{height:auto;min-height:calc(100vh - 76px);grid-template-columns:1fr;overflow:visible}
+  .workspace{height:auto;min-height:620px}
+  .side{height:auto;max-height:none}
 }
 @media(max-width:760px){
   .side{grid-template-columns:1fr}
@@ -224,6 +259,7 @@ body.desktop .desktop-badge{display:inline-flex}
     <button class="btn desktop-only" id="openProjectBtn">Ouvrir</button>
     <button class="btn desktop-only" id="saveProjectBtn">Enregistrer</button>
     <button class="btn primary desktop-only" id="exportChatGPTBtn">Exporter pour ChatGPT</button>
+    <button class="btn" id="settingsBtn">⚙ Paramètres</button>
     <button class="btn" id="reloadBtn">Recharger</button>
   </div>
 </header>
@@ -256,6 +292,47 @@ body.desktop .desktop-badge{display:inline-flex}
     </div>
     <div class="native-note"><b>Applications natives :</b> une APK/EXE fermée sans code source n’est pas transformable directement en interface HTML éditable. Avec les sources ou une version web/PWA, l’éditeur peut travailler dessus.</div>
     <div class="status" id="sourceStatus"></div>
+  </div>
+</div>
+
+<div class="source-modal" id="settingsModal" hidden>
+  <div class="source-dialog">
+    <div class="source-dialog-head">
+      <div>
+        <strong>Paramètres de l’application</strong>
+        <span>Personnalise l’éditeur sans modifier l’application chargée.</span>
+      </div>
+      <button class="source-close" id="settingsCloseBtn" type="button">×</button>
+    </div>
+    <div class="settings-grid">
+      <div class="settings-row">
+        <label for="uiFontScale">Taille du texte de l’interface</label>
+        <input id="uiFontScale" type="range" min="85" max="130" step="5" value="100">
+        <div class="settings-value"><span id="uiFontScaleValue">100</span> %</div>
+      </div>
+      <div class="settings-row">
+        <label for="uiDensity">Densité de l’interface</label>
+        <select id="uiDensity">
+          <option value="compact">Compacte</option>
+          <option value="normal" selected>Normale</option>
+          <option value="comfortable">Confortable</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Comportement</label>
+        <label class="checkline" style="margin-top:0"><input id="uiAnimations" type="checkbox" checked> Animations de l’interface</label>
+        <label class="checkline" style="margin-top:0"><input id="defaultResponsivePref" type="checkbox" checked> Nouveaux objets adaptatifs par défaut</label>
+      </div>
+      <div class="settings-row">
+        <label>Panneaux latéraux</label>
+        <label class="checkline" style="margin-top:0"><input id="rememberPanels" type="checkbox"> Mémoriser les panneaux ouverts</label>
+        <div class="settings-note">Par défaut, toutes les sections de droite sont repliées au lancement pour garder une colonne claire.</div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <button class="btn" id="resetUiSettings">Réinitialiser</button>
+      <button class="btn primary" id="settingsDoneBtn">Terminé</button>
+    </div>
   </div>
 </div>
 
@@ -305,7 +382,7 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
     <section class="card">
-      <h2>Sélection <small>géométrie</small></h2>
+      <h2>Sélection <small>ajustement fin</small></h2>
       <div class="selector" id="selector">Clique un élément dans l’aperçu.</div>
       <div class="metrics">
         <div class="metric"><b id="mx">—</b><small>X</small></div>
@@ -314,8 +391,8 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="metric"><b id="mh">—</b><small>Hauteur</small></div>
       </div>
       <div class="geometry" style="margin-top:8px">
-        <div class="field"><label>X</label><input id="posX" type="number"></div>
-        <div class="field"><label>Y</label><input id="posY" type="number"></div>
+        <div class="field"><label>X aperçu</label><input id="posX" type="number" title="Diagnostic. En mode adaptatif, utilise les ancrages et marges."></div>
+        <div class="field"><label>Y aperçu</label><input id="posY" type="number" title="Diagnostic. En mode adaptatif, utilise les ancrages et marges."></div>
         <div class="field"><label>Largeur</label><input id="sizeW" type="number" min="1"></div>
         <div class="field"><label>Hauteur</label><input id="sizeH" type="number" min="1"></div>
       </div>
@@ -326,7 +403,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
         <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
-      <div class="hint" style="margin-top:8px">Poignées aux coins pour redimensionner. <kbd>←↑↓→</kbd> déplacer · <kbd>Maj</kbd> + flèche redimensionner · <kbd>Suppr</kbd> masquer · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>.</div>
+      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets à la sélection. <kbd>←↑↓→</kbd> déplace relativement aux ancrages · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Suppr</kbd> masque · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>. Les X/Y sont seulement des coordonnées d’aperçu lorsque l’adaptatif est actif.</div>
     </section>
 
     <section class="card" id="textCard">
@@ -385,7 +462,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     <section class="card responsive-card off" id="responsiveCard">
       <h2>Adaptatif <small>multi-écrans</small></h2>
-      <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes plutôt que seulement X / Y</label>
+      <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes relatives (recommandé)</label>
       <div class="responsive-body">
         <div class="responsive-grid" style="margin-top:9px">
           <div class="field"><label>Ancrage horizontal</label><select id="hAnchor">
