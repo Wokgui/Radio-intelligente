@@ -4250,3 +4250,282 @@ body.radio-mode .radio-music-open svg{width:29px!important;height:29px!important
   body.radio-mode .radio-music-open{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;max-width:48px!important;max-height:48px!important}
   body.radio-mode .radio-music-open svg{width:28px!important;height:28px!important}
 }
+
+
+/* v109 — centrages structurels, sans décalages artificiels */
+
+/* Bloc commun titre + sous-titre : on centre le groupe, pas chaque ligne séparément. */
+body.music-mode #trackHeading,
+body.radio-mode #trackHeading{
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0 8px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
+  gap:5px!important;
+  text-align:center!important;
+}
+body.music-mode #trackHeading #title,
+body.radio-mode #trackHeading #title,
+body.music-mode #trackHeading #artist,
+body.radio-mode #trackHeading #artist{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  align-self:auto!important;
+  transform:none!important;
+}
+body.music-mode #trackHeading #title,
+body.radio-mode #trackHeading #title{
+  line-height:1.05!important;
+}
+body.music-mode #trackHeading #artist,
+body.radio-mode #trackHeading #artist{
+  line-height:1.12!important;
+}
+
+/* MA MUSIQUE : le groupe titre/sous-titre occupe et centre vraiment l'espace libre du haut. */
+body.music-mode .track{
+  gap:0!important;
+  align-content:stretch!important;
+}
+body.music-mode:not(.music-has-playlist) .track{
+  grid-template-rows:minmax(112px,1fr) 64px 14px 172px 36px minmax(8px,.18fr) 58px!important;
+}
+body.music-mode.music-has-playlist .track{
+  grid-template-rows:34px minmax(100px,1fr) 64px 14px 172px 36px minmax(8px,.18fr) 58px!important;
+}
+body.music-mode:not(.music-has-playlist) #trackHeading{grid-row:1!important}
+body.music-mode:not(.music-has-playlist) #musicActions{grid-row:2!important}
+body.music-mode:not(.music-has-playlist) #musicPlayerbar{grid-row:4!important}
+body.music-mode:not(.music-has-playlist) #musicNextTrack{grid-row:5!important}
+body.music-mode:not(.music-has-playlist) #musicQuick{grid-row:7!important}
+
+body.music-mode.music-has-playlist #cat{grid-row:1!important}
+body.music-mode.music-has-playlist #trackHeading{grid-row:2!important}
+body.music-mode.music-has-playlist #musicActions{grid-row:3!important}
+body.music-mode.music-has-playlist #musicPlayerbar{grid-row:5!important}
+body.music-mode.music-has-playlist #musicNextTrack{grid-row:6!important}
+body.music-mode.music-has-playlist #musicQuick{grid-row:8!important}
+
+/* MA MUSIQUE : bandeau bas — centres géométriques identiques. */
+body.music-mode #musicQuick .stats{
+  height:58px!important;
+  min-height:58px!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-items:center!important;
+  padding:0 3px!important;
+}
+body.music-mode #musicQuick .stats>.stat{
+  height:56px!important;
+  min-height:56px!important;
+  margin:0!important;
+  padding:0 7px!important;
+  display:grid!important;
+  grid-template-columns:36px minmax(0,auto)!important;
+  grid-template-rows:56px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  column-gap:9px!important;
+}
+body.music-mode #musicQuick .stats>.stat .sico{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  min-height:34px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  line-height:0!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta{
+  grid-column:2!important;
+  grid-row:1!important;
+  width:auto!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  justify-self:start!important;
+  gap:2px!important;
+  transform:none!important;
+  line-height:1!important;
+}
+body.music-mode #musicQuick .stats>.stat .meta b,
+body.music-mode #musicQuick .stats>.stat .meta span{
+  margin:0!important;
+  padding:0!important;
+  line-height:1!important;
+}
+body.music-mode #musicCountTile .sico,
+body.music-mode #musicRadioOpen .sico{
+  transform:translateY(2px)!important;
+}
+
+/* Nouvelles icônes extérieures de changement de liste : plus sobres et plus distinctes des pistes. */
+body.music-mode #musicPlaylistPrev,
+body.music-mode #musicPlaylistNext{
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  border-radius:50%!important;
+  background:#f6effb!important;
+  color:#743ad2!important;
+  box-shadow:inset 0 0 0 1px #e1d4ec!important;
+}
+body.music-mode #musicPlaylistPrev svg,
+body.music-mode #musicPlaylistNext svg{
+  width:25px!important;
+  height:25px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+/* RADIO INTELLIGENTE : titre/sous-titre au centre exact de tout l'espace restant. */
+body.radio-mode .track{
+  padding-top:30px!important;
+  gap:0!important;
+  align-content:stretch!important;
+  grid-template-rows:minmax(84px,1fr) 56px 14px 68px 14px 96px 14px 58px!important;
+}
+body.radio-mode #trackHeading{
+  grid-row:1!important;
+  align-self:stretch!important;
+  justify-content:center!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){grid-row:2!important;margin:0!important}
+body.radio-mode .primary{grid-row:4!important;margin:0!important}
+body.radio-mode .track>.alt:not(.music-alt){grid-row:6!important;margin:0!important}
+body.radio-mode .track>.quick:not(.music-quick){grid-row:8!important;margin:0!important}
+
+/* RADIO INTELLIGENTE : trois espacements de 14 px strictement identiques. */
+body.radio-mode .track>.playerbar:not(.music-playerbar),
+body.radio-mode .primary,
+body.radio-mode .track>.alt:not(.music-alt),
+body.radio-mode .track>.quick:not(.music-quick){
+  box-shadow:none!important;
+}
+body.radio-mode .primary .choice,
+body.radio-mode .track>.alt:not(.music-alt) button,
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  box-shadow:0 0 8px rgba(92,63,117,.055)!important;
+}
+
+/* Le bouton Ma musique est maintenant un VRAI élément de la grille Gardés / Passés. */
+body.radio-mode .track>.quick:not(.music-quick),
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  height:58px!important;
+  min-height:58px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  grid-template-columns:minmax(0,1fr) 58px minmax(0,1fr)!important;
+  grid-template-rows:58px!important;
+  align-items:center!important;
+  padding:0 6px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats>.stat:first-of-type{
+  grid-column:1!important;
+  grid-row:1!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats>.stat:last-of-type{
+  grid-column:3!important;
+  grid-row:1!important;
+}
+body.radio-mode .radio-music-open{
+  position:static!important;
+  grid-column:2!important;
+  grid-row:1!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  margin:0!important;
+  padding:0!important;
+  align-self:center!important;
+  justify-self:center!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  box-shadow:0 0 8px rgba(103,52,205,.18)!important;
+  line-height:0!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:30px!important;
+  height:30px!important;
+  margin:0!important;
+  display:block!important;
+}
+
+@media(max-width:420px){
+  body.music-mode:not(.music-has-playlist) .track{
+    grid-template-rows:minmax(104px,1fr) 62px 12px 166px 34px minmax(6px,.15fr) 56px!important;
+  }
+  body.music-mode.music-has-playlist .track{
+    grid-template-rows:32px minmax(94px,1fr) 62px 12px 166px 34px minmax(6px,.15fr) 56px!important;
+  }
+  body.music-mode #musicQuick .stats,
+  body.music-mode #musicQuick .stats>.stat{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.music-mode #musicQuick .stats>.stat{
+    grid-template-rows:54px!important;
+    grid-template-columns:34px minmax(0,auto)!important;
+    column-gap:8px!important;
+  }
+  body.music-mode #musicPlaylistPrev,
+  body.music-mode #musicPlaylistNext{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    min-height:40px!important;
+  }
+
+  body.radio-mode .track{
+    padding-top:28px!important;
+    grid-template-rows:minmax(76px,1fr) 54px 12px 66px 12px 92px 12px 56px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick),
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr)!important;
+    grid-template-rows:56px!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:50px!important;
+    height:50px!important;
+    min-width:50px!important;
+    min-height:50px!important;
+    max-width:50px!important;
+    max-height:50px!important;
+  }
+}
