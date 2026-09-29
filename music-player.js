@@ -1075,7 +1075,7 @@
     actions.className='alt music-alt';
     actions.innerHTML=
       '<button id="musicShuffle" type="button"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3c5 0 5 10 10 10h3"></path><path d="m17 14 3 3-3 3"></path><path d="M4 17h3c2.1 0 3.4-1.8 4.6-3.8"></path><path d="M13.7 9C14.9 7.8 16 7 18 7h2"></path><path d="m17 4 3 3-3 3"></path></svg></span><span class="txt">Lecture aléatoire</span></button>'+
-      '<button id="musicSettingsGear" class="music-settings-inline" type="button" aria-label="Réglages de l\'application" title="Réglages">⚙</button>'+
+      '<button id="musicSettingsGear" class="music-settings-inline" type="button" aria-label="Réglages de l\'application" title="Réglages"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06-2.78 2.78-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1.08 1.64V21h-3.84v-.08A1.8 1.8 0 0 0 9 19.4a1.8 1.8 0 0 0-1.98.36l-.06.06-2.78-2.78.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.64-1.08H3v-3.84h.08A1.8 1.8 0 0 0 4.6 9a1.8 1.8 0 0 0-.36-1.98l-.06-.06 2.78-2.78.06.06A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1.08-1.64V3h3.84v.08A1.8 1.8 0 0 0 15 4.6a1.8 1.8 0 0 0 1.98-.36l.06-.06 2.78 2.78-.06.06A1.8 1.8 0 0 0 19.4 9a1.8 1.8 0 0 0 1.64 1.08H21v3.84h-.08A1.8 1.8 0 0 0 19.4 15Z"></path></svg></button>'+
       '<button id="musicRepeat" type="button"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a4 4 0 0 1 4 4"></path><path d="m17 4 3 3-3 3"></path><path d="M17 17H7a4 4 0 0 1-4-4"></path><path d="m7 20-3-3 3-3"></path></svg></span><span class="txt">Répétition désactivée</span></button>';
     track.appendChild(actions);
 
