@@ -708,6 +708,66 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
 
+
+    <section class="card">
+      <h2>Design system <small>tokens globaux</small></h2>
+      <div class="token-grid">
+        <div class="field"><label>Unité d’espacement</label><input id="tokenSpacing" type="number" min="1" value="8"></div>
+        <div class="field"><label>Rayon des cartes</label><input id="tokenRadius" type="number" min="0" value="12"></div>
+        <div class="field"><label>Titre</label><input id="tokenTitle" type="number" min="8" value="20"></div>
+        <div class="field"><label>Couleur principale</label><input id="tokenPrimary" type="color" value="#6f49f5"></div>
+        <div class="field"><label>Surface</label><input id="tokenSurface" type="color" value="#ffffff"></div>
+      </div>
+      <button class="btn primary" id="applyTokensBtn" style="width:100%;margin-top:8px">Appliquer les tokens globaux</button>
+      <div class="token-actions">
+        <button class="tool" data-token-apply="primary">Couleur</button>
+        <button class="tool" data-token-apply="surface">Surface</button>
+        <button class="tool" data-token-apply="title">Titre</button>
+        <button class="tool" data-token-apply="radius">Rayon</button>
+        <button class="tool" data-token-apply="spacing">Gap</button>
+        <button class="tool" id="snapToTokenGrid">Grille = unité</button>
+      </div>
+      <p>Les valeurs deviennent des variables CSS réutilisables. La grille d’espacement peut suivre directement l’unité choisie.</p>
+    </section>
+
+    <section class="card">
+      <h2>Composants <small>réutilisables + variantes</small></h2>
+      <div class="fields">
+        <div class="field"><label>Nom du composant</label><input id="componentName" type="text" placeholder="Bouton principal"></div>
+        <div class="field"><label>Variante</label><input id="variantName" type="text" placeholder="Désactivé"></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn wide" id="createComponentBtn">Créer depuis sélection</button>
+        <button class="btn wide" id="linkComponentBtn">Lier comme instance</button>
+        <button class="btn wide" id="updateComponentBtn">Mettre à jour toutes</button>
+      </div>
+      <div class="toolbar" style="margin-top:6px">
+        <button class="btn wide" id="saveVariantBtn">Enregistrer variante</button>
+        <button class="btn wide" id="applyVariantBtn">Appliquer variante</button>
+      </div>
+      <div class="component-list" id="componentList"><div class="hint">Aucun composant.</div></div>
+    </section>
+
+    <section class="card">
+      <h2>États et animations <small>prototype interactif</small></h2>
+      <div class="fields">
+        <div class="field"><label>État à simuler</label><select id="interactiveState">
+          <option value="normal">Normal</option><option value="hover">Survol</option><option value="active">Appuyé</option><option value="focus">Focus</option><option value="disabled">Désactivé</option>
+        </select></div>
+        <div class="field"><label>Propriété animée</label><select id="animationProperty">
+          <option value="all">Tout</option><option value="transform">Transform</option><option value="opacity">Opacité</option><option value="background-color">Fond</option><option value="color">Texte</option>
+        </select></div>
+        <div class="field"><label>Durée ms</label><input id="animationDuration" type="number" min="0" value="180"></div>
+        <div class="field"><label>Easing</label><select id="animationEasing">
+          <option value="ease">ease</option><option value="ease-in-out">ease-in-out</option><option value="linear">linear</option><option value="cubic-bezier(.2,.8,.2,1)">fluide</option>
+        </select></div>
+      </div>
+      <button class="btn" id="applyAnimationBtn" style="width:100%;margin-top:8px">Appliquer animation</button>
+      <div class="field" style="margin-top:9px"><label>Cible du clic · sélecteur</label><input id="prototypeTarget" type="text" placeholder="#settings ou .page-player"></div>
+      <button class="btn" id="setPrototypeBtn" style="width:100%;margin-top:7px">Créer le lien de prototype</button>
+      <div class="prototype-status" id="prototypeStatus" style="margin-top:7px">En mode Aperçu, cliquer l’objet déclenchera sa cible.</div>
+    </section>
+
     <section class="card">
       <h2>Simulation système <small>Android / accessibilité</small></h2>
       <div class="fields">
