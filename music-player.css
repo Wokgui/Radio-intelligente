@@ -2831,3 +2831,345 @@ body.radio-mode .track>.quick:not(.music-quick) .stats .stat{
     min-height:38px!important;
   }
 }
+
+
+
+/* v104 — alignements finaux + stabilité visuelle */
+
+/* MA MUSIQUE — bandeau Aléatoire / Réglages / Répétition */
+body.music-mode #musicActions{
+  width:100%!important;
+  height:54px!important;
+  min-height:54px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 58px minmax(0,1fr)!important;
+  grid-template-rows:54px!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  overflow:visible!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  width:100%!important;
+  height:54px!important;
+  min-height:54px!important;
+  display:grid!important;
+  grid-template-columns:30px minmax(0,1fr)!important;
+  align-items:center!important;
+  justify-items:center!important;
+  column-gap:8px!important;
+  padding:0 12px!important;
+  border:1px solid #e1d5eb!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#fdfbfe 0%,#f7f0fb 100%)!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicShuffle{
+  border-right-color:#d8c8e7!important;
+}
+body.music-mode #musicRepeat{
+  border-left-color:#d8c8e7!important;
+}
+body.music-mode #musicShuffle::after,
+body.music-mode #musicRepeat::before{
+  display:none!important;
+}
+body.music-mode #musicSettingsGear{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  min-height:44px!important;
+  justify-self:center!important;
+  align-self:center!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border-radius:50%!important;
+  border:1px solid #d7c8e6!important;
+  background:#fff!important;
+  color:#713bd0!important;
+  font-size:1.46rem!important;
+  line-height:1!important;
+  box-shadow:0 4px 11px rgba(92,63,117,.10)!important;
+}
+body.music-mode #musicActions .ico{
+  position:static!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0!important;
+  color:#8050a8!important;
+}
+body.music-mode #musicActions .ico svg{
+  width:26px!important;
+  height:26px!important;
+}
+body.music-mode #musicActions .txt{
+  width:100%!important;
+  min-width:0!important;
+  display:block!important;
+  margin:0!important;
+  font-size:.79rem!important;
+  line-height:1.05!important;
+  font-weight:850!important;
+  text-align:center!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+/* Les libellés demandés vont clairement sur deux lignes. */
+body.music-mode #musicShuffle .txt,
+body.music-mode #musicRepeat .txt{
+  max-width:84px!important;
+}
+
+/* MA MUSIQUE — bandeau inférieur plus lisible et parfaitement centré verticalement */
+body.music-mode #musicQuick,
+body.music-mode #musicQuick .stats{
+  height:56px!important;
+  min-height:56px!important;
+}
+body.music-mode #musicQuick .stats{
+  align-items:center!important;
+  padding:0 3px!important;
+}
+body.music-mode #musicQuick .stats>.stat{
+  height:54px!important;
+  min-height:54px!important;
+  padding:0 6px!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  align-items:center!important;
+  align-content:center!important;
+  justify-items:center!important;
+  gap:7px!important;
+}
+body.music-mode #musicQuick .sico{
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  margin:0!important;
+  font-size:1.45rem!important;
+}
+body.music-mode #musicQuick .sico svg{
+  width:31px!important;
+  height:31px!important;
+}
+body.music-mode #musicQuick .meta{
+  height:auto!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:center!important;
+  gap:2px!important;
+  margin:0!important;
+  transform:none!important;
+}
+body.music-mode #musicQuick .meta b,
+body.music-mode #musicQuick .music-radio-shortcut .meta b,
+body.music-mode #musicQuick #musicQueueLabel{
+  font-size:.91rem!important;
+  line-height:1!important;
+}
+body.music-mode #musicQuick .meta span,
+body.music-mode #musicQuick .music-radio-shortcut .meta span,
+body.music-mode #musicQuick #musicCountLabel{
+  font-size:.73rem!important;
+  line-height:1!important;
+}
+
+/* RADIO INTELLIGENTE — style pile sur la séparation pochette / blanc */
+body.radio-mode .track{
+  position:relative!important;
+  padding-top:30px!important;
+  gap:6px!important;
+  grid-template-rows:
+    minmax(8px,1fr)
+    auto
+    auto
+    minmax(8px,1fr)
+    54px
+    66px
+    92px
+    60px!important;
+}
+body.radio-mode #cat{
+  position:absolute!important;
+  top:0!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translate(-50%,-50%)!important;
+  margin:0!important;
+  z-index:12!important;
+}
+body.radio-mode #title{
+  grid-row:2!important;
+  align-self:end!important;
+  margin:0!important;
+}
+body.radio-mode #artist{
+  grid-row:3!important;
+  align-self:start!important;
+  margin:2px 0 0!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){grid-row:5!important;}
+body.radio-mode .primary{grid-row:6!important;}
+body.radio-mode .track>.alt:not(.music-alt){grid-row:7!important;}
+body.radio-mode .track>.quick:not(.music-quick){grid-row:8!important;}
+
+/* RADIO INTELLIGENTE — bandeau bas avec accès Ma musique vraiment au centre */
+body.radio-mode .track>.quick:not(.music-quick){
+  position:relative!important;
+  width:100%!important;
+  height:60px!important;
+  min-height:60px!important;
+  padding:0!important;
+  overflow:visible!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  width:100%!important;
+  height:60px!important;
+  min-height:60px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 70px minmax(0,1fr)!important;
+  align-items:center!important;
+  padding:0 6px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .divider{
+  display:none!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats>.stat:first-child{
+  grid-column:1!important;
+}
+body.radio-mode .track>.quick:not(.music-quick) .stats>.stat:last-child{
+  grid-column:3!important;
+  border-left:0!important;
+}
+body.radio-mode .radio-music-open{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  width:56px!important;
+  height:56px!important;
+  min-width:56px!important;
+  min-height:56px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  z-index:8!important;
+  box-shadow:0 5px 14px rgba(103,52,205,.22)!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:31px!important;
+  height:31px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    height:52px!important;
+    min-height:52px!important;
+    grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr)!important;
+    grid-template-rows:52px!important;
+    gap:7px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:52px!important;
+    min-height:52px!important;
+    grid-template-columns:28px minmax(0,1fr)!important;
+    padding:0 10px!important;
+  }
+  body.music-mode #musicActions .ico{
+    width:26px!important;
+    height:26px!important;
+    min-width:26px!important;
+  }
+  body.music-mode #musicActions .ico svg{
+    width:24px!important;
+    height:24px!important;
+  }
+  body.music-mode #musicActions .txt{
+    font-size:.75rem!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+  }
+
+  body.music-mode #musicQuick,
+  body.music-mode #musicQuick .stats{
+    height:54px!important;
+    min-height:54px!important;
+  }
+  body.music-mode #musicQuick .stats>.stat{
+    height:52px!important;
+    min-height:52px!important;
+    grid-template-columns:32px minmax(0,1fr)!important;
+  }
+  body.music-mode #musicQuick .sico{
+    width:32px!important;
+    height:32px!important;
+    min-width:32px!important;
+  }
+  body.music-mode #musicQuick .sico svg{
+    width:29px!important;
+    height:29px!important;
+  }
+  body.music-mode #musicQuick .meta b,
+  body.music-mode #musicQuick .music-radio-shortcut .meta b,
+  body.music-mode #musicQuick #musicQueueLabel{
+    font-size:.86rem!important;
+  }
+  body.music-mode #musicQuick .meta span,
+  body.music-mode #musicQuick .music-radio-shortcut .meta span,
+  body.music-mode #musicQuick #musicCountLabel{
+    font-size:.69rem!important;
+  }
+
+  body.radio-mode .track{
+    padding-top:28px!important;
+    grid-template-rows:
+      minmax(6px,1fr)
+      auto
+      auto
+      minmax(6px,1fr)
+      52px
+      64px
+      88px
+      58px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick),
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    grid-template-columns:minmax(0,1fr) 66px minmax(0,1fr)!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:54px!important;
+    height:54px!important;
+    min-width:54px!important;
+    min-height:54px!important;
+  }
+  body.radio-mode .radio-music-open svg{
+    width:30px!important;
+    height:30px!important;
+  }
+}
