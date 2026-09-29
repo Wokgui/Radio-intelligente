@@ -69,6 +69,8 @@
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
+  let editingBreakpoint = 'base';
+  let environment = { fontScale: 1, displayScale: 1, darkMode: false };
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -122,7 +124,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -167,6 +169,8 @@
       zIndex: parseInt(getComputedStyle(element).zIndex,10) || 0,
       zAdjusted: false,
       deleted: false,
+      layoutAdjusted: false,
+      layout: {},
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
@@ -183,7 +187,8 @@
         centerOffsetY: 0,
         widthPercent: 100,
         heightPercent: 100,
-        safeArea: true
+        safeArea: true,
+        breakpoints: {}
       }
     };
     touched.set(element, state);
