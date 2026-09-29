@@ -2466,7 +2466,21 @@
     if (data.type === 'parent-layout') setParentLayout(payload);
     if (data.type === 'distribute') distributeSelection(String(payload.mode || ''), payload.gap);
     if (data.type === 'audit') auditInterface();
+    if (data.type === 'audit-fix') autoFixAudit();
     if (data.type === 'environment-set') applyEnvironment(payload);
+    if (data.type === 'tokens-set') applyDesignTokens(payload);
+    if (data.type === 'token-apply') applyTokenToSelection(String(payload.kind||''));
+    if (data.type === 'animation-set') setAnimation(payload);
+    if (data.type === 'interactive-state') setInteractiveState(payload.state);
+    if (data.type === 'stress-test') stressTest(payload.mode);
+    if (data.type === 'component-create') createComponent(payload.name);
+    if (data.type === 'component-link') linkComponentInstance(payload.name);
+    if (data.type === 'component-update') updateComponentFromSelection(payload.name);
+    if (data.type === 'component-delete') deleteComponent(payload.name);
+    if (data.type === 'component-variant-save') saveComponentVariant(payload.name,payload.variant);
+    if (data.type === 'component-variant-apply') applyComponentVariant(payload.name,payload.variant,!!payload.allInstances);
+    if (data.type === 'get-components') emitComponents();
+    if (data.type === 'prototype-set') setPrototypeLink(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
     if (data.type === 'z-set') setZ(payload.value);
@@ -2526,13 +2540,27 @@
     setParentLayout: setParentLayout,
     distributeSelection: distributeSelection,
     auditInterface: auditInterface,
+    autoFixAudit: autoFixAudit,
     applyEnvironment: applyEnvironment,
+    applyDesignTokens: applyDesignTokens,
+    applyTokenToSelection: applyTokenToSelection,
+    setAnimation: setAnimation,
+    setInteractiveState: setInteractiveState,
+    stressTest: stressTest,
+    createComponent: createComponent,
+    linkComponentInstance: linkComponentInstance,
+    updateComponentFromSelection: updateComponentFromSelection,
+    saveComponentVariant: saveComponentVariant,
+    applyComponentVariant: applyComponentVariant,
+    setPrototypeLink: setPrototypeLink,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
     setZ: setZ,
     state: currentPayload
   };
 
+  applyDesignTokens(designTokens);
+  buildForcedStateStyle();
   emit('ready', { hosted: hosted });
   if (hosted) setTimeout(enable, 80);
 })();
