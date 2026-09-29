@@ -1018,9 +1018,16 @@ ipcMain.handle('source:pick-folder',async ()=>{
   const root=result.filePaths[0];
   const candidates=['index.html','index.htm','dist/index.html','build/index.html','www/index.html','public/index.html'];
   const entry=candidates.find(name=>fs.existsSync(path.join(root,name)));
-  if(!entry)return {ok:false,error:'Aucun index.html trouvé dans ce dossier (racine, dist, build, www ou public).'};
-  const url=await startLocalTarget(root,entry);
-  return {ok:true,source:{type:'folder',path:root,entry,url,label:path.basename(root)}};
+  if(entry){
+    const url=await startLocalTarget(root,entry);
+    return {ok:true,source:{type:'folder',path:root,entry,url,label:path.basename(root)}};
+  }
+  const android=detectAndroidProject(root);
+  if(android){
+    const preview=await buildAndroidPreview(android);
+    return {ok:true,source:{type:'android-project',path:root,url:preview.url,label:path.basename(root)+' · Android natif',nativeKind:preview.nativeKind,nativeFile:preview.nativeFile}};
+  }
+  return {ok:false,error:'Aucun index.html ni projet Android détecté dans ce dossier.'};
 });
 
 ipcMain.handle('source:pick-html',async ()=>{
@@ -1056,6 +1063,12 @@ ipcMain.handle('source:restore',async (_event,source)=>{
       if(!source.path||!fs.existsSync(source.path))return {ok:false,error:'Le dossier source du projet est introuvable.'};
       const url=await startLocalTarget(source.path,source.entry||'index.html');
       return {ok:true,source:{...source,url}};
+    }
+    if(source.type==='android-project'){
+      if(!source.path||!fs.existsSync(source.path))return {ok:false,error:'Le projet Android est introuvable.'};
+      const android=detectAndroidProject(source.path);if(!android)return {ok:false,error:'Structure Android invalide.'};
+      const preview=await buildAndroidPreview(android);
+      return {ok:true,source:{...source,url:preview.url,nativeKind:preview.nativeKind,nativeFile:preview.nativeFile}};
     }
     if(source.type==='html'){
       const file=source.path;
