@@ -785,9 +785,9 @@ body.desktop .desktop-badge{display:inline-flex}
     metrics.h.textContent=p.selected?p.height:'—';
 
     var responsiveActive=!!(p.selected&&p.responsive&&p.responsive.enabled);
-    [sizeW,sizeH,zIndex].forEach(function(el){el.disabled=!p.selected});
-    posX.disabled=!p.selected||responsiveActive;
-    posY.disabled=!p.selected||responsiveActive;
+    [sizeW,sizeH,zIndex].forEach(function(el){el.disabled=!p.selected||selectionCount>1});
+    posX.disabled=!p.selected||responsiveActive||selectionCount>1;
+    posY.disabled=!p.selected||responsiveActive||selectionCount>1;
     posX.title=responsiveActive?'Coordonnée informative : utilise les ancrages et marges du panneau Adaptatif.':'Position absolue disponible uniquement en mode non adaptatif.';
     posY.title=posX.title;
     deleteBtn.disabled=!p.selected;
@@ -832,6 +832,9 @@ body.desktop .desktop-badge{display:inline-flex}
     }
 
     updateResponsiveControls(p);
+    if(selectionCount>1){
+      responsiveSummary.textContent='Sélection multiple : déplace le groupe avec la souris ou les flèches. Les propriétés individuelles restent attachées à l’objet principal.';
+    }
     if(typeof p.css==='string')cssOut.value=p.css;
   }
 
