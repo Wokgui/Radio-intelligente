@@ -4102,3 +4102,27 @@ body.radio-mode .radio-music-open svg{
     top:102px!important;
   }
 }
+
+
+/* v107.1 — empêcher les anciennes règles de réduire la roue centrale */
+body.music-mode #musicActions>#musicSettingsGear{
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+}
+@media(max-width:420px){
+  body.music-mode #musicActions>#musicSettingsGear{
+    width:50px!important;
+    height:50px!important;
+    min-width:50px!important;
+    min-height:50px!important;
+    max-width:50px!important;
+    max-height:50px!important;
+  }
+}
