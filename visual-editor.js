@@ -52,7 +52,14 @@
   const guideHLabel = document.createElement('span');
   guideHLabel.className = 've-guide-label ve-guide-h-label';
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel);
+  const constraintBadge = document.createElement('div');
+  constraintBadge.className = 've-constraint-badge';
+  const altTargetOutline = document.createElement('div');
+  altTargetOutline.className = 've-alt-target';
+  const altMeasureLabel = document.createElement('div');
+  altMeasureLabel.className = 've-alt-measure';
+
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel);
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
@@ -678,7 +685,8 @@
 
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
-      node === guideV || node === guideH || node === guideVLabel || node === guideHLabel;
+      node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
+      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel;
   }
 
   function alignmentCandidates(element) {
@@ -1341,6 +1349,9 @@
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
+      constraintBadge.style.display = 'none';
+      altTargetOutline.style.display = 'none';
+      altMeasureLabel.style.display = 'none';
       clearSecondaryOutlines();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
@@ -1351,11 +1362,19 @@
     const state = remember(selected);
     if (!state || state.deleted) {
       outline.style.display = 'none';
+      constraintBadge.style.display = 'none';
       emit('state', currentPayload());
       return;
     }
 
     const rect = selected.getBoundingClientRect();
+    const cfg = effectiveResponsive(state);
+    constraintBadge.style.display = 'block';
+    constraintBadge.style.left = Math.max(4, rect.left) + 'px';
+    constraintBadge.style.top = Math.max(4, rect.top - 25) + 'px';
+    const hIcon = cfg.hAnchor === 'left' ? '←' : cfg.hAnchor === 'right' ? '→' : cfg.hAnchor === 'center' ? '↔' : cfg.hAnchor === 'stretch' ? '⇆' : '·';
+    const vIcon = cfg.vAnchor === 'top' ? '↑' : cfg.vAnchor === 'bottom' ? '↓' : cfg.vAnchor === 'center' ? '↕' : cfg.vAnchor === 'stretch' ? '⇅' : '·';
+    constraintBadge.textContent = hIcon + ' ' + vIcon + ' · ' + viewportBreakpoint();
     outline.style.display = 'block';
     outline.style.left = rect.left + 'px';
     outline.style.top = rect.top + 'px';
@@ -1772,6 +1791,8 @@
     resizeDrag = null;
     document.body.classList.remove('ve-active');
     outline.style.display = 'none';
+    constraintBadge.style.display = 'none';
+    clearAltMeasure();
     clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
@@ -1816,6 +1837,43 @@
     hideGuides();
     updateOverlay();
   }, true);
+
+  function clearAltMeasure() {
+    altTargetOutline.style.display = 'none';
+    altMeasureLabel.style.display = 'none';
+  }
+
+  function showAltMeasure(event) {
+    if (!active || !selected || !event.altKey) { clearAltMeasure(); return; }
+    const target = event.target && event.target.closest ? event.target.closest('*') : event.target;
+    if (!target || target === selected || isEditorNode(target) || selected.contains(target) || target.contains(selected)) {
+      clearAltMeasure(); return;
+    }
+    const a = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    if (!b || b.width < 1 || b.height < 1) { clearAltMeasure(); return; }
+
+    altTargetOutline.style.display = 'block';
+    altTargetOutline.style.left = b.left + 'px';
+    altTargetOutline.style.top = b.top + 'px';
+    altTargetOutline.style.width = b.width + 'px';
+    altTargetOutline.style.height = b.height + 'px';
+
+    const horizontal = b.left >= a.right ? Math.round(b.left - a.right) :
+      (a.left >= b.right ? Math.round(a.left - b.right) : 0);
+    const vertical = b.top >= a.bottom ? Math.round(b.top - a.bottom) :
+      (a.top >= b.bottom ? Math.round(a.top - b.bottom) : 0);
+
+    altMeasureLabel.style.display = 'block';
+    altMeasureLabel.style.left = Math.min(innerWidth - 180, Math.max(6, event.clientX + 12)) + 'px';
+    altMeasureLabel.style.top = Math.min(innerHeight - 46, Math.max(6, event.clientY + 12)) + 'px';
+    altMeasureLabel.textContent = '↔ ' + horizontal + ' px · ↕ ' + vertical + ' px';
+    emit('alt-measure', { selector:selectorFor(target), horizontal:horizontal, vertical:vertical });
+  }
+
+  window.addEventListener('pointermove', showAltMeasure, true);
+  window.addEventListener('keyup', function(event){ if(event.key==='Alt') clearAltMeasure(); }, true);
+  window.addEventListener('blur', clearAltMeasure);
 
   window.addEventListener('pointerup', function (event) {
     if (!active || !drag || event.pointerId !== drag.pointerId) return;
