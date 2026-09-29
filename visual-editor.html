@@ -1605,7 +1605,15 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=await requestProject();
     if(!project)return;
     var name=String(document.getElementById('versionName').value||'').trim()||('Version '+(namedVersions.length+1));
-    namedVersions.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:project});
+    var thumbnail=null;
+    if(desktop&&desktop.captureCurrentSource&&currentSource){
+      try{
+        var size=currentDeviceSize();
+        var shot=await desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project.css||cssOut.value});
+        if(shot&&shot.ok)thumbnail=shot.dataUrl;
+      }catch(_){}
+    }
+    namedVersions.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:project,thumbnail:thumbnail});
     if(namedVersions.length>20)namedVersions.shift();
     renderVersions();setStatus('Point de contrôle créé : '+name);
   }
