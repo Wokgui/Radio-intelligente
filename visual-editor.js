@@ -77,7 +77,19 @@
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
   let editingBreakpoint = 'base';
-  let environment = { fontScale: 1, displayScale: 1, darkMode: false };
+  let environment = { fontScale: 1, displayScale: 1, darkMode: false, keyboardHeight: 0 };
+  let designTokens = {
+    spacingUnit: 8,
+    radiusCard: 12,
+    textTitle: 20,
+    colorPrimary: '#6f49f5',
+    colorSurface: '#ffffff'
+  };
+  let components = {};
+  let prototypeLinks = {};
+  let activeInteractiveState = 'normal';
+  let lastAuditIssues = [];
+  let stressBackup = null;
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -131,7 +143,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -178,6 +190,16 @@
       deleted: false,
       layoutAdjusted: false,
       layout: {},
+      animationAdjusted: false,
+      animation: {
+        property: 'all',
+        duration: 180,
+        easing: 'ease',
+        delay: 0
+      },
+      prototypeTarget: '',
+      componentName: '',
+      componentInstance: false,
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
