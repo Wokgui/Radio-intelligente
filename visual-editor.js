@@ -631,6 +631,15 @@
       restoreOriginalProp(state.selector, 'position');
     }
 
+    const layoutProps = ['display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items'];
+    if (state.layoutAdjusted && state.layout) {
+      layoutProps.forEach(function (prop) {
+        if (Object.prototype.hasOwnProperty.call(state.layout, prop)) setInline(element, prop, state.layout[prop]);
+      });
+    } else {
+      layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
+    }
+
     if (update !== false) updateOverlay();
   }
 
@@ -781,6 +790,8 @@
         zIndex: state.zIndex,
         zAdjusted: state.zAdjusted,
         deleted: state.deleted,
+        layoutAdjusted: !!state.layoutAdjusted,
+        layout: Object.assign({}, state.layout || {}),
         responsiveDx: state.responsiveDx || 0,
         responsiveDy: state.responsiveDy || 0,
         responsive: cloneResponsive(state.responsive)
@@ -857,6 +868,8 @@
         zIndex: Number(saved.zIndex) || 0,
         zAdjusted: !!saved.zAdjusted,
         deleted: !!saved.deleted,
+        layoutAdjusted: !!saved.layoutAdjusted,
+        layout: Object.assign({}, saved.layout || {}),
         responsiveDx: Number(saved.responsiveDx) || 0,
         responsiveDy: Number(saved.responsiveDy) || 0,
         responsive: cloneResponsive(saved.responsive)
@@ -959,6 +972,12 @@
           declarations.push('  position: relative !important;');
           declarations.push('  z-index: ' + state.zIndex + ' !important;');
         }
+        if (state.layoutAdjusted && state.layout) {
+          Object.keys(state.layout).forEach(function (prop) {
+            const value = state.layout[prop];
+            if (value !== undefined && value !== null && value !== '') declarations.push('  ' + prop + ': ' + value + ' !important;');
+          });
+        }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
     });
@@ -1003,7 +1022,12 @@
       selectionCount: selectionElements().length,
       selectedSelectors: selectionElements().map(selectorFor).filter(Boolean),
       responsive: cloneResponsive(state.responsive),
+      responsiveEffective: effectiveResponsive(state),
+      activeBreakpoint: viewportBreakpoint(),
+      editingBreakpoint: editingBreakpoint,
+      parentLayout: parentLayoutPayload(selected),
       safeArea: Object.assign({}, safeArea),
+      environment: Object.assign({}, environment),
       css: cssText(),
       grid: grid
     };
