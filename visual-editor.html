@@ -537,7 +537,7 @@ body.desktop .desktop-badge{display:inline-flex}
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
     }else{
-      downloadText('radio-interface.radio-layout.json',JSON.stringify(project,null,2),'application/json');
+      downloadText('interface.app-layout.json',JSON.stringify(project,null,2),'application/json');
       setStatus('Projet téléchargé.');
     }
   }
@@ -560,6 +560,8 @@ body.desktop .desktop-badge{display:inline-flex}
   async function exportChatGPT(copyOnly){
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
+    project.source=currentSource;
+    project.studio={name:'App Interface Studio',version:2};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -567,12 +569,11 @@ body.desktop .desktop-badge{display:inline-flex}
       setStatus('Projet copié : colle-le directement dans ChatGPT.');
       return;
     }
-    project.source=currentSource;
     if(desktop){
       var result=await desktop.saveChatGPTExport({project:project,text:text});
       if(result&&result.ok)setStatus('Export ChatGPT enregistré : '+result.path);
     }else{
-      downloadText('radio-interface-pour-chatgpt.txt',text,'text/plain');
+      downloadText('interface-pour-chatgpt.txt',text,'text/plain');
       setStatus('Export ChatGPT téléchargé.');
     }
   }
