@@ -1127,6 +1127,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var regressionBaseline=null;
   var pendingDirectDiff=null;
   var pendingNativeDiff=null;
+  var pendingDiffKind=null;
   var nativeNodes=[];
   var selectedNativeNode=null;
   var lastRepairItems=[];
@@ -1581,6 +1582,191 @@ body.desktop .desktop-badge{display:inline-flex}
       item.addEventListener('click',function(){if(issue.selector)post('select-selector',{selector:issue.selector})});
       auditList.appendChild(item);
     });
+  }
+
+
+  function syncAdvancedControls(p){
+    var styles=(p&&p.advancedStyles)||{};
+    document.getElementById('advPadding').value=styles.padding||'';
+    document.getElementById('advMargin').value=styles.margin||'';
+    document.getElementById('advRadius').value=styles['border-radius']||'';
+    document.getElementById('advShadow').value=styles['box-shadow']||'';
+    document.getElementById('advOpacity').value=styles.opacity||'';
+    document.getElementById('advFilter').value=styles.filter||'';
+    document.getElementById('advAspect').value=styles['aspect-ratio']||'';
+    document.getElementById('advOverflow').value=styles.overflow||'';
+    document.getElementById('advMinWidth').value=styles['min-width']||'';
+    document.getElementById('advMaxWidth').value=styles['max-width']||'';
+    document.getElementById('advPosition').value=styles.position||'';
+    document.getElementById('advObjectFit').value=styles['object-fit']||'';
+  }
+
+  function renderConsistency(payload){
+    payload=payload||{};
+    var issues=payload.issues||[];
+    consistencyList.innerHTML='';
+    consistencyStatus.textContent=issues.length?issues.length+' incohérence(s) ou valeur(s) rare(s) détectée(s).':'Aucune incohérence significative détectée.';
+    if(!issues.length)return;
+    issues.slice(0,80).forEach(function(issue){
+      var row=document.createElement('div');row.className='consistency-item';
+      row.innerHTML='<b></b><span></span>';
+      row.querySelector('b').textContent=issue.type+' · '+issue.value;
+      row.querySelector('span').textContent=issue.message||'';
+      row.addEventListener('click',function(){
+        var sel=issue.selectors&&issue.selectors[0];if(sel)post('select-selector',{selector:sel});
+      });
+      consistencyList.appendChild(row);
+    });
+  }
+
+  function renderRepairSuggestions(items){
+    lastRepairItems=Array.isArray(items)?items:[];
+    repairList.innerHTML='';
+    if(!lastRepairItems.length){repairList.innerHTML='<div class="hint" style="color:#ddd">Aucune correction sûre proposée. Lance d’abord l’audit.</div>';return}
+    lastRepairItems.forEach(function(item){
+      var row=document.createElement('div');row.className='repair-item';
+      var title=document.createElement('b');title.textContent=(item.type||'correction')+' · '+(item.selector||'');
+      var text=document.createElement('div');text.textContent=item.description||'';
+      var actions=document.createElement('div');actions.className='repair-actions';
+      var preview=document.createElement('button');preview.className='btn';preview.textContent='Prévisualiser';
+      preview.addEventListener('click',function(){post('repair-preview',{id:item.id})});
+      var apply=document.createElement('button');apply.className='btn primary';apply.textContent='Appliquer';
+      apply.addEventListener('click',function(){post('repair-apply',{id:item.id})});
+      actions.append(preview,apply);row.append(title,text,actions);repairList.appendChild(row);
+    });
+  }
+
+  async function prepareDirectSourceEdit(){
+    if(!desktop||!desktop.prepareDirectEdit){directSourceStatus.textContent='Fonction disponible dans l’application Windows.';return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){directSourceStatus.textContent='Ouvre une application HTML/PWA depuis un dossier local.';return}
+    if(!lastState||!lastState.selected){directSourceStatus.textContent='Sélectionne d’abord un objet.';return}
+    directSourceStatus.textContent='Recherche de la vraie règle CSS…';
+    var result=await desktop.prepareDirectEdit({source:currentSource,selector:lastState.selector,css:lastState.css||cssOut.value});
+    if(!result||!result.ok){directSourceStatus.textContent=result&&result.error||'Diff impossible.';return}
+    pendingDirectDiff=result;pendingNativeDiff=null;pendingDiffKind='direct';
+    sourceDiffFile.textContent=result.relativePath||result.file;
+    sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    sourceDiffModal.classList.add('visible');
+    directSourceStatus.textContent='Diff prêt : '+(result.relativePath||result.file)+'.';
+  }
+
+  function renderNativeTree(nodes){
+    nativeNodes=Array.isArray(nodes)?nodes:[];
+    nativeList.innerHTML='';
+    if(!nativeNodes.length){nativeList.innerHTML='<div class="hint">Aucun élément Android exploitable.</div>';return}
+    nativeNodes.slice(0,300).forEach(function(node){
+      var row=document.createElement('div');row.className='native-item';
+      var title=document.createElement('b');title.textContent=(node.id?('#'+node.id+' · '):'')+(node.tag||'élément');
+      var detail=document.createElement('div');detail.textContent=(node.text?node.text+' · ':'')+(node.file?node.file.split(/[\\/]/).slice(-2).join('/'):'')+' · ligne '+(node.line||'—');
+      row.append(title,detail);
+      row.addEventListener('click',function(){
+        selectedNativeNode=node;
+        nativeList.querySelectorAll('.native-item').forEach(function(x){x.classList.remove('selected')});
+        row.classList.add('selected');
+        nativeStatus.textContent='Sélection native : '+(node.id||node.tag)+' · '+(node.compose?'Compose':'XML');
+        if(node.id)post('select-selector',{selector:'#native-'+node.id});
+      });
+      nativeList.appendChild(row);
+    });
+  }
+
+  async function refreshNativeTree(){
+    selectedNativeNode=null;
+    if(!currentSource||currentSource.type!=='android-project'){
+      nativeStatus.textContent='Ouvre un dossier Android pour activer ce mode.';nativeList.innerHTML='';return;
+    }
+    if(!desktop||!desktop.nativeTree)return;
+    nativeStatus.textContent='Lecture des sources Android…';
+    var result=await desktop.nativeTree({source:currentSource});
+    if(!result||!result.ok){nativeStatus.textContent=result&&result.error||'Lecture Android impossible.';return}
+    nativeStatus.textContent='Mode Android natif · '+(result.nativeKind||'Android')+' · '+(result.nodes||[]).length+' élément(s).';
+    renderNativeTree(result.nodes||[]);
+  }
+
+  async function prepareNativeEdit(){
+    if(!desktop||!desktop.prepareNativeEdit||!selectedNativeNode){nativeStatus.textContent='Sélectionne un élément Android dans la liste.';return}
+    var property=document.getElementById('nativeProperty').value;
+    var value=document.getElementById('nativeValue').value;
+    var result=await desktop.prepareNativeEdit({source:currentSource,node:selectedNativeNode,property:property,value:value});
+    if(!result||!result.ok){nativeStatus.textContent=result&&result.error||'Diff Android impossible.';return}
+    pendingNativeDiff=result;pendingDirectDiff=null;pendingDiffKind='native';
+    sourceDiffFile.textContent=result.file;
+    sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    sourceDiffModal.classList.add('visible');
+    nativeStatus.textContent='Diff Android prêt.';
+  }
+
+  async function applyPendingDiff(){
+    var result=null;
+    if(pendingDiffKind==='native'&&pendingNativeDiff&&desktop&&desktop.applyNativeEdit){
+      result=await desktop.applyNativeEdit({source:currentSource,file:pendingNativeDiff.file,beforeHash:pendingNativeDiff.beforeHash,after:pendingNativeDiff.after});
+    }else if(pendingDiffKind==='direct'&&pendingDirectDiff&&desktop&&desktop.applyDirectEdit){
+      result=await desktop.applyDirectEdit({source:currentSource,file:pendingDirectDiff.file,beforeHash:pendingDirectDiff.beforeHash,after:pendingDirectDiff.after});
+    }
+    if(!result||!result.ok){setStatus(result&&result.error||'Application du diff impossible.',true);return}
+    sourceDiffModal.classList.remove('visible');
+    setStatus('Source modifiée : '+result.file+(result.backupPath?' · sauvegarde créée':''));
+    pendingDirectDiff=null;pendingNativeDiff=null;pendingDiffKind=null;
+    if(currentSource&&currentSource.type==='android-project'&&desktop&&desktop.restoreSource){
+      var restored=await desktop.restoreSource(currentSource);if(restored&&restored.ok)await loadSource(restored.source);
+    }else{
+      frame.contentWindow.location.reload();
+    }
+  }
+
+  async function openFlow(){
+    var project=await requestProject();
+    if(!project)return;
+    var links=project.prototypeLinks||{};
+    flowCanvas.innerHTML='';
+    var keys=Object.keys(links);
+    if(!keys.length){flowCanvas.innerHTML='<div class="hint" style="color:#ddd">Aucun lien de prototype. Crée une cible dans le panneau États et animations.</div>';flowModal.classList.add('visible');return}
+    var targets={};
+    keys.forEach(function(source){
+      var target=links[source]&&links[source].target;if(target)targets[target]=true;
+      var node=document.createElement('div');node.className='flow-node';
+      var title=document.createElement('strong');title.textContent='Source';
+      var src=document.createElement('small');src.textContent=source;
+      var link=document.createElement('div');link.className='flow-link';link.textContent='→ '+(target||'aucune cible');
+      var selectBtn=document.createElement('button');selectBtn.className='btn';selectBtn.textContent='Sélectionner la source';
+      selectBtn.addEventListener('click',function(){flowModal.classList.remove('visible');post('select-selector',{selector:source})});
+      node.append(title,src,link,selectBtn);flowCanvas.appendChild(node);
+    });
+    Object.keys(targets).forEach(function(target){
+      if(keys.indexOf(target)>=0)return;
+      var node=document.createElement('div');node.className='flow-node';
+      node.innerHTML='<strong>Cible</strong><small></small>';node.querySelector('small').textContent=target;
+      var btn=document.createElement('button');btn.className='btn';btn.textContent='Sélectionner la cible';
+      btn.addEventListener('click',function(){flowModal.classList.remove('visible');post('select-selector',{selector:target})});
+      node.appendChild(btn);flowCanvas.appendChild(node);
+    });
+    flowModal.classList.add('visible');
+  }
+
+  function renderMatrix(result){
+    matrixList.innerHTML='';
+    if(!result||!result.ok){matrixStatus.textContent=result&&result.error||'Tests impossibles.';return}
+    var summary=result.summary||{};
+    matrixStatus.textContent=summary.tested+' configurations testées · '+summary.failed+' avec anomalie · '+summary.totalIssues+' type(s) de problème.';
+    (result.results||[]).forEach(function(item){
+      var row=document.createElement('div');row.className='matrix-item '+((item.issues||[]).length?'fail':'pass');
+      var cfg=item.config||{};
+      var title=document.createElement('b');title.textContent=(cfg.name||'écran')+' · '+cfg.width+'×'+cfg.height+' · texte '+Math.round((cfg.fontScale||1)*100)+' %'+(cfg.keyboard?' · clavier':'');
+      var detail=document.createElement('div');detail.textContent=(item.issues||[]).length?(item.issues.map(function(x){return x.type+(x.count?' ×'+x.count:'')}).join(' · ')):'OK';
+      row.append(title,detail);
+      if(item.screenshot){
+        var img=document.createElement('img');img.src=item.screenshot;img.alt='Capture';img.style.cssText='display:block;width:120px;max-height:160px;object-fit:contain;margin-top:6px;border-radius:7px;border:1px solid var(--line)';row.appendChild(img);
+      }
+      matrixList.appendChild(row);
+    });
+  }
+
+  async function runTestMatrix(){
+    if(!desktop||!desktop.runTestMatrix||!currentSource){matrixStatus.textContent='Fonction disponible dans l’application Windows pour une source chargée.';return}
+    matrixModal.classList.add('visible');matrixStatus.textContent='Tests en cours sur 12 configurations…';matrixList.innerHTML='';
+    var project=await requestProject();
+    var result=await desktop.runTestMatrix({source:currentSource,css:project&&project.css||cssOut.value});
+    renderMatrix(result);
   }
 
   function rotateDevice(){
