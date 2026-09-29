@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Radio Interface Studio</title>
+<title>App Interface Studio</title>
 <style>
 :root{
   color-scheme:light;
@@ -118,6 +118,26 @@ iframe{display:block;width:100%;height:100%;border:0;background:white}
 .code{width:100%;height:118px;resize:vertical;padding:9px;border:1px solid #2f2837;border-radius:9px;background:#19151f;color:#f0e9f6;font:600 10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
 .hint{padding:8px 9px;border-radius:9px;background:#f7f2fc;color:#684c82;font-size:.68rem;line-height:1.4}
 kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 10px system-ui}
+.source-bar{display:flex;align-items:center;gap:7px;min-width:0}
+.source-pill{max-width:300px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5f526a;font-size:.72rem}
+.source-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:#21182f88;backdrop-filter:blur(7px)}
+.source-modal[hidden]{display:none}
+.source-dialog{width:min(640px,100%);padding:18px;border:1px solid #ddd3e8;border-radius:20px;background:#fff;box-shadow:0 30px 90px #1c122f55}
+.source-dialog-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.source-dialog-head>div{display:grid;gap:3px}
+.source-dialog-head strong{font-size:1.05rem}
+.source-dialog-head span{color:var(--muted);font-size:.75rem}
+.source-close{margin-left:auto;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#66576f;font-size:1.3rem}
+.source-url{display:grid;gap:6px}
+.source-url>span{font-size:.68rem;color:var(--muted)}
+.source-url>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}
+.source-url input{min-height:40px;padding:0 11px;border:1px solid var(--line);border-radius:10px}
+.source-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.source-choice{min-height:88px;padding:12px;border:1px solid var(--line);border-radius:13px;background:#faf8fc;text-align:left;color:#4d3f58}
+.source-choice:hover{border-color:#bda6d5;background:#f7f1fc}
+.source-choice b{display:block;margin-bottom:5px;color:#6535ad}
+.source-choice span{display:block;font-size:.67rem;color:var(--muted);line-height:1.35}
+.native-note{margin-top:12px;padding:10px;border-radius:10px;background:#f5f2f8;color:#6f6478;font-size:.69rem;line-height:1.4}
 #textCard.disabled{opacity:.54}
 #textCard.disabled .text-controls{pointer-events:none}
 .desktop-badge{display:none;padding:3px 7px;border-radius:999px;background:#e8f6ef;color:#267557;font-size:.62rem;font-weight:900}
@@ -138,14 +158,14 @@ body.desktop .desktop-badge{display:inline-flex}
   <div class="brand">
     <div class="brand-logo">✥</div>
     <div>
-      <strong>Radio Interface Studio <span class="desktop-badge">Windows</span></strong>
-      <small>Éditeur visuel de Radio intelligente</small>
+      <strong>App Interface Studio <span class="desktop-badge">Windows</span></strong>
+      <small>Éditeur visuel universel pour applications web et interfaces HTML</small>
     </div>
   </div>
 
-  <div class="mode-switch">
-    <button class="btn primary" id="radioBtn">Radio</button>
-    <button class="btn" id="musicBtn">Ma musique</button>
+  <div class="source-bar">
+    <span class="source-pill" id="sourceName">Aucune application ouverte</span>
+    <button class="btn primary desktop-only" id="changeSourceBtn">Ouvrir une application</button>
   </div>
 
   <div class="top-actions">
@@ -156,6 +176,29 @@ body.desktop .desktop-badge{display:inline-flex}
   </div>
 </header>
 
+<div class="source-modal" id="sourceModal" hidden>
+  <div class="source-dialog">
+    <div class="source-dialog-head">
+      <div>
+        <strong>Ouvrir une application</strong>
+        <span>Choisis la source à modifier visuellement.</span>
+      </div>
+      <button class="source-close" id="sourceCloseBtn" type="button">×</button>
+    </div>
+    <label class="source-url">
+      <span>URL d’une application web / PWA</span>
+      <div><input id="sourceUrlInput" type="text" placeholder="https://mon-app.example"><button class="btn primary" id="openUrlBtn">Ouvrir</button></div>
+    </label>
+    <div class="source-choice-grid">
+      <button class="source-choice" id="openFolderBtn"><b>📁 Dossier local</b><span>Projet avec index.html, dist, build, www ou public</span></button>
+      <button class="source-choice" id="openHtmlBtn"><b>📄 Fichier HTML</b><span>Choisir directement la page principale</span></button>
+      <button class="source-choice" id="openDemoBtn"><b>✦ Démo intégrée</b><span>Tester avec Radio intelligente</span></button>
+    </div>
+    <div class="native-note"><b>Applications natives :</b> une APK/EXE fermée sans code source n’est pas transformable directement en interface HTML éditable. Avec les sources ou une version web/PWA, l’éditeur peut travailler dessus.</div>
+    <div class="status" id="sourceStatus"></div>
+  </div>
+</div>
+
 <main>
   <section class="workspace">
     <div class="stage" id="stage">
@@ -163,7 +206,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="ruler-x" id="rulerX"></div>
       <div class="ruler-y" id="rulerY"></div>
       <div class="device" id="device">
-        <iframe id="appFrame" title="Aperçu de l'application" src="/?visual-editor=1"></iframe>
+        <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
       </div>
     </div>
   </section>
@@ -300,7 +343,7 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
-      <p>Le fichier projet conserve les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source.</p>
+      <p>Le fichier projet conserve la source de l’application et les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source correspondant.</p>
     </section>
 
     <section class="card">
@@ -320,7 +363,8 @@ body.desktop .desktop-badge{display:inline-flex}
 (function(){
   'use strict';
 
-  if(window.RadioDesktop && window.RadioDesktop.isDesktop) document.body.classList.add('desktop');
+  var desktop=window.AppInterfaceStudio||window.RadioDesktop||null;
+  if(desktop && desktop.isDesktop) document.body.classList.add('desktop');
 
   var frame=document.getElementById('appFrame');
   var device=document.getElementById('device');
@@ -361,10 +405,12 @@ body.desktop .desktop-badge{display:inline-flex}
   var hasSelection=false;
   var lastState=null;
   var projectResolver=null;
+  var currentSource=null;
+  var readyWaiters=[];
 
   function post(type,payload){
     if(!frame.contentWindow)return;
-    frame.contentWindow.postMessage({source:'radio-layout-host',type:type,payload:payload||{}},location.origin);
+    frame.contentWindow.postMessage({source:'app-layout-host',type:type,payload:payload||{}},'*');
   }
 
   function rgbToHex(value,fallback){
@@ -465,9 +511,9 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function projectPrompt(project){
     return [
-      'Projet : Radio intelligente — modifications réalisées dans Radio Interface Studio.',
+      'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Préserve le responsive et les espaces volontaires. Les éléments masqués doivent conserver leur espace afin de ne pas décaler automatiquement le reste de l’interface, sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Préserve le responsive et les espaces volontaires. Les éléments masqués doivent conserver leur espace afin de ne pas décaler automatiquement le reste de l’interface, sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -485,8 +531,10 @@ body.desktop .desktop-badge{display:inline-flex}
   async function saveProject(){
     var project=await requestProject();
     if(!project){setStatus('Projet non récupéré.',true);return}
-    if(window.RadioDesktop){
-      var result=await window.RadioDesktop.saveProject(project);
+    project.source=currentSource;
+    project.studio={name:'App Interface Studio',version:2};
+    if(desktop){
+      var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
     }else{
       downloadText('radio-interface.radio-layout.json',JSON.stringify(project,null,2),'application/json');
@@ -495,10 +543,16 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   async function openProject(){
-    if(!window.RadioDesktop){setStatus('Ouverture native disponible dans le logiciel Windows.',true);return}
-    var result=await window.RadioDesktop.openProject();
+    if(!desktop){setStatus('Ouverture native disponible dans le logiciel Windows.',true);return}
+    var result=await desktop.openProject();
     if(result&&result.ok){
-      post('load-project',{project:result.project});
+      var project=result.project||{};
+      if(project.source){
+        var restored=await desktop.restoreSource(project.source);
+        if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
+        await loadSource(restored.source);
+      }
+      post('load-project',{project:project});
       setStatus('Projet ouvert : '+result.path);
     }else if(result&&result.error)setStatus(result.error,true);
   }
@@ -508,13 +562,14 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     var text=projectPrompt(project);
     if(copyOnly){
-      if(window.RadioDesktop)await window.RadioDesktop.copyText(text);
+      if(desktop)await desktop.copyText(text);
       else await navigator.clipboard.writeText(text);
       setStatus('Projet copié : colle-le directement dans ChatGPT.');
       return;
     }
-    if(window.RadioDesktop){
-      var result=await window.RadioDesktop.saveChatGPTExport({project:project,text:text});
+    project.source=currentSource;
+    if(desktop){
+      var result=await desktop.saveChatGPTExport({project:project,text:text});
       if(result&&result.ok)setStatus('Export ChatGPT enregistré : '+result.path);
     }else{
       downloadText('radio-interface-pour-chatgpt.txt',text,'text/plain');
@@ -552,9 +607,9 @@ body.desktop .desktop-badge{display:inline-flex}
   window.addEventListener('keydown',sendKeyboard,true);
 
   window.addEventListener('message',function(event){
-    if(event.origin!==location.origin)return;
+    if(event.source!==frame.contentWindow)return;
     var data=event.data||{};
-    if(data.source!=='radio-visual-editor')return;
+    if(data.source!=='app-visual-editor'&&data.source!=='radio-visual-editor')return;
     var p=data.payload||{};
 
     if(data.type==='ready'){
@@ -562,6 +617,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('enable');
       post('get-css');
       setStatus('Éditeur prêt.');
+      var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
     if(data.type==='history'){
       undoBtn.disabled=!p.canUndo;
@@ -588,29 +644,13 @@ body.desktop .desktop-badge{display:inline-flex}
   });
 
   frame.addEventListener('load',function(){
-    setStatus('Chargement de l’interface…');
-    var tries=0;
-    var timer=setInterval(function(){
-      tries++;
-      try{
-        if(frame.contentWindow.RadioVisualEditor){
-          clearInterval(timer);
-          post('grid',{grid:Number(grid.value)});
-          post('enable');
-          post('get-css');
-          setStatus('Éditeur prêt.');
-        }
-      }catch(_){}
-      if(tries>60){clearInterval(timer);setStatus('Éditeur non détecté. Recharge la page.',true)}
-    },100);
+    setStatus('Application chargée. Initialisation de l’éditeur…');
   });
 
   preset.addEventListener('change',setDevice);
   zoom.addEventListener('change',setDevice);
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
 
-  document.getElementById('radioBtn').addEventListener('click',function(){post('activate-element',{id:'musicRadioOpen'})});
-  document.getElementById('musicBtn').addEventListener('click',function(){post('activate-element',{id:'radioMusicOpen'})});
   document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
 
   undoBtn.addEventListener('click',function(){post('undo')});
@@ -666,6 +706,91 @@ body.desktop .desktop-badge{display:inline-flex}
   ['exportChatGPTBtn','exportChatGPTBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){exportChatGPT(false)})});
   var copyChat=document.getElementById('copyChatGPTBtn');
   if(copyChat)copyChat.addEventListener('click',function(){exportChatGPT(true)});
+
+
+  function setSourceStatus(message,error){
+    var el=document.getElementById('sourceStatus');
+    if(!el)return;
+    el.textContent=message||'';
+    el.style.color=error?'#a52b4e':'#267557';
+  }
+
+  function waitForReady(timeout){
+    return new Promise(function(resolve){
+      var done=false;
+      var timer=setTimeout(function(){
+        if(done)return;done=true;
+        var i=readyWaiters.indexOf(onReady);if(i>=0)readyWaiters.splice(i,1);
+        resolve(false);
+      },timeout||6000);
+      function onReady(){
+        if(done)return;done=true;clearTimeout(timer);resolve(true);
+      }
+      readyWaiters.push(onReady);
+    });
+  }
+
+  async function loadSource(source){
+    if(!source||!source.url)return false;
+    currentSource=source;
+    document.getElementById('sourceName').textContent=source.label||source.url||'Application';
+    document.getElementById('sourceModal').hidden=true;
+    selector.textContent='Chargement de l’application…';
+    cssOut.value='/* Aucun ajustement. */';
+    frame.src=source.url;
+    var ready=await waitForReady(8000);
+    if(!ready)setStatus('Application chargée, mais l’éditeur n’a pas pu être injecté dans cette page.',true);
+    return ready;
+  }
+
+  async function chooseUrl(){
+    if(!desktop)return;
+    var input=document.getElementById('sourceUrlInput');
+    setSourceStatus('Ouverture…');
+    var result=await desktop.openUrl(input.value);
+    if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
+    else if(result&&result.error)setSourceStatus(result.error,true);
+  }
+
+  async function chooseFolder(){
+    if(!desktop)return;
+    setSourceStatus('Ouverture du dossier…');
+    var result=await desktop.pickFolder();
+    if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
+    else if(result&&result.error)setSourceStatus(result.error,true);
+  }
+
+  async function chooseHtml(){
+    if(!desktop)return;
+    setSourceStatus('Ouverture du fichier…');
+    var result=await desktop.pickHtml();
+    if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
+    else if(result&&result.error)setSourceStatus(result.error,true);
+  }
+
+  async function chooseDemo(){
+    if(!desktop)return;
+    var result=await desktop.openDemo();
+    if(result&&result.ok){setSourceStatus('');await loadSource(result.source)}
+  }
+
+  var sourceModal=document.getElementById('sourceModal');
+  var changeSource=document.getElementById('changeSourceBtn');
+  if(changeSource)changeSource.addEventListener('click',function(){sourceModal.hidden=false});
+  document.getElementById('sourceCloseBtn').addEventListener('click',function(){if(currentSource)sourceModal.hidden=true});
+  document.getElementById('openUrlBtn').addEventListener('click',chooseUrl);
+  document.getElementById('sourceUrlInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();chooseUrl()}});
+  document.getElementById('openFolderBtn').addEventListener('click',chooseFolder);
+  document.getElementById('openHtmlBtn').addEventListener('click',chooseHtml);
+  document.getElementById('openDemoBtn').addEventListener('click',chooseDemo);
+
+  if(desktop&&desktop.isDesktop){
+    sourceModal.hidden=false;
+  }else{
+    currentSource={type:'bundled-demo',label:'Radio intelligente — démo',url:'/?visual-editor=1'};
+    document.getElementById('sourceName').textContent=currentSource.label;
+    frame.src=currentSource.url;
+  }
 
   setDevice();
 })();
