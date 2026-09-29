@@ -166,6 +166,10 @@ function projectPrompt(project){
 }
 
 function createWindow(){
+  const windowIcon=app.isPackaged
+    ? path.join(process.resourcesPath,'app-interface-studio-icon.png')
+    : path.join(__dirname,'build','icon-512.png');
+
   mainWindow=new BrowserWindow({
     width:1520,
     height:1000,
@@ -173,6 +177,7 @@ function createWindow(){
     minHeight:720,
     backgroundColor:'#f3f0f7',
     title:'App Interface Studio',
+    icon:windowIcon,
     autoHideMenuBar:true,
     webPreferences:{
       preload:path.join(__dirname,'preload.cjs'),
