@@ -2008,6 +2008,67 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   });
 
+
+  document.getElementById('applyTokensBtn').addEventListener('click',function(){
+    var payload=tokenPayload();
+    post('tokens-set',payload);
+    setStatus('Design tokens appliqués.');
+  });
+  document.querySelectorAll('[data-token-apply]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('token-apply',{kind:btn.dataset.tokenApply})});
+  });
+  document.getElementById('snapToTokenGrid').addEventListener('click',function(){
+    var unit=Math.max(1,Number(document.getElementById('tokenSpacing').value)||8);
+    var option=Array.from(grid.options).find(function(o){return Number(o.value)===unit});
+    if(!option){
+      option=document.createElement('option');option.value=String(unit);option.textContent='Design system · '+unit+' px';grid.appendChild(option);
+    }
+    grid.value=String(unit);post('grid',{grid:unit});setStatus('Accrochage réglé sur '+unit+' px.');
+  });
+
+  document.getElementById('createComponentBtn').addEventListener('click',function(){
+    var name=document.getElementById('componentName').value.trim();
+    if(!name){setStatus('Donne un nom au composant.',true);return}
+    post('component-create',{name:name});
+  });
+  document.getElementById('linkComponentBtn').addEventListener('click',function(){
+    post('component-link',{name:document.getElementById('componentName').value.trim()});
+  });
+  document.getElementById('updateComponentBtn').addEventListener('click',function(){
+    post('component-update',{name:document.getElementById('componentName').value.trim()});
+  });
+  document.getElementById('saveVariantBtn').addEventListener('click',function(){
+    post('component-variant-save',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim()});
+  });
+  document.getElementById('applyVariantBtn').addEventListener('click',function(){
+    post('component-variant-apply',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim(),allInstances:false});
+  });
+
+  document.getElementById('interactiveState').addEventListener('change',function(){post('interactive-state',{state:this.value})});
+  document.getElementById('applyAnimationBtn').addEventListener('click',function(){
+    post('animation-set',{
+      property:document.getElementById('animationProperty').value,
+      duration:Number(document.getElementById('animationDuration').value)||0,
+      easing:document.getElementById('animationEasing').value,
+      delay:0
+    });
+  });
+  document.getElementById('setPrototypeBtn').addEventListener('click',function(){
+    post('prototype-set',{target:document.getElementById('prototypeTarget').value.trim(),trigger:'click'});
+  });
+
+  document.querySelectorAll('[data-stress]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('stress-test',{mode:btn.dataset.stress})});
+  });
+  document.getElementById('resetStressBtn').addEventListener('click',function(){post('stress-test',{mode:'normal'})});
+  document.getElementById('saveNamedVersionBtn').addEventListener('click',saveNamedVersion);
+
+  document.getElementById('batchCaptureBtn').addEventListener('click',captureAllFormats);
+  document.getElementById('saveBaselineBtn').addEventListener('click',saveRegressionBaseline);
+  document.getElementById('compareRegressionBtn').addEventListener('click',compareRegression);
+  document.getElementById('gitStatusBtn').addEventListener('click',checkGit);
+  document.getElementById('gitPublishBtn').addEventListener('click',publishGit);
+
   function sendEnvironment(){
     post('environment-set',{
       fontScale:Number(document.getElementById('systemFontScale').value)||1,
@@ -2023,6 +2084,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
+  document.getElementById('auditFixBtn').addEventListener('click',function(){post('audit-fix')});
   document.getElementById('adbCaptureBtn').addEventListener('click',captureAdbReference);
   document.getElementById('loadReferenceBtn').addEventListener('click',loadReferenceImage);
   document.getElementById('referenceOpacity').addEventListener('input',function(){
