@@ -1854,7 +1854,8 @@ body.desktop .desktop-badge{display:inline-flex}
       post('environment-set',{
         fontScale:Number(document.getElementById('systemFontScale').value)||1,
         displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-        darkMode:document.getElementById('systemDarkMode').checked
+        darkMode:document.getElementById('systemDarkMode').checked,
+        keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
       });
       post('breakpoint-edit',{breakpoint:breakpointEdit.value||'base'});
       post('get-css');
@@ -2005,13 +2006,15 @@ body.desktop .desktop-badge{display:inline-flex}
     post('environment-set',{
       fontScale:Number(document.getElementById('systemFontScale').value)||1,
       displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
-      darkMode:document.getElementById('systemDarkMode').checked
+      darkMode:document.getElementById('systemDarkMode').checked,
+      keyboardHeight:Number(document.getElementById('systemKeyboard').value)||0
     });
     scheduleMultiSync();
   }
   document.getElementById('systemFontScale').addEventListener('change',sendEnvironment);
   document.getElementById('systemDisplayScale').addEventListener('change',sendEnvironment);
   document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
+  document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
   document.getElementById('adbCaptureBtn').addEventListener('click',captureAdbReference);
