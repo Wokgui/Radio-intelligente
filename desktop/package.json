@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js",
-    "dist:win": "electron-builder --win portable nsis"
+    "dist:win": "electron-builder --win portable"
   },
   "devDependencies": {
     "electron": "31.7.7",
@@ -60,22 +60,9 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
         }
       ]
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Radio Interface Studio"
-    },
-    "artifactName": "Radio-Interface-Studio-${version}-${arch}.${ext}"
+    "artifactName": "Radio-Interface-Studio-${version}-portable-${arch}.${ext}"
   }
 }
