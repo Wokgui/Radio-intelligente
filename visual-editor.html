@@ -417,11 +417,11 @@ body.desktop .desktop-badge{display:inline-flex}
       <div><input id="sourceUrlInput" type="text" placeholder="https://mon-app.example"><button class="btn primary" id="openUrlBtn">Ouvrir</button></div>
     </label>
     <div class="source-choice-grid">
-      <button class="source-choice" id="openFolderBtn"><b>📁 Dossier local</b><span>Projet avec index.html, dist, build, www ou public</span></button>
+      <button class="source-choice" id="openFolderBtn"><b>📁 Dossier local</b><span>PWA/HTML ou projet Android natif XML / Compose</span></button>
       <button class="source-choice" id="openHtmlBtn"><b>📄 Fichier HTML</b><span>Choisir directement la page principale</span></button>
       <button class="source-choice" id="openDemoBtn"><b>✦ Démo intégrée</b><span>Tester avec Radio intelligente</span></button>
     </div>
-    <div class="native-note"><b>Applications natives :</b> une APK/EXE fermée sans code source n’est pas transformable directement en interface HTML éditable. Avec les sources ou une version web/PWA, l’éditeur peut travailler dessus.</div>
+    <div class="native-note"><b>Applications natives :</b> un dossier Android avec sources est maintenant détecté et prévisualisé en mode XML/Compose. Une APK/EXE fermée sans source reste non éditable directement.</div>
     <div class="status" id="sourceStatus"></div>
   </div>
 </div>
@@ -654,6 +654,26 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
 
+
+    <section class="card">
+      <h2>Inspecteur avancé <small>CSS structurel</small></h2>
+      <div class="advanced-grid">
+        <div class="field"><label>Padding</label><input id="advPadding" type="text" placeholder="12px"></div>
+        <div class="field"><label>Margin</label><input id="advMargin" type="text" placeholder="0 8px"></div>
+        <div class="field"><label>Rayon</label><input id="advRadius" type="text" placeholder="12px"></div>
+        <div class="field"><label>Ombre</label><input id="advShadow" type="text" placeholder="0 8px 24px #0002"></div>
+        <div class="field"><label>Opacité</label><input id="advOpacity" type="text" placeholder="1"></div>
+        <div class="field"><label>Blur / filtre</label><input id="advFilter" type="text" placeholder="blur(8px)"></div>
+        <div class="field"><label>Aspect ratio</label><input id="advAspect" type="text" placeholder="16 / 9"></div>
+        <div class="field"><label>Overflow</label><select id="advOverflow"><option value="">Original</option><option value="visible">visible</option><option value="hidden">hidden</option><option value="auto">auto</option><option value="scroll">scroll</option></select></div>
+        <div class="field"><label>Min largeur</label><input id="advMinWidth" type="text" placeholder="0"></div>
+        <div class="field"><label>Max largeur</label><input id="advMaxWidth" type="text" placeholder="none"></div>
+        <div class="field"><label>Position</label><select id="advPosition"><option value="">Originale</option><option value="relative">relative</option><option value="absolute">absolute</option><option value="fixed">fixed</option><option value="sticky">sticky</option></select></div>
+        <div class="field"><label>Object-fit</label><select id="advObjectFit"><option value="">Original</option><option value="cover">cover</option><option value="contain">contain</option><option value="fill">fill</option><option value="scale-down">scale-down</option></select></div>
+      </div>
+      <button class="btn primary" id="applyAdvancedBtn" style="width:100%;margin-top:8px">Appliquer à la sélection</button>
+    </section>
+
     <section class="card responsive-card off" id="responsiveCard">
       <h2>Adaptatif <small>multi-écrans</small></h2>
       <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes relatives (recommandé)</label>
@@ -693,10 +713,28 @@ body.desktop .desktop-badge{display:inline-flex}
         </div>
         <label class="checkline"><input id="respectSafeArea" type="checkbox" checked> Respecter automatiquement les encoches et barres système</label>
         <button class="btn" id="captureResponsive" style="width:100%;margin-top:8px">Reprendre les marges depuis la position actuelle</button>
+        <div class="smart-actions">
+          <button class="btn" id="suggestConstraintsBtn">Déduire les contraintes</button>
+          <button class="btn primary" id="applyConstraintsBtn">Appliquer les contraintes intelligentes</button>
+        </div>
         <div class="responsive-summary" id="responsiveSummary">Sélectionne un élément puis active les contraintes.</div>
       </div>
     </section>
 
+
+
+    <section class="card desktop-only" id="nativeAndroidCard">
+      <h2>Android natif <small>XML / Compose</small></h2>
+      <div class="native-status" id="nativeStatus">Ouvre un dossier Android pour activer ce mode.</div>
+      <div class="native-list" id="nativeList"></div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Propriété</label><select id="nativeProperty">
+          <option value="text">Texte</option><option value="textSize">Taille texte</option><option value="padding">Padding</option><option value="margin">Margin</option><option value="width">Largeur</option><option value="height">Hauteur</option><option value="background">Fond</option><option value="gravity">Gravity</option>
+        </select></div>
+        <div class="field"><label>Valeur</label><input id="nativeValue" type="text" placeholder="16dp ou Nouveau texte"></div>
+      </div>
+      <button class="btn primary" id="prepareNativeEditBtn" style="width:100%;margin-top:8px">Préparer le diff Android</button>
+    </section>
 
     <section class="card">
       <h2>Calques <small>arbre des éléments</small></h2>
@@ -727,6 +765,11 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="field"><label>Colonnes Grid</label><input id="layoutColumns" type="text" placeholder="repeat(2, 1fr)"></div>
       </div>
       <button class="btn primary" id="applyParentLayout" style="width:100%;margin-top:8px">Appliquer au conteneur parent</button>
+      <div class="smart-actions">
+        <button class="btn" id="suggestAutoLayoutBtn">Analyser l’auto-layout</button>
+        <button class="btn primary" id="applyAutoLayoutBtn">Convertir automatiquement</button>
+      </div>
+      <div class="smart-status" id="autoLayoutStatus">Sélectionne plusieurs objets d’un même conteneur pour déduire ligne, colonne ou grille.</div>
     </section>
 
     <section class="card">
@@ -832,6 +875,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <button class="btn" id="applyAnimationBtn" style="width:100%;margin-top:8px">Appliquer animation</button>
       <div class="field" style="margin-top:9px"><label>Cible du clic · sélecteur</label><input id="prototypeTarget" type="text" placeholder="#settings ou .page-player"></div>
       <button class="btn" id="setPrototypeBtn" style="width:100%;margin-top:7px">Créer le lien de prototype</button>
+      <button class="btn" id="openFlowBtn" style="width:100%;margin-top:7px">Ouvrir le flow de navigation</button>
       <div class="prototype-status" id="prototypeStatus" style="margin-top:7px">En mode Aperçu, cliquer l’objet déclenchera sa cible.</div>
     </section>
 
@@ -893,9 +937,18 @@ body.desktop .desktop-badge{display:inline-flex}
       <p>Teste les interfaces avec les réglages système qui font souvent apparaître les textes coupés ou les chevauchements.</p>
     </section>
 
+
+    <section class="card">
+      <h2>Cohérence du design <small>détection automatique</small></h2>
+      <button class="btn primary" id="consistencyBtn" style="width:100%">Analyser les incohérences</button>
+      <div class="consistency-status" id="consistencyStatus">Repère tailles de texte, rayons, gaps et couleurs rares par rapport au reste de l’interface.</div>
+      <div class="consistency-list" id="consistencyList"></div>
+    </section>
+
     <section class="card">
       <h2>Vérifier l’interface <small>audit automatique</small></h2>
       <div class="toolbar"><button class="btn primary wide" id="auditBtn">Analyser l’écran actuel</button><button class="btn wide" id="auditFixBtn">Corriger automatiquement</button></div>
+      <div class="toolbar" style="margin-top:7px"><button class="btn wide" id="repairAssistantBtn">Réparer avec aperçu</button><button class="btn wide desktop-only" id="testMatrixBtn">Tester 12 configurations</button></div>
       <div class="audit-summary" id="auditSummary"></div>
       <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
     </section>
@@ -911,6 +964,13 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn" id="clearReferenceBtn">Retirer la comparaison</button>
         <div class="compare-status" id="compareStatus">Superpose une capture réelle du téléphone à l’aperçu pour repérer immédiatement les différences.</div>
       </div>
+    </section>
+
+
+    <section class="card desktop-only">
+      <h2>Code source direct <small>diff avant validation</small></h2>
+      <div class="source-edit-status" id="directSourceStatus">Pour un dossier HTML local, Studio cherche la vraie règle CSS correspondant à l’objet sélectionné.</div>
+      <button class="btn primary" id="prepareDirectEditBtn" style="width:100%;margin-top:8px">Préparer le diff du fichier source</button>
     </section>
 
     <section class="card desktop-only">
