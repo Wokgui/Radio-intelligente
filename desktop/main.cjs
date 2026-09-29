@@ -688,6 +688,141 @@ ipcMain.handle('capture:current-source',async (_event,payload)=>{
   }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
 
+
+function escapeRegex(value){
+  return String(value||'').replace(/[\\^$.*+?()[\]{}|]/g,'\\ipcMain.handle('source:open-url'');
+}
+
+function hashText(value){
+  return crypto.createHash('sha256').update(String(value||''),'utf8').digest('hex');
+}
+
+function isPathInside(root,file){
+  const relative=path.relative(path.resolve(root),path.resolve(file));
+  return relative!==''&&!relative.startsWith('..')&&!path.isAbsolute(relative);
+}
+
+function walkFiles(root,extensions,maxFiles){
+  const out=[];
+  const wanted=new Set((extensions||[]).map(x=>String(x).toLowerCase()));
+  function walk(dir,depth){
+    if(depth>10||out.length>=(maxFiles||500))return;
+    let entries=[];try{entries=fs.readdirSync(dir,{withFileTypes:true})}catch(_){return}
+    for(const entry of entries){
+      if(out.length>=(maxFiles||500))break;
+      if(entry.name==='node_modules'||entry.name==='.git'||entry.name==='build'||entry.name==='.gradle')continue;
+      const file=path.join(dir,entry.name);
+      if(entry.isDirectory())walk(file,depth+1);
+      else if(!wanted.size||wanted.has(path.extname(entry.name).toLowerCase()))out.push(file);
+    }
+  }
+  walk(root,0);
+  return out;
+}
+
+function simpleUnifiedDiff(oldText,newText,label){
+  const a=String(oldText||'').split(/\r?\n/),b=String(newText||'').split(/\r?\n/);
+  let start=0;
+  while(start<a.length&&start<b.length&&a[start]===b[start])start+=1;
+  let endA=a.length-1,endB=b.length-1;
+  while(endA>=start&&endB>=start&&a[endA]===b[endB]){endA-=1;endB-=1}
+  const from=Math.max(0,start-3),toA=Math.min(a.length-1,endA+3),toB=Math.min(b.length-1,endB+3);
+  const lines=['--- '+label,'+++ '+label,'@@ '+(from+1)+' @@'];
+  for(let i=from;i<=toA;i+=1)lines.push('- '+a[i]);
+  for(let i=from;i<=toB;i+=1)lines.push('+ '+b[i]);
+  return lines.join('\n');
+}
+
+function cssDeclarationsFromRule(css,selector){
+  const text=String(css||'');
+  const re=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
+  const m=text.match(re);
+  if(!m)return null;
+  const out={};
+  String(m[2]||'').split(';').forEach(part=>{
+    const i=part.indexOf(':');
+    if(i<0)return;
+    const key=part.slice(0,i).trim(),value=part.slice(i+1).replace(/!important/g,'').trim();
+    if(key&&value&&!key.startsWith('/*'))out[key]=value;
+  });
+  return out;
+}
+
+function mergeCssRule(content,selector,properties){
+  const direct=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
+  const match=content.match(direct);
+  function declarationBlock(existing){
+    const map={};
+    String(existing||'').split(';').forEach(part=>{
+      const i=part.indexOf(':');if(i<0)return;
+      const key=part.slice(0,i).trim(),value=part.slice(i+1).trim();if(key&&value)map[key]=value;
+    });
+    Object.keys(properties||{}).forEach(key=>{map[key]=String(properties[key]).replace(/\\s*!important\\s*$/,'').trim()});
+    return Object.keys(map).map(key=>'  '+key+': '+map[key]+';').join('\n');
+  }
+  if(match){
+    const whole=match[0],open=whole.indexOf('{'),close=whole.lastIndexOf('}');
+    const replaced=whole.slice(0,open+1)+'\n'+declarationBlock(whole.slice(open+1,close))+'\n'+whole.slice(close);
+    return {content:content.replace(whole,replaced),created:false};
+  }
+  return {content:content+'\n\n'+selector+' {\n'+declarationBlock('')+'\n}\n',created:true};
+}
+
+function directSourceCandidate(source,selector,css){
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Édition source directe disponible uniquement pour une application locale.'};
+  const props=cssDeclarationsFromRule(css,selector);
+  if(!props||!Object.keys(props).length)return {ok:false,error:'Aucune propriété exploitable pour la sélection actuelle.'};
+  const files=walkFiles(local.root,['.css'],350).filter(file=>!file.endsWith('app-interface-studio.generated.css'));
+  let chosen=null,bestScore=-1;
+  for(const file of files){
+    let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){continue}
+    const score=new RegExp(escapeRegex(selector)+'\\s*\\{').test(text)?100:(text.includes(selector)?20:0);
+    if(score>bestScore){bestScore=score;chosen={file,text}}
+  }
+  if(!chosen){
+    const fallback=path.join(path.dirname(local.html),'app-interface-studio.direct.css');
+    chosen={file:fallback,text:fs.existsSync(fallback)?fs.readFileSync(fallback,'utf8'):''};
+  }
+  const merged=mergeCssRule(chosen.text,selector,props);
+  return {
+    ok:true,
+    root:local.root,
+    file:chosen.file,
+    relativePath:path.relative(local.root,chosen.file),
+    selector,
+    properties:props,
+    beforeHash:hashText(chosen.text),
+    before:chosen.text,
+    after:merged.content,
+    created:!fs.existsSync(chosen.file),
+    diff:simpleUnifiedDiff(chosen.text,merged.content,path.relative(local.root,chosen.file))
+  };
+}
+
+ipcMain.handle('source:prepare-direct-edit',async (_event,payload)=>{
+  try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''))}
+  catch(error){return {ok:false,error:'Préparation du diff impossible : '+String(error&&error.message||error)}}
+});
+
+ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Source locale requise.'};
+  const file=String(payload&&payload.file||'');
+  if(!file||!isPathInside(local.root,file))return {ok:false,error:'Chemin source refusé.'};
+  try{
+    const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+    if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier a changé depuis la préparation du diff. Reprépare la modification.'};
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    let backupPath='';
+    if(fs.existsSync(file)){backupPath=file+'.ais-backup-'+stamp;fs.copyFileSync(file,backupPath)}
+    fs.mkdirSync(path.dirname(file),{recursive:true});
+    fs.writeFileSync(file,String(payload.after||''),'utf8');
+    return {ok:true,file,backupPath,created:!before};
+  }catch(error){return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error)}}
+});
+
 ipcMain.handle('source:open-url',async (_event,value)=>{
   const url=normalizeUrl(value);
   if(!url)return {ok:false,error:'Adresse invalide. Utilise une URL http:// ou https://.'};
