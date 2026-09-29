@@ -1249,7 +1249,17 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function applyDeviceKind(kind){
     selectedDeviceKind=kind||'smartphone';
-    document.querySelectorAll('[data-device-kind]').forEach(function(btn){
+  
+  document.getElementById('applyDirectDiffBtn').addEventListener('click',applyPendingDiff);
+  document.getElementById('closeDirectDiffBtn').addEventListener('click',function(){sourceDiffModal.classList.remove('visible')});
+  document.getElementById('closeFlowBtn').addEventListener('click',function(){flowModal.classList.remove('visible')});
+  document.getElementById('refreshFlowBtn').addEventListener('click',openFlow);
+  document.getElementById('closeMatrixBtn').addEventListener('click',function(){matrixModal.classList.remove('visible')});
+  document.getElementById('runMatrixBtn').addEventListener('click',runTestMatrix);
+  document.getElementById('closeRepairBtn').addEventListener('click',function(){repairModal.classList.remove('visible');post('repair-preview-clear')});
+  document.getElementById('clearRepairPreviewBtn').addEventListener('click',function(){post('repair-preview-clear')});
+
+  document.querySelectorAll('[data-device-kind]').forEach(function(btn){
       btn.classList.toggle('active',btn.dataset.deviceKind===selectedDeviceKind);
     });
     customDeviceFields.classList.toggle('visible',selectedDeviceKind==='custom');
