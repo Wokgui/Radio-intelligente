@@ -893,8 +893,9 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function safeAreaValues(){
     if(currentPreviewMode==='android'){
-      var a=androidInsets();
-      return {profile:'android-exact',top:a.top,right:a.right,bottom:a.bottom,left:a.left,notch:'none'};
+      /* Le WebView natif est déjà dimensionné entre les barres système :
+         ne pas appliquer une deuxième fois ces insets à son contenu. */
+      return {profile:'android-exact',top:0,right:0,bottom:0,left:0,notch:'none'};
     }
     var profile=resolvedSafeProfile();
     if(profile==='android-hole')return {profile:profile,top:28,right:0,bottom:24,left:0,notch:'hole'};
