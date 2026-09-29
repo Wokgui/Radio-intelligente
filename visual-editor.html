@@ -1239,7 +1239,7 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   async function saveRecovery(){
-    if(recoveryBusy||prefs.autoRecovery===false||!currentSource)return;
+    if(recoveryBusy||projectResolver||prefs.autoRecovery===false||!currentSource)return;
     recoveryBusy=true;
     try{
       var project=await requestProject();
@@ -2357,10 +2357,10 @@ body.desktop .desktop-badge{display:inline-flex}
     if(modifier&&lower==='o'){
       event.preventDefault();sourceModal.hidden=false;return;
     }
+    if(key==='Escape'&&!commandPalette.hidden){event.preventDefault();closeCommandPalette();return}
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
     if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
-    if(key==='Escape'&&!commandPalette.hidden){event.preventDefault();closeCommandPalette();return}
     var relevant=key.indexOf('Arrow')===0||key==='Delete'||key==='Backspace'||(modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
     if(!relevant)return;
     event.preventDefault();
