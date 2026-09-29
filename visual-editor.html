@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Éditeur visuel · Radio intelligente</title>
+<style>
+:root{
+  color-scheme:light;
+  --ink:#21182f;
+  --muted:#71697d;
+  --line:#ded7e8;
+  --accent:#7c3aed;
+  --panel:#ffffff;
+  --desk:#f3f0f7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font:600 14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--desk)}
+button,select,input{font:inherit}
+button{cursor:pointer}
+header{
+  position:sticky;top:0;z-index:10;
+  min-height:64px;padding:10px 18px;
+  display:flex;align-items:center;gap:16px;
+  background:#ffffffed;border-bottom:1px solid var(--line);backdrop-filter:blur(14px)
+}
+header strong{font-size:1.05rem}
+header span{color:var(--muted);font-size:.82rem}
+.top-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:11px;
+  background:#fff;color:#4c3d5e;font-weight:800
+}
+.btn.primary{border:0;background:var(--accent);color:white}
+main{
+  min-height:calc(100vh - 64px);
+  display:grid;grid-template-columns:minmax(520px,1fr) 330px;gap:18px;padding:18px
+}
+.workspace{
+  min-width:0;display:flex;align-items:flex-start;justify-content:center;
+  overflow:auto;padding:14px;border:1px solid var(--line);border-radius:18px;background:#eae6ef
+}
+.stage{position:relative;padding:31px 0 0 31px}
+.ruler-x,.ruler-y{
+  position:absolute;background:#f9f8fb;color:#736a80;border:1px solid #d8d2df;
+  font:700 9px/1 system-ui;overflow:hidden;user-select:none
+}
+.ruler-x{
+  left:31px;top:0;height:25px;
+  background-image:repeating-linear-gradient(90deg,#91889d 0 1px,transparent 1px 10px);
+  background-size:10px 7px;background-repeat:repeat-x;background-position:left bottom
+}
+.ruler-y{
+  left:0;top:31px;width:25px;
+  background-image:repeating-linear-gradient(#91889d 0 1px,transparent 1px 10px);
+  background-size:7px 10px;background-repeat:repeat-y;background-position:right top
+}
+.ruler-corner{position:absolute;left:0;top:0;width:25px;height:25px;border:1px solid #d8d2df;background:#f9f8fb}
+.device{
+  position:relative;border:10px solid #1d1a22;border-radius:33px;background:#111;
+  box-shadow:0 22px 60px #251a3633;overflow:hidden;transform-origin:top left
+}
+.device:before{
+  content:"";position:absolute;z-index:3;top:7px;left:50%;width:78px;height:19px;
+  transform:translateX(-50%);border-radius:999px;background:#161319;pointer-events:none
+}
+iframe{display:block;width:100%;height:100%;border:0;background:white}
+.side{display:grid;gap:12px;align-content:start}
+.card{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:14px;box-shadow:0 5px 18px #2f244010}
+.card h2{font-size:.9rem;margin:0 0 11px}
+.card p{margin:7px 0;color:var(--muted);font-size:.78rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{display:grid;gap:5px}
+.field label{font-size:.68rem;color:var(--muted)}
+.field select,.field input{
+  width:100%;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:10px;background:white
+}
+.selector{
+  min-height:42px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#f8f6fb;
+  font:700 11px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
+}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.metric{padding:8px 5px;border-radius:9px;background:#f5f1f9;text-align:center}
+.metric b{display:block;font-size:.93rem}
+.metric small{color:var(--muted);font-size:.62rem}
+.pad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,38px);gap:5px;justify-content:center}
+.pad button,.size-grid button{
+  border:1px solid var(--line);border-radius:9px;background:#fff;color:#513d67;font-weight:900
+}
+.pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .center{grid-column:2;grid-row:2;background:#f1ebf8;color:#7c3aed}.pad .right{grid-column:3;grid-row:2}.pad .down{grid-column:2;grid-row:3}
+.size-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.size-grid button{min-height:36px}
+.row{display:flex;gap:7px;flex-wrap:wrap}
+.row .btn{flex:1}
+.code{
+  width:100%;height:150px;resize:vertical;padding:10px;border:1px solid var(--line);border-radius:10px;
+  background:#17131d;color:#efe8f7;font:600 11px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace
+}
+.status{min-height:18px;color:#267557;font-size:.72rem;margin-top:6px}
+kbd{padding:2px 5px;border:1px solid #d7d0df;border-bottom-width:2px;border-radius:5px;background:#fff;font:700 11px system-ui}
+@media(max-width:980px){
+  main{grid-template-columns:1fr}
+  .side{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <strong>Éditeur visuel · Radio intelligente</strong><br>
+    <span>La vue centrale reproduit un écran Android à largeur réelle CSS.</span>
+  </div>
+  <div class="top-actions">
+    <button class="btn primary" id="radioBtn">Radio intelligente</button>
+    <button class="btn" id="musicBtn">Lecteur normal / Ma musique</button>
+    <button class="btn" id="reloadBtn">Recharger</button>
+  </div>
+</header>
+<main>
+  <section class="workspace">
+    <div class="stage" id="stage">
+      <div class="ruler-corner"></div>
+      <div class="ruler-x" id="rulerX"></div>
+      <div class="ruler-y" id="rulerY"></div>
+      <div class="device" id="device">
+        <iframe id="appFrame" title="Aperçu de l'application" src="/?visual-editor=1"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="card">
+      <h2>Écran et grille</h2>
+      <div class="fields">
+        <div class="field">
+          <label>Format</label>
+          <select id="devicePreset">
+            <option value="412x915">Galaxy S23 Ultra · 412 × 915</option>
+            <option value="384x854">Android · 384 × 854</option>
+            <option value="390x844">390 × 844</option>
+            <option value="360x800">360 × 800</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Zoom PC</label>
+          <select id="zoom">
+            <option value="1">100 %</option>
+            <option value=".9">90 %</option>
+            <option value=".8">80 %</option>
+            <option value=".7">70 %</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Accrochage</label>
+          <select id="grid">
+            <option value="1">Libre · 1 px</option>
+            <option value="4">Grille · 4 px</option>
+            <option value="8">Grille · 8 px</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Pas des boutons</label>
+          <select id="step">
+            <option value="1">1 px</option>
+            <option value="5">5 px</option>
+            <option value="10">10 px</option>
+          </select>
+        </div>
+      </div>
+      <p>Clique un élément dans le téléphone puis fais-le glisser. Les règles et la grille servent de repères.</p>
+    </section>
+
+    <section class="card">
+      <h2>Élément sélectionné</h2>
+      <div class="selector" id="selector">Clique un élément dans l’aperçu.</div>
+      <div class="metrics">
+        <div class="metric"><b id="mx">—</b><small>X</small></div>
+        <div class="metric"><b id="my">—</b><small>Y</small></div>
+        <div class="metric"><b id="mw">—</b><small>Largeur</small></div>
+        <div class="metric"><b id="mh">—</b><small>Hauteur</small></div>
+      </div>
+      <div class="pad">
+        <button class="up" data-move="0,-1">↑</button>
+        <button class="left" data-move="-1,0">←</button>
+        <button class="center" title="Réinitialiser tous les ajustements" id="resetBtn">0</button>
+        <button class="right" data-move="1,0">→</button>
+        <button class="down" data-move="0,1">↓</button>
+      </div>
+      <div class="size-grid">
+        <button data-size="-1,0">Largeur −</button>
+        <button data-size="1,0">Largeur +</button>
+        <button data-size="0,-1">Hauteur −</button>
+        <button data-size="0,1">Hauteur +</button>
+      </div>
+      <p>Clavier : <kbd>← ↑ ↓ →</kbd> = 1 px. <kbd>Ctrl</kbd> + flèche = 10 px. <kbd>Maj</kbd> + flèche = taille.</p>
+    </section>
+
+    <section class="card">
+      <h2>CSS produit</h2>
+      <textarea class="code" id="cssOut" spellcheck="false" readonly>/* Aucun déplacement ou redimensionnement. */</textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" id="copyBtn">Copier CSS</button>
+        <button class="btn" id="downloadBtn">Exporter .css</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Utilisation</h2>
+      <p>1. Choisis <b>Radio intelligente</b> ou <b>Lecteur normal</b>.</p>
+      <p>2. Clique directement l’objet à modifier dans le téléphone.</p>
+      <p>3. Déplace-le à la souris ou avec les flèches. Utilise la grille pour des espacements réguliers.</p>
+      <p>4. Copie le CSS obtenu et donne-le-moi : je peux ensuite intégrer proprement les valeurs dans l’application au lieu de laisser des corrections temporaires.</p>
+    </section>
+  </aside>
+</main>
+<script>
+(function(){
+  'use strict';
+  const frame=document.getElementById('appFrame');
+  const device=document.getElementById('device');
+  const stage=document.getElementById('stage');
+  const rulerX=document.getElementById('rulerX');
+  const rulerY=document.getElementById('rulerY');
+  const preset=document.getElementById('devicePreset');
+  const zoom=document.getElementById('zoom');
+  const grid=document.getElementById('grid');
+  const step=document.getElementById('step');
+  const selector=document.getElementById('selector');
+  const cssOut=document.getElementById('cssOut');
+  const status=document.getElementById('status');
+  const metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
+
+  function post(type,payload){
+    if(!frame.contentWindow)return;
+    frame.contentWindow.postMessage({source:'radio-layout-host',type:type,payload:payload||{}},location.origin);
+  }
+
+  function setDevice(){
+    const bits=preset.value.split('x');
+    const w=Number(bits[0]),h=Number(bits[1]),z=Number(zoom.value);
+    device.style.width=w+'px';
+    device.style.height=h+'px';
+    device.style.transform='scale('+z+')';
+    rulerX.style.width=w+'px';
+    rulerY.style.height=h+'px';
+    stage.style.width=(31+w*z+20)+'px';
+    stage.style.height=(31+h*z+20)+'px';
+  }
+
+  function withPausedEditor(fn){
+    try{
+      const win=frame.contentWindow;
+      if(!win||!win.RadioVisualEditor)return;
+      win.RadioVisualEditor.disable();
+      fn(win.document);
+      setTimeout(function(){win.RadioVisualEditor.enable();},80);
+    }catch(_){}
+  }
+
+  function switchToMusic(){
+    withPausedEditor(function(doc){
+      const b=doc.getElementById('radioMusicOpen');
+      if(b)b.click();
+    });
+  }
+
+  function switchToRadio(){
+    withPausedEditor(function(doc){
+      const b=doc.getElementById('musicRadioOpen');
+      if(b)b.click();
+    });
+  }
+
+  window.addEventListener('message',function(event){
+    if(event.origin!==location.origin)return;
+    const data=event.data||{};
+    if(data.source!=='radio-visual-editor')return;
+    const p=data.payload||{};
+    if(data.type==='ready'){
+      post('grid',{grid:Number(grid.value)});
+      post('enable');
+      status.textContent='Éditeur prêt.';
+    }
+    if(data.type==='state'){
+      selector.textContent=p.selected?p.selector:'Clique un élément dans l’aperçu.';
+      metrics.x.textContent=p.selected?p.x:'—';
+      metrics.y.textContent=p.selected?p.y:'—';
+      metrics.w.textContent=p.selected?p.width:'—';
+      metrics.h.textContent=p.selected?p.height:'—';
+      if(typeof p.css==='string')cssOut.value=p.css;
+    }
+    if(data.type==='css'&&typeof p.css==='string'){
+      cssOut.value=p.css;
+      if(p.copied)status.textContent='CSS copié.';
+      else if(p.downloaded)status.textContent='Fichier CSS exporté.';
+    }
+  });
+
+  frame.addEventListener('load',function(){
+    status.textContent='Chargement de l’interface…';
+    let tries=0;
+    const timer=setInterval(function(){
+      tries++;
+      try{
+        if(frame.contentWindow.RadioVisualEditor){
+          clearInterval(timer);
+          post('grid',{grid:Number(grid.value)});
+          post('enable');
+          post('get-css');
+          status.textContent='Éditeur prêt.';
+        }
+      }catch(_){}
+      if(tries>60){clearInterval(timer);status.textContent='Éditeur non détecté. Recharge la page.'}
+    },100);
+  });
+
+  document.querySelectorAll('[data-move]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      const v=btn.dataset.move.split(',').map(Number),s=Number(step.value);
+      post('move',{dx:v[0]*s,dy:v[1]*s});
+    });
+  });
+  document.querySelectorAll('[data-size]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      const v=btn.dataset.size.split(',').map(Number),s=Number(step.value);
+      post('resize',{dw:v[0]*s,dh:v[1]*s});
+    });
+  });
+
+  grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
+  preset.addEventListener('change',setDevice);
+  zoom.addEventListener('change',setDevice);
+  document.getElementById('resetBtn').addEventListener('click',function(){post('reset')});
+  document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
+  document.getElementById('downloadBtn').addEventListener('click',function(){post('download-css')});
+  document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
+  document.getElementById('musicBtn').addEventListener('click',switchToMusic);
+  document.getElementById('radioBtn').addEventListener('click',switchToRadio);
+
+  setDevice();
+})();
+</script>
+</body>
+</html>
