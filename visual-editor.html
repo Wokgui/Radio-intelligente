@@ -258,6 +258,40 @@ body.desktop .desktop-badge{display:inline-flex}
 #textContent{font-size:.78rem}
 #fontFamily,#fontSize,#letterSpacing,#lineHeight,#zIndex,#posX,#posY,#sizeW,#sizeH{font-size:.76rem}
 .status{font-size:.7rem;line-height:1.35}
+
+.pro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.pro-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.layer-tree{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:11px;background:#fff;padding:5px}
+.layer-row{display:grid;grid-template-columns:minmax(0,1fr) 28px 28px;gap:4px;align-items:center;min-height:31px;padding:2px 3px;border-radius:7px}
+.layer-row:hover{background:#f7f3fb}
+.layer-row.selected{background:#eee6fb;color:#5f2ca8}
+.layer-main{min-width:0;border:0;background:transparent;text-align:left;color:inherit;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:calc(var(--depth,0) * 12px)}
+.layer-mini{width:28px;height:26px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:.64rem}
+.audit-summary{display:flex;gap:7px;margin:7px 0}
+.audit-chip{padding:5px 8px;border-radius:999px;font-size:.66rem;font-weight:850;background:#f2eef7;color:#625570}
+.audit-chip.error{background:#ffe9ef;color:#a62f50}.audit-chip.warning{background:#fff3dd;color:#906216}
+.audit-list{max-height:270px;overflow:auto;display:grid;gap:6px}
+.audit-item{padding:8px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:.67rem;line-height:1.35}
+.audit-item.error{border-color:#efbdca;background:#fff8fa}.audit-item.warning{border-color:#eed7a6;background:#fffaf1}
+.audit-item b{display:block;margin-bottom:2px}
+.reference-overlay{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:9;pointer-events:none}
+.reference-overlay.visible{display:block}
+.multi-modal{position:fixed;inset:0;z-index:2500;background:#17131feF;display:none;grid-template-rows:auto 1fr;color:#fff}
+.multi-modal.visible{display:grid}
+.multi-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#241b31;border-bottom:1px solid #ffffff18}
+.multi-head strong{font-size:.92rem}.multi-head span{font-size:.7rem;color:#cfc4da}
+.multi-head .btn{margin-left:auto}
+.multi-grid{min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(340px,1fr));gap:12px;padding:12px}
+.multi-card{min-width:0;border:1px solid #ffffff1f;border-radius:14px;background:#2b2234;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+.multi-card-head{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;font-size:.7rem;background:#32273d}
+.multi-viewport{position:relative;min-height:360px;overflow:hidden;background:#111;display:grid;place-items:center}
+.multi-inner{position:relative;transform-origin:top left;background:#fff;box-shadow:0 12px 35px #0005}
+.multi-inner iframe{position:absolute;inset:0;border:0;background:#fff}
+.breakpoint-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin:8px 0}
+.breakpoint-active{padding:7px 9px;border-radius:9px;background:#eee8fb;color:#6134a2;font-size:.67rem;font-weight:850}
+.compare-controls{display:grid;gap:7px}
+.compare-status{font-size:.68rem;color:var(--muted);line-height:1.4}
+.layout-note{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#69567c;font-size:.67rem;line-height:1.4}
 @media(max-width:1100px){
   body{overflow:auto}
   main{height:auto;min-height:calc(100vh - 76px);grid-template-columns:1fr;overflow:visible}
@@ -354,6 +388,15 @@ body.desktop .desktop-badge{display:inline-flex}
   </div>
 </div>
 
+<div class="multi-modal" id="multiPreviewModal">
+  <div class="multi-head">
+    <div><strong>Comparaison multi-écrans</strong><br><span>Le même projet est rendu simultanément avec ses breakpoints sur plusieurs viewports.</span></div>
+    <button class="btn" id="multiSyncBtn">Resynchroniser</button>
+    <button class="btn" id="multiCloseBtn">Fermer</button>
+  </div>
+  <div class="multi-grid" id="multiPreviewGrid"></div>
+</div>
+
 <div class="source-modal" id="settingsModal" hidden>
   <div class="source-dialog">
     <div class="source-dialog-head">
@@ -408,6 +451,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
         <div class="android-nav" id="androidNav"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
+        <img class="reference-overlay" id="referenceOverlay" alt="Capture de référence">
       </div>
     </div>
   </section>
@@ -445,6 +489,10 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="android-hole">Android · trou caméra</option>
           <option value="iphone-island">iPhone · Dynamic Island</option>
         </select></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
+        <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
       </div>
       <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches. Le contour violet représente la zone sûre simulée.</p>
     </section>
@@ -532,6 +580,15 @@ body.desktop .desktop-badge{display:inline-flex}
       <h2>Adaptatif <small>multi-écrans</small></h2>
       <label class="checkline" style="margin-top:0"><input id="responsiveEnabled" type="checkbox"> Utiliser des contraintes relatives (recommandé)</label>
       <div class="responsive-body">
+        <div class="breakpoint-row">
+          <div class="field"><label>Modifier les règles pour</label><select id="breakpointEdit">
+            <option value="base">Base · tous les écrans</option>
+            <option value="phone">Téléphone · &lt; 600 px</option>
+            <option value="tablet">Tablette · 600–1023 px</option>
+            <option value="desktop">Grand écran · ≥ 1024 px</option>
+          </select></div>
+          <div class="breakpoint-active" id="breakpointActive">actif : téléphone</div>
+        </div>
         <div class="responsive-grid" style="margin-top:9px">
           <div class="field"><label>Ancrage horizontal</label><select id="hAnchor">
             <option value="free">Libre</option><option value="left">Gauche</option><option value="center">Centré</option><option value="right">Droite</option><option value="stretch">Gauche + droite</option>
@@ -562,6 +619,59 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
     </section>
 
+
+    <section class="card">
+      <h2>Calques <small>arbre des éléments</small></h2>
+      <div class="layer-tree" id="layerTree"><div class="hint">Chargement de l’arbre…</div></div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="refreshLayersBtn">Actualiser</button>
+      </div>
+      <p>Clique un calque pour sélectionner précisément un élément imbriqué. Œil = masquer, cadenas = verrouiller.</p>
+    </section>
+
+    <section class="card">
+      <h2>Flex / Grid <small>parent intelligent</small></h2>
+      <div class="layout-note" id="layoutParentName">Sélectionne un objet pour inspecter son conteneur parent.</div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Disposition</label><select id="layoutDisplay">
+          <option value="flex">Flex</option><option value="grid">Grid</option><option value="block">Bloc</option>
+        </select></div>
+        <div class="field"><label>Gap</label><input id="layoutGap" type="text" placeholder="12px"></div>
+        <div class="field"><label>Direction Flex</label><select id="layoutFlexDirection">
+          <option value="row">Ligne</option><option value="column">Colonne</option><option value="row-reverse">Ligne inversée</option><option value="column-reverse">Colonne inversée</option>
+        </select></div>
+        <div class="field"><label>Justification</label><select id="layoutJustify">
+          <option value="flex-start">Début</option><option value="center">Centre</option><option value="flex-end">Fin</option><option value="space-between">Espace entre</option><option value="space-around">Autour</option><option value="space-evenly">Régulier</option>
+        </select></div>
+        <div class="field"><label>Alignement</label><select id="layoutAlign">
+          <option value="stretch">Étirer</option><option value="flex-start">Début</option><option value="center">Centre</option><option value="flex-end">Fin</option>
+        </select></div>
+        <div class="field"><label>Colonnes Grid</label><input id="layoutColumns" type="text" placeholder="repeat(2, 1fr)"></div>
+      </div>
+      <button class="btn primary" id="applyParentLayout" style="width:100%;margin-top:8px">Appliquer au conteneur parent</button>
+    </section>
+
+    <section class="card">
+      <h2>Distribuer <small>sélection multiple</small></h2>
+      <div class="pro-grid three">
+        <button class="tool" data-distribute="align-left">← bords</button>
+        <button class="tool" data-distribute="align-center-x">↔ centres</button>
+        <button class="tool" data-distribute="align-right">bords →</button>
+        <button class="tool" data-distribute="align-top">↑ hauts</button>
+        <button class="tool" data-distribute="align-center-y">↕ milieux</button>
+        <button class="tool" data-distribute="align-bottom">bas ↓</button>
+        <button class="tool" data-distribute="same-width">Même largeur</button>
+        <button class="tool" data-distribute="same-height">Même hauteur</button>
+        <button class="tool" data-distribute="distribute-x">Espacer ↔</button>
+        <button class="tool" data-distribute="distribute-y">Espacer ↕</button>
+      </div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Écart exact</label><input id="distributeGap" type="number" value="12" min="0"></div>
+        <div class="toolbar" style="align-self:end"><button class="tool" data-distribute="gap-x">12 px ↔</button><button class="tool" data-distribute="gap-y">12 px ↕</button></div>
+      </div>
+      <p>Sélectionne plusieurs objets avec <kbd>Maj</kbd> + clic, puis aligne ou répartis-les.</p>
+    </section>
+
     <section class="card">
       <h2>Alignement <small>1 clic</small></h2>
       <div class="align-grid">
@@ -582,7 +692,42 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="space"><b id="spaceR">—</b><small>droite</small></div>
         <div class="space"><b id="spaceB">—</b><small>bas</small></div>
       </div>
-      <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche ; les marges du parent sont aussi calculées.</p>
+      <p id="spacingDetail">Les valeurs indiquent l’élément visible le plus proche. Maintiens <kbd>Alt</kbd> et survole un autre objet pour mesurer instantanément bord à bord.</p>
+    </section>
+
+
+    <section class="card">
+      <h2>Simulation système <small>Android / accessibilité</small></h2>
+      <div class="fields">
+        <div class="field"><label>Taille texte Android</label><select id="systemFontScale">
+          <option value=".85">85 %</option><option value="1" selected>100 %</option><option value="1.15">115 %</option><option value="1.3">130 %</option><option value="1.5">150 %</option>
+        </select></div>
+        <div class="field"><label>Échelle affichage</label><select id="systemDisplayScale">
+          <option value=".9">90 %</option><option value="1" selected>100 %</option><option value="1.1">110 %</option><option value="1.2">120 %</option>
+        </select></div>
+      </div>
+      <label class="checkline"><input id="systemDarkMode" type="checkbox"> Simuler le thème sombre</label>
+      <p>Teste les interfaces avec les réglages système qui font souvent apparaître les textes coupés ou les chevauchements.</p>
+    </section>
+
+    <section class="card">
+      <h2>Vérifier l’interface <small>audit automatique</small></h2>
+      <button class="btn primary" id="auditBtn" style="width:100%">Analyser l’écran actuel</button>
+      <div class="audit-summary" id="auditSummary"></div>
+      <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Comparer avec l’APK <small>ADB / capture</small></h2>
+      <div class="compare-controls">
+        <div class="toolbar">
+          <button class="btn wide" id="adbCaptureBtn">Capturer le téléphone via ADB</button>
+          <button class="btn wide" id="loadReferenceBtn">Charger une capture</button>
+        </div>
+        <div class="field"><label>Opacité de la capture réelle</label><input id="referenceOpacity" type="range" min="0" max="100" value="50"></div>
+        <button class="btn" id="clearReferenceBtn">Retirer la comparaison</button>
+        <div class="compare-status" id="compareStatus">Superpose une capture réelle du téléphone à l’aperçu pour repérer immédiatement les différences.</div>
+      </div>
     </section>
 
     <section class="card desktop-only">
@@ -593,6 +738,7 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
+      <button class="btn" id="applySourceBtn" style="width:100%;margin-top:7px">Appliquer au code local (réversible)</button>
       <p>Le fichier projet conserve la source de l’application et les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source correspondant.</p>
     </section>
 
