@@ -3406,3 +3406,302 @@ body.radio-mode .radio-music-open svg{
     height:32px!important;
   }
 }
+
+
+
+/* v106 — alignements précis après capture S23 Ultra */
+
+/* MA MUSIQUE : bandeau Aléatoire / Réglages / Répétition en 3 zones nettes. */
+body.music-mode #musicActions{
+  width:100%!important;
+  height:58px!important;
+  min-height:58px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 62px minmax(0,1fr)!important;
+  grid-template-rows:58px!important;
+  align-items:stretch!important;
+  gap:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #d9c9e6!important;
+  border-radius:22px!important;
+  background:#fbf7fd!important;
+  box-shadow:0 6px 17px rgba(92,63,117,.07)!important;
+}
+body.music-mode #musicShuffle,
+body.music-mode #musicRepeat{
+  position:static!important;
+  transform:none!important;
+  width:100%!important;
+  height:58px!important;
+  min-height:58px!important;
+  display:grid!important;
+  grid-template-columns:32px minmax(0,1fr)!important;
+  align-items:center!important;
+  align-content:center!important;
+  justify-items:center!important;
+  gap:8px!important;
+  padding:0 11px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.music-mode #musicSettingsGear{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  width:62px!important;
+  height:58px!important;
+  min-width:62px!important;
+  min-height:58px!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
+  border:0!important;
+  border-left:1px solid #d9c9e6!important;
+  border-right:1px solid #d9c9e6!important;
+  border-radius:0!important;
+  background:#f8f1fb!important;
+  color:#713bd0!important;
+  box-shadow:none!important;
+  font-size:1.62rem!important;
+  line-height:1!important;
+  pointer-events:auto!important;
+}
+body.music-mode #musicSettingsGear::before,
+body.music-mode #musicSettingsGear::after{
+  display:none!important;
+}
+body.music-mode #musicActions .ico{
+  position:static!important;
+  width:32px!important;
+  min-width:32px!important;
+  height:32px!important;
+  margin:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  color:#8050a8!important;
+}
+body.music-mode #musicActions .ico svg{
+  width:29px!important;
+  height:29px!important;
+  display:block!important;
+}
+body.music-mode #musicActions .txt{
+  width:72px!important;
+  max-width:72px!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  display:block!important;
+  align-self:center!important;
+  justify-self:center!important;
+  font-size:.84rem!important;
+  line-height:1.03!important;
+  font-weight:850!important;
+  text-align:center!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+
+/* MA MUSIQUE : les 3 icônes du bandeau bas ont exactement la même boîte. */
+body.music-mode #musicQuick .sico,
+body.music-mode #musicCountTile .sico{
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0!important;
+}
+body.music-mode #musicQuick .sico svg,
+body.music-mode #musicCountTile .sico svg{
+  width:31px!important;
+  height:31px!important;
+  display:block!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.9!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+/* RADIO INTELLIGENTE : espaces strictement identiques entre lecture, Oui/Non et 4 choix. */
+body.radio-mode .track{
+  padding-top:30px!important;
+  gap:0!important;
+  grid-template-rows:
+    minmax(4px,1fr)
+    auto
+    auto
+    minmax(4px,1fr)
+    54px
+    10px
+    68px
+    10px
+    96px
+    10px
+    58px!important;
+}
+body.radio-mode #title{
+  grid-row:2!important;
+  transform:translateY(-2px)!important;
+}
+body.radio-mode #artist{
+  grid-row:3!important;
+  transform:translateY(-2px)!important;
+}
+body.radio-mode .track>.playerbar:not(.music-playerbar){
+  grid-row:5!important;
+  margin:0!important;
+}
+body.radio-mode .primary{
+  grid-row:7!important;
+  margin:0!important;
+}
+body.radio-mode .track>.alt:not(.music-alt){
+  grid-row:9!important;
+  margin:0!important;
+  grid-template-rows:96px!important;
+}
+body.radio-mode .track>.quick:not(.music-quick){
+  grid-row:11!important;
+  margin:0!important;
+}
+
+/* RADIO INTELLIGENTE : bouton Ma musique exactement de la hauteur du bandeau, sans débordement. */
+body.radio-mode .track>.quick:not(.music-quick),
+body.radio-mode .track>.quick:not(.music-quick) .stats{
+  position:relative!important;
+  height:58px!important;
+  min-height:58px!important;
+}
+body.radio-mode .radio-music-open{
+  position:absolute!important;
+  left:50%!important;
+  top:0!important;
+  bottom:auto!important;
+  transform:translateX(-50%)!important;
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:50%!important;
+}
+body.radio-mode .radio-music-open svg{
+  width:32px!important;
+  height:32px!important;
+}
+
+/* GARDÉS / PASSÉS : bandeau supérieur plus haut et sous la zone système du S23 Ultra. */
+#settingsPage.history-only>.settings-head{
+  min-height:90px!important;
+  height:90px!important;
+  box-sizing:border-box!important;
+  padding:28px 12px 8px!important;
+  align-items:center!important;
+}
+#settingsPage.history-only>.settings-head h2{
+  align-self:center!important;
+  margin:0!important;
+  line-height:1!important;
+}
+#settingsPage.history-only>.settings-head .settings-back,
+#settingsPage.history-only>.settings-head .settings-head-spacer{
+  align-self:center!important;
+}
+#settingsPage.history-only>.radio-history-card .tabs{
+  top:90px!important;
+}
+
+@media(max-width:420px){
+  body.music-mode #musicActions{
+    height:56px!important;
+    min-height:56px!important;
+    grid-template-columns:minmax(0,1fr) 60px minmax(0,1fr)!important;
+    grid-template-rows:56px!important;
+  }
+  body.music-mode #musicShuffle,
+  body.music-mode #musicRepeat{
+    height:56px!important;
+    min-height:56px!important;
+    grid-template-columns:30px minmax(0,1fr)!important;
+    padding:0 9px!important;
+  }
+  body.music-mode #musicSettingsGear{
+    width:60px!important;
+    min-width:60px!important;
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.music-mode #musicActions .ico{
+    width:30px!important;
+    min-width:30px!important;
+    height:30px!important;
+  }
+  body.music-mode #musicActions .ico svg{
+    width:27px!important;
+    height:27px!important;
+  }
+  body.music-mode #musicActions .txt{
+    width:66px!important;
+    max-width:66px!important;
+    font-size:.80rem!important;
+  }
+
+  body.radio-mode .track{
+    padding-top:28px!important;
+    grid-template-rows:
+      minmax(3px,1fr)
+      auto
+      auto
+      minmax(3px,1fr)
+      52px
+      9px
+      66px
+      9px
+      92px
+      9px
+      56px!important;
+  }
+  body.radio-mode .track>.alt:not(.music-alt){
+    grid-template-rows:92px!important;
+  }
+  body.radio-mode .track>.quick:not(.music-quick),
+  body.radio-mode .track>.quick:not(.music-quick) .stats{
+    height:56px!important;
+    min-height:56px!important;
+  }
+  body.radio-mode .radio-music-open{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+  }
+  body.radio-mode .radio-music-open svg{
+    width:31px!important;
+    height:31px!important;
+  }
+
+  #settingsPage.history-only>.settings-head{
+    min-height:88px!important;
+    height:88px!important;
+    padding:27px 12px 7px!important;
+  }
+  #settingsPage.history-only>.radio-history-card .tabs{
+    top:88px!important;
+  }
+}
