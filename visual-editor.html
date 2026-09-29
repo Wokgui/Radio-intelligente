@@ -733,6 +733,13 @@ body.desktop .desktop-badge{display:inline-flex}
         if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
         await loadSource(restored.source);
       }
+      if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
+        var profile=String(project.viewport.safeArea.profile);
+        if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
+          safeProfile.value=profile;
+          applySafeArea();
+        }
+      }
       post('load-project',{project:project});
       setStatus('Projet ouvert : '+result.path);
     }else if(result&&result.error)setStatus(result.error,true);
