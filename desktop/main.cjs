@@ -124,13 +124,20 @@ function androidRuntimeProfile(source, options){
   const label=String((source&&source.label)||'');
   const url=String((source&&source.url)||'');
   const radio=/radio-intelligente|radio intelligente|app\.local/i.test(label+' '+url);
+  const numberOr=(value,fallback)=>{
+    const n=Number(value);
+    return Number.isFinite(n)?n:fallback;
+  };
+  let homeOrigin='';
+  try{homeOrigin=new URL(url).origin}catch(_){}
   return {
     mode:'android',
     userAgent:androidWebViewUserAgent(),
-    topInset:Math.max(0,Number(opts.topInset)||28),
-    bottomInset:Math.max(0,Number(opts.bottomInset)||24),
-    leftInset:Math.max(0,Number(opts.leftInset)||0),
-    rightInset:Math.max(0,Number(opts.rightInset)||0),
+    homeOrigin,
+    topInset:Math.max(0,numberOr(opts.topInset,28)),
+    bottomInset:Math.max(0,numberOr(opts.bottomInset,24)),
+    leftInset:Math.max(0,numberOr(opts.leftInset,0)),
+    rightInset:Math.max(0,numberOr(opts.rightInset,0)),
     statusBarColor:opts.statusBarColor||(radio?'#6f42c1':'#111111'),
     navigationBarColor:opts.navigationBarColor||'#000000',
     backgroundColor:opts.backgroundColor||'#ffffff',
@@ -177,6 +184,10 @@ async function applyPreviewProfileToFrame(frame, profile){
       "root.style.setProperty('--ais-safe-right',(p.rightInset||0)+'px');"+
       "root.style.setProperty('--ais-safe-bottom',(p.bottomInset||0)+'px');"+
       "root.style.setProperty('--ais-safe-left',(p.leftInset||0)+'px');"+
+      "if(p.mode==='android'&&p.mainActivity&&p.mainActivity.externalMainFrameLinks&&!window.__AIS_EXTERNAL_LINKS__){"+
+      "window.__AIS_EXTERNAL_LINKS__=true;"+
+      "document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href]'):null;if(!a)return;try{var u=new URL(a.href,location.href);if(p.homeOrigin&&u.origin!==p.homeOrigin&&/^https?:$/.test(u.protocol)){e.preventDefault();window.open(u.href,'_blank');}}catch(_){}},true);"+
+      "}"+
       "})();"
     );
     return true;
@@ -221,6 +232,14 @@ async function injectEditorIntoFrame(frame){
 
 function configureEmbedding(){
   const ses=session.defaultSession;
+  ses.webRequest.onBeforeSendHeaders((details,callback)=>{
+    const headers={...(details.requestHeaders||{})};
+    const editorAndroid=mainWindow&&editorPreviewProfile&&editorPreviewProfile.mode==='android'&&
+      details.webContentsId===mainWindow.webContents.id&&
+      (!studioBaseUrl||!String(details.url||'').startsWith(studioBaseUrl));
+    if(editorAndroid)headers['User-Agent']=editorPreviewProfile.userAgent||androidWebViewUserAgent();
+    callback({cancel:false,requestHeaders:headers});
+  });
   ses.webRequest.onHeadersReceived((details,callback)=>{
     const headers={...(details.responseHeaders||{})};
     Object.keys(headers).forEach(key=>{
