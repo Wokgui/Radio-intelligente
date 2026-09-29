@@ -1247,6 +1247,189 @@ body.desktop .desktop-badge{display:inline-flex}
     if(typeof p.css==='string')cssOut.value=p.css;
   }
 
+
+  function renderLayers(tree){
+    layerTree.innerHTML='';
+    var frag=document.createDocumentFragment();
+    function add(nodes){
+      (nodes||[]).forEach(function(node){
+        var row=document.createElement('div');
+        row.className='layer-row'+(node.selected?' selected':'');
+        var main=document.createElement('button');
+        main.className='layer-main';
+        main.style.setProperty('--depth',String(node.depth||0));
+        main.title=node.selector||node.title||'';
+        main.textContent=(node.title||node.tag||'élément')+' · '+(node.tag||'');
+        main.addEventListener('click',function(e){post('select-selector',{selector:node.selector,additive:e.shiftKey})});
+        var eye=document.createElement('button');
+        eye.className='layer-mini';eye.title=node.hidden?'Afficher':'Masquer';eye.textContent=node.hidden?'◌':'◉';
+        eye.addEventListener('click',function(){post('layer-hidden',{selector:node.selector,value:!node.hidden});setTimeout(function(){post('get-layers')},80)});
+        var lock=document.createElement('button');
+        lock.className='layer-mini';lock.title=node.locked?'Déverrouiller':'Verrouiller';lock.textContent=node.locked?'🔒':'🔓';
+        lock.addEventListener('click',function(){post('layer-lock',{selector:node.selector,value:!node.locked});setTimeout(function(){post('get-layers')},80)});
+        row.append(main,eye,lock);frag.appendChild(row);
+        add(node.children);
+      });
+    }
+    add(tree);
+    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">Aucun élément visible.</div>';
+    else layerTree.appendChild(frag);
+  }
+
+  function renderAudit(payload){
+    payload=payload||{};
+    var summary=payload.summary||{};
+    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span>';
+    auditList.innerHTML='';
+    var issues=payload.issues||[];
+    if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
+    issues.forEach(function(issue){
+      var item=document.createElement('button');
+      item.className='audit-item '+(issue.severity||'warning');
+      item.style.textAlign='left';
+      item.innerHTML='<b>'+(issue.type||'problème')+'</b><span></span>';
+      item.querySelector('span').textContent=issue.message||'';
+      item.title=issue.selector||'';
+      item.addEventListener('click',function(){if(issue.selector)post('select-selector',{selector:issue.selector})});
+      auditList.appendChild(item);
+    });
+  }
+
+  function rotateDevice(){
+    var size=currentDeviceSize();
+    preset.value='custom';
+    screenCustomW.value=size.height;
+    screenCustomH.value=size.width;
+    customDeviceWidth.value=size.height;
+    customDeviceHeight.value=size.width;
+    customScreenSize.style.display='grid';
+    setDevice();
+  }
+
+  function multiFrameRecord(sourceWindow){
+    return multiFrames.find(function(rec){return rec.iframe&&rec.iframe.contentWindow===sourceWindow})||null;
+  }
+
+  function fitMultiRecord(rec){
+    if(!rec||!rec.inner||!rec.iframe)return;
+    var maxW=rec.viewport.clientWidth-24;
+    var maxH=rec.viewport.clientHeight-24;
+    var scale=Math.min(maxW/rec.width,maxH/rec.height,1);
+    if(!Number.isFinite(scale)||scale<=0)scale=.5;
+    rec.inner.style.width=Math.round(rec.width*scale)+'px';
+    rec.inner.style.height=Math.round(rec.height*scale)+'px';
+    rec.iframe.style.width=rec.width+'px';
+    rec.iframe.style.height=rec.height+'px';
+    rec.iframe.style.transform='scale('+scale+')';
+    rec.iframe.style.transformOrigin='top left';
+  }
+
+  function multiSafeArea(rec){
+    if(rec.width<600)return {profile:'multi-phone',top:28,right:0,bottom:24,left:0};
+    if(rec.width<1024)return {profile:'multi-tablet',top:24,right:0,bottom:24,left:0};
+    return {profile:'none',top:0,right:0,bottom:0,left:0};
+  }
+
+  function sendMultiProject(rec){
+    if(!rec||!multiProject)return;
+    postTo(rec.iframe,'load-project',{project:multiProject});
+    postTo(rec.iframe,'safe-area',multiSafeArea(rec));
+    postTo(rec.iframe,'environment-set',{
+      fontScale:Number(document.getElementById('systemFontScale').value)||1,
+      displayScale:Number(document.getElementById('systemDisplayScale').value)||1,
+      darkMode:document.getElementById('systemDarkMode').checked
+    });
+    postTo(rec.iframe,'disable');
+  }
+
+  async function syncMultiPreview(){
+    if(!multiPreviewModal.classList.contains('visible')||multiSyncBusy)return;
+    multiSyncBusy=true;
+    try{
+      var project=await requestProject();
+      if(project){
+        project.source=currentSource;
+        multiProject=project;
+        multiFrames.forEach(sendMultiProject);
+      }
+    }finally{multiSyncBusy=false}
+  }
+
+  function scheduleMultiSync(){
+    if(!multiPreviewModal.classList.contains('visible'))return;
+    if(multiSyncTimer)clearTimeout(multiSyncTimer);
+    multiSyncTimer=setTimeout(function(){multiSyncTimer=null;syncMultiPreview()},220);
+  }
+
+  async function openMultiPreview(){
+    if(!currentSource){setStatus('Ouvre d’abord une application.',true);return}
+    multiProject=await requestProject();
+    if(!multiProject){setStatus('Impossible de préparer la comparaison.',true);return}
+    multiProject.source=currentSource;
+    multiPreviewGrid.innerHTML='';
+    multiFrames=[];
+    var configs=[
+      {name:'Téléphone compact',width:360,height:800},
+      {name:'Galaxy / grand téléphone',width:412,height:915},
+      {name:'Tablette',width:768,height:1024},
+      {name:'Bureau',width:1366,height:768}
+    ];
+    configs.forEach(function(cfg){
+      var card=document.createElement('div');card.className='multi-card';
+      var head=document.createElement('div');head.className='multi-card-head';head.innerHTML='<strong>'+cfg.name+'</strong><span>'+cfg.width+' × '+cfg.height+'</span>';
+      var viewport=document.createElement('div');viewport.className='multi-viewport';
+      var inner=document.createElement('div');inner.className='multi-inner';
+      var iframe=document.createElement('iframe');iframe.title=cfg.name;iframe.src=currentSource.url;
+      inner.appendChild(iframe);viewport.appendChild(inner);card.append(head,viewport);multiPreviewGrid.appendChild(card);
+      var rec={iframe:iframe,viewport:viewport,inner:inner,width:cfg.width,height:cfg.height,name:cfg.name};
+      multiFrames.push(rec);
+      requestAnimationFrame(function(){fitMultiRecord(rec)});
+    });
+    multiPreviewModal.classList.add('visible');
+    setTimeout(function(){multiFrames.forEach(fitMultiRecord);if(desktop&&desktop.injectEditor)desktop.injectEditor()},350);
+  }
+
+  function closeMultiPreview(){
+    multiPreviewModal.classList.remove('visible');
+    multiPreviewGrid.innerHTML='';
+    multiFrames=[];
+    multiProject=null;
+  }
+
+  async function captureAdbReference(){
+    if(!desktop||!desktop.adbScreenshot){compareStatus.textContent='ADB disponible uniquement dans l’application Windows.';return}
+    compareStatus.textContent='Recherche du téléphone…';
+    var statusResult=await desktop.adbStatus();
+    if(!statusResult||!statusResult.ok){compareStatus.textContent=(statusResult&&statusResult.error)||'ADB indisponible.';return}
+    if(!statusResult.devices||!statusResult.devices.length){compareStatus.textContent='Aucun téléphone autorisé. Active le débogage USB et accepte la connexion ADB.';return}
+    await setPreviewMode('android');
+    var shot=await desktop.adbScreenshot({serial:statusResult.devices[0]});
+    if(!shot||!shot.ok){compareStatus.textContent=(shot&&shot.error)||'Capture impossible.';return}
+    referenceOverlay.src=shot.dataUrl;
+    referenceOverlay.classList.add('visible');
+    referenceOverlay.style.opacity=String((Number(document.getElementById('referenceOpacity').value)||50)/100);
+    compareStatus.textContent='Capture réelle '+shot.serial+' superposée. Fais varier l’opacité pour comparer.';
+  }
+
+  async function loadReferenceImage(){
+    if(!desktop||!desktop.pickReferenceImage)return;
+    var result=await desktop.pickReferenceImage();
+    if(!result||!result.ok)return;
+    referenceOverlay.src=result.dataUrl;
+    referenceOverlay.classList.add('visible');
+    referenceOverlay.style.opacity=String((Number(document.getElementById('referenceOpacity').value)||50)/100);
+    compareStatus.textContent='Capture de référence chargée : '+(result.path||'image')+'.';
+  }
+
+  async function applyToLocalSource(){
+    if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
+    if(!confirm('Créer un patch CSS réversible dans le dossier source et l’ajouter à la page HTML ? Une sauvegarde du HTML sera créée.'))return;
+    var result=await desktop.applyCssToSource({source:currentSource,css:cssOut.value});
+    if(result&&result.ok)setStatus('Patch appliqué : '+result.cssPath+' · sauvegarde : '+result.backupPath);
+    else setStatus((result&&result.error)||'Application au code impossible.',true);
+  }
+
   function requestProject(){
     return new Promise(function(resolve){
       projectResolver=resolve;
