@@ -1520,6 +1520,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     updateResponsiveControls(p);
     updateLayoutControls(p.parentLayout);
+    syncAdvancedControls(p);
     if(p.tokens)syncTokenInputs(p.tokens);
     if(p.animation){
       document.getElementById('animationProperty').value=p.animation.property||'all';
