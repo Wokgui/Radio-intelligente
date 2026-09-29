@@ -916,14 +916,16 @@
     const state = remember(selected);
     if (!state || state.deleted) return { active: active, selected: false, css: cssText(), grid: grid };
     const rect = selected.getBoundingClientRect();
+    const selectedItems = selectionElements();
+    const payloadRect = selectedItems.length > 1 ? selectionBounds() : rect;
     return {
       active: active,
       selected: true,
       selector: state.selector,
-      x: Math.round(rect.left),
-      y: Math.round(rect.top),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
+      x: Math.round(payloadRect.left),
+      y: Math.round(payloadRect.top),
+      width: Math.round(payloadRect.width),
+      height: Math.round(payloadRect.height),
       fontSize: Math.round(state.fontSize * 10) / 10,
       fontFamily: state.fontFamily,
       fontWeight: state.fontWeight,
@@ -1111,18 +1113,31 @@
     const rect = selected.getBoundingClientRect();
     const parent = selected.parentElement;
     const parentRect = parent ? parent.getBoundingClientRect() : {left:0,top:0,width:innerWidth,height:innerHeight};
-    let dx = 0, dy = 0;
-    if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
-    if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
-    if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
-    if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
-    if (mode === 'parent-both') {
-      dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
-      dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+    const responsive = state.responsive && state.responsive.enabled;
+
+    if (responsive && (mode === 'parent-x' || mode === 'parent-y' || mode === 'parent-both')) {
+      if (mode === 'parent-x' || mode === 'parent-both') {
+        state.responsive.hAnchor = 'center';
+        state.responsive.centerOffsetX = 0;
+      }
+      if (mode === 'parent-y' || mode === 'parent-both') {
+        state.responsive.vAnchor = 'center';
+        state.responsive.centerOffsetY = 0;
+      }
+      applyState(selected, state, false);
+    } else {
+      let dx = 0, dy = 0;
+      if (mode === 'screen-x') dx = innerWidth / 2 - (rect.left + rect.width / 2);
+      if (mode === 'screen-y') dy = innerHeight / 2 - (rect.top + rect.height / 2);
+      if (mode === 'parent-x') dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+      if (mode === 'parent-y') dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+      if (mode === 'parent-both') {
+        dx = parentRect.left + parentRect.width / 2 - (rect.left + rect.width / 2);
+        dy = parentRect.top + parentRect.height / 2 - (rect.top + rect.height / 2);
+      }
+      moveResponsiveState(selected, state, dx, dy);
     }
-    state.dx = snapGrid(state.dx + dx);
-    state.dy = snapGrid(state.dy + dy);
-    applyState(selected, state, false);
+
     hideGuides();
     if (mode === 'screen-x') showVerticalGuide(innerWidth / 2, 'Centre écran');
     if (mode === 'screen-y') showHorizontalGuide(innerHeight / 2, 'Milieu écran');
