@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   openDemo: () => ipcRenderer.invoke('source:open-demo'),
   restoreSource: source => ipcRenderer.invoke('source:restore', source),
   injectEditor: () => ipcRenderer.invoke('source:inject-editor'),
+  setPreviewMode: payload => ipcRenderer.invoke('preview:set-mode', payload),
+  openAsApp: payload => ipcRenderer.invoke('preview:open-app', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   saveChatGPTExport: payload => ipcRenderer.invoke('layout:save-chatgpt', payload),
