@@ -1381,6 +1381,23 @@
     emit('tokens',{tokens:Object.assign({},designTokens)});
   }
 
+  function applyTokenToSelection(kind) {
+    if(!selected)return;
+    selectionElements().forEach(function(el){
+      const st=remember(el);if(!st||st.locked)return;
+      if(kind==='primary'){st.colorAdjusted=true;st.color='var(--ais-color-primary)'}
+      if(kind==='surface'){st.backgroundAdjusted=true;st.backgroundColor='var(--ais-color-surface)'}
+      if(kind==='title'){st.fontAdjusted=true;st.fontSize=Number(designTokens.textTitle)||20}
+      if(kind==='radius'){el.style.setProperty('border-radius','var(--ais-radius-card)','important')}
+      if(kind==='spacing'&&el.parentElement){
+        const parent=el.parentElement,pst=remember(parent);
+        pst.layoutAdjusted=true;pst.layout=pst.layout||{};pst.layout.gap='var(--ais-space)';applyState(parent,pst,false);
+      }
+      applyState(el,st,false);
+    });
+    commitHistory();updateOverlay();
+  }
+
   function setAnimation(payload) {
     if(!selected)return;
     selectionElements().forEach(function(el){
@@ -1397,8 +1414,36 @@
     commitHistory();updateOverlay();
   }
 
+  function buildForcedStateStyle() {
+    let style=document.getElementById('ve-forced-state-style');
+    if(!style){style=document.createElement('style');style.id='ve-forced-state-style';document.head.appendChild(style)}
+    const chunks=[];
+    function walkRules(rules){
+      Array.from(rules||[]).forEach(function(rule){
+        if(rule.cssRules){try{walkRules(rule.cssRules)}catch(_){};return}
+        if(!rule.selectorText||!rule.style)return;
+        [
+          [':hover','.ais-state-hover'],
+          [':active','.ais-state-active'],
+          [':focus-visible','.ais-state-focus'],
+          [':focus','.ais-state-focus'],
+          [':disabled','.ais-state-disabled']
+        ].forEach(function(pair){
+          if(rule.selectorText.indexOf(pair[0])<0)return;
+          const selector=rule.selectorText.split(',').map(function(s){return s.replaceAll(pair[0],pair[1])}).join(',');
+          chunks.push(selector+'{'+rule.style.cssText+'}');
+        });
+      });
+    }
+    Array.from(document.styleSheets||[]).forEach(function(sheet){try{walkRules(sheet.cssRules)}catch(_){}});
+    chunks.push('.ais-state-focus{outline:2px solid #6f49f5!important;outline-offset:2px!important}');
+    chunks.push('.ais-state-disabled{opacity:.5!important;filter:grayscale(.25)}');
+    style.textContent=chunks.join('\n');
+  }
+
   function setInteractiveState(stateName) {
     activeInteractiveState=String(stateName||'normal');
+    buildForcedStateStyle();
     if(!selected)return;
     selectionElements().forEach(function(el){
       el.classList.remove('ais-state-hover','ais-state-active','ais-state-focus','ais-state-disabled');
@@ -1636,17 +1681,28 @@
     environment = {
       fontScale: Math.max(.75,Math.min(2,Number(payload.fontScale)||1)),
       displayScale: Math.max(.75,Math.min(1.6,Number(payload.displayScale)||1)),
-      darkMode: !!payload.darkMode
+      darkMode: !!payload.darkMode,
+      keyboardHeight: Math.max(0,Math.min(innerHeight*.75,Number(payload.keyboardHeight)||0))
     };
     let style=document.getElementById('ve-environment-style');
     if(!style){style=document.createElement('style');style.id='ve-environment-style';document.head.appendChild(style);}
     style.textContent=
       'html{-webkit-text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;text-size-adjust:'+Math.round(environment.fontScale*100)+'% !important;color-scheme:'+(environment.darkMode?'dark':'light')+';}'+
-      'body{zoom:'+environment.displayScale+';}';
+      'body{zoom:'+environment.displayScale+';}'+
+      (environment.keyboardHeight>0?'html,body{height:calc(100vh - '+environment.keyboardHeight+'px)!important;overflow:auto!important;}':'');
     document.documentElement.dataset.aisTheme=environment.darkMode?'dark':'light';
+
+    let keyboard=document.getElementById('ve-keyboard-sim');
+    if(environment.keyboardHeight>0){
+      if(!keyboard){keyboard=document.createElement('div');keyboard.id='ve-keyboard-sim';keyboard.setAttribute('aria-hidden','true');document.documentElement.appendChild(keyboard)}
+      keyboard.style.cssText='position:fixed!important;left:0!important;right:0!important;bottom:0!important;height:'+environment.keyboardHeight+'px!important;z-index:2147483000!important;background:linear-gradient(#d8d9df,#c7c8cf)!important;border-top:1px solid #aaa!important;pointer-events:none!important;';
+      keyboard.innerHTML='<div style="height:34px;display:grid;place-items:center;color:#555;font:700 11px system-ui">Clavier Android simulé · '+Math.round(environment.keyboardHeight)+' px</div>';
+    }else if(keyboard)keyboard.remove();
+
     reflowResponsive();
     emit('environment',{environment:Object.assign({},environment)});
   }
+
 
   function currentPayload() {
     if (!selected || !document.documentElement.contains(selected)) {
@@ -1692,6 +1748,14 @@
       parentLayout: parentLayoutPayload(selected),
       safeArea: Object.assign({}, safeArea),
       environment: Object.assign({}, environment),
+      animation: Object.assign({}, state.animation || {}),
+      animationAdjusted: !!state.animationAdjusted,
+      componentName: state.componentName || '',
+      componentInstance: !!state.componentInstance,
+      prototypeTarget: state.prototypeTarget || '',
+      interactiveState: activeInteractiveState,
+      tokens: Object.assign({}, designTokens),
+      components: componentSummary(),
       css: cssText(),
       grid: grid
     };
@@ -2068,11 +2132,14 @@
   function exportProject() {
     return {
       format: 'app-layout-project',
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       viewport: { width: window.innerWidth, height: window.innerHeight, safeArea: Object.assign({}, safeArea), breakpoint: viewportBreakpoint() },
       editingBreakpoint: editingBreakpoint,
       environment: Object.assign({}, environment),
+      designTokens: Object.assign({}, designTokens),
+      components: JSON.parse(JSON.stringify(components)),
+      prototypeLinks: JSON.parse(JSON.stringify(prototypeLinks)),
       snapshot: snapshot(),
       css: cssText()
     };
@@ -2083,6 +2150,11 @@
     if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
     if (project.editingBreakpoint) setEditingBreakpoint(project.editingBreakpoint);
     if (project.environment) applyEnvironment(project.environment);
+    if (project.designTokens) applyDesignTokens(project.designTokens);
+    components = project.components ? JSON.parse(JSON.stringify(project.components)) : {};
+    prototypeLinks = project.prototypeLinks ? JSON.parse(JSON.stringify(project.prototypeLinks)) : {};
+    emitComponents();
+    emit('prototype',{links:Object.assign({},prototypeLinks)});
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -2286,6 +2358,12 @@
       commitHistory();
     });
   });
+
+  window.addEventListener('click', function(event){
+    if(active||isEditorNode(event.target))return;
+    const source=event.target&&event.target.closest?event.target.closest('*'):event.target;
+    if(source&&runPrototypeTarget(source)){event.preventDefault();event.stopImmediatePropagation()}
+  },true);
 
   window.addEventListener('click', function (event) {
     if (!active || isEditorNode(event.target)) return;
