@@ -687,7 +687,10 @@ body.desktop .desktop-badge{display:inline-flex}
   zoom.addEventListener('change',setDevice);
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
 
-  document.getElementById('reloadBtn').addEventListener('click',function(){frame.contentWindow.location.reload()});
+  document.getElementById('reloadBtn').addEventListener('click',function(){
+    if(desktop&&desktop.injectEditor)desktop.injectEditor();
+    frame.contentWindow.location.reload();
+  });
 
   undoBtn.addEventListener('click',function(){post('undo')});
   redoBtn.addEventListener('click',function(){post('redo')});
@@ -754,15 +757,27 @@ body.desktop .desktop-badge{display:inline-flex}
   function waitForReady(timeout){
     return new Promise(function(resolve){
       var done=false;
+      var retryTimer=null;
       var timer=setTimeout(function(){
         if(done)return;done=true;
+        if(retryTimer)clearInterval(retryTimer);
         var i=readyWaiters.indexOf(onReady);if(i>=0)readyWaiters.splice(i,1);
         resolve(false);
       },timeout||6000);
       function onReady(){
-        if(done)return;done=true;clearTimeout(timer);resolve(true);
+        if(done)return;done=true;
+        clearTimeout(timer);
+        if(retryTimer)clearInterval(retryTimer);
+        resolve(true);
       }
       readyWaiters.push(onReady);
+
+      if(desktop&&desktop.injectEditor){
+        desktop.injectEditor();
+        retryTimer=setInterval(function(){
+          if(!done)desktop.injectEditor();
+        },300);
+      }
     });
   }
 
@@ -775,7 +790,8 @@ body.desktop .desktop-badge{display:inline-flex}
     cssOut.value='/* Aucun ajustement. */';
     frame.src=source.url;
     var ready=await waitForReady(8000);
-    if(!ready)setStatus('Application chargée, mais l’éditeur n’a pas pu être injecté dans cette page.',true);
+    if(!ready)setStatus('Application chargée, mais le moteur d’édition n’a pas répondu. Clique sur Recharger pour relancer l’injection.',true);
+    else setStatus('Éditeur prêt : clique directement sur un élément de l’application.');
     return ready;
   }
 
