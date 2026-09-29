@@ -236,8 +236,11 @@
 
   function responsiveBounds(element, state) {
     const parent = element.parentElement;
-    const parentRect = parent ? parent.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight };
-    const useSafe = state.responsive && state.responsive.safeArea && isViewportParent(parent, parentRect);
+    const viewportParent = !parent || parent === document.body || parent === document.documentElement;
+    const parentRect = viewportParent
+      ? { left: 0, top: 0, right: innerWidth, bottom: innerHeight, width: innerWidth, height: innerHeight }
+      : parent.getBoundingClientRect();
+    const useSafe = state.responsive && state.responsive.safeArea && (viewportParent || isViewportParent(parent, parentRect));
     const leftInset = useSafe ? safeArea.left : 0;
     const rightInset = useSafe ? safeArea.right : 0;
     const topInset = useSafe ? safeArea.top : 0;
@@ -369,6 +372,8 @@
     Object.keys(payload || {}).forEach(function (key) {
       if (key in state.responsive && key !== 'enabled') state.responsive[key] = payload[key];
     });
+    if (payload.hAnchor === 'stretch') state.responsive.widthMode = 'fill';
+    if (payload.vAnchor === 'stretch') state.responsive.heightMode = 'fill';
     if (payload.enabled === false) {
       state.responsive.enabled = false;
       state.responsiveDx = 0;
@@ -1147,6 +1152,7 @@
 
   function importProject(project) {
     if (!project || (project.format !== 'app-layout-project' && project.format !== 'radio-layout-project')) return false;
+    if (project.viewport && project.viewport.safeArea) setSafeArea(project.viewport.safeArea);
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
