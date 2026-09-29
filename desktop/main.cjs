@@ -690,7 +690,9 @@ ipcMain.handle('capture:current-source',async (_event,payload)=>{
 
 
 function escapeRegex(value){
-  return String(value||'').replace(/[\\^$.*+?()[\]{}|]/g,'\\
+  const special='\\^$.*+?()[]{}|';
+  return String(value||'').split('').map(ch=>special.includes(ch)?'\\\\'+ch:ch).join('');
+}
 function detectAndroidProject(root){
   const manifestCandidates=[
     path.join(root,'app','src','main','AndroidManifest.xml'),
