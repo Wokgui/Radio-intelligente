@@ -744,6 +744,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="toolbar" style="margin-top:6px">
         <button class="btn wide" id="saveVariantBtn">Enregistrer variante</button>
         <button class="btn wide" id="applyVariantBtn">Appliquer variante</button>
+        <button class="btn wide" id="applyVariantAllBtn">Variante à toutes</button>
       </div>
       <div class="component-list" id="componentList"><div class="hint">Aucun composant.</div></div>
     </section>
@@ -2061,6 +2062,9 @@ body.desktop .desktop-badge{display:inline-flex}
   });
   document.getElementById('applyVariantBtn').addEventListener('click',function(){
     post('component-variant-apply',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim(),allInstances:false});
+  });
+  document.getElementById('applyVariantAllBtn').addEventListener('click',function(){
+    post('component-variant-apply',{name:document.getElementById('componentName').value.trim(),variant:document.getElementById('variantName').value.trim(),allInstances:true});
   });
 
   document.getElementById('interactiveState').addEventListener('change',function(){post('interactive-state',{state:this.value})});
