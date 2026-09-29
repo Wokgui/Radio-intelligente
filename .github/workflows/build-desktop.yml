@@ -1,4 +1,4 @@
-name: Build Windows editor
+name: Build App Interface Studio
 
 on:
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Radio-Interface-Studio-Windows
+          name: App-Interface-Studio-Windows
           path: desktop/dist/*.exe
           if-no-files-found: error
           retention-days: 30
@@ -71,11 +71,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "radio-interface-studio-v1.0.0"
+          $tag = "app-interface-studio-v2.0.0"
           $file = Get-ChildItem "desktop/dist/*.exe" | Select-Object -First 1
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $file.FullName --clobber
           } else {
-            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "Radio Interface Studio v1.0.0" --notes "Éditeur Windows portable pour modifier visuellement l’interface de Radio intelligente et exporter un projet réutilisable dans ChatGPT."
+            gh release create $tag $file.FullName --target "${{ github.sha }}" --title "App Interface Studio v2.0.0" --notes "Éditeur Windows portable universel : ouvre une URL, un dossier local ou un fichier HTML, modifie visuellement l’interface, puis exporte un projet réutilisable dans ChatGPT."
           }
