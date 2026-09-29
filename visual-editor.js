@@ -143,13 +143,13 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
       };
     });
-    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null };
+    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null, originalAriaLabel: element.getAttribute('aria-label') };
     registry.set(selector, entry);
     return entry;
   }
@@ -191,6 +191,8 @@
       layoutAdjusted: false,
       layout: {},
       tokenStyles: {},
+      accessibilityAdjusted: false,
+      accessibilityLabel: element.getAttribute('aria-label') || '',
       animationAdjusted: false,
       animation: {
         property: 'all',
@@ -670,11 +672,17 @@
       layoutProps.forEach(function (prop) { restoreOriginalProp(state.selector, prop); });
     }
 
-    const tokenProps=['border-radius'];
+    const tokenProps=['border-radius','min-width','min-height','white-space','overflow','overflow-x','text-overflow','max-width'];
     tokenProps.forEach(function(prop){
       if(state.tokenStyles&&state.tokenStyles[prop])setInline(element,prop,state.tokenStyles[prop]);
-      else restoreOriginalProp(state.selector,prop);
+      else if(!((prop==='min-width'||prop==='min-height'||prop==='max-width')&&state.resized))restoreOriginalProp(state.selector,prop);
     });
+    if(state.accessibilityAdjusted)element.setAttribute('aria-label',state.accessibilityLabel||'Action');
+    else {
+      const regAria=registry.get(state.selector);
+      if(regAria&&regAria.originalAriaLabel!==null)element.setAttribute('aria-label',regAria.originalAriaLabel);
+      else element.removeAttribute('aria-label');
+    }
 
     const animationProps = ['transition-property','transition-duration','transition-timing-function','transition-delay'];
     if (state.animationAdjusted && state.animation) {
@@ -697,6 +705,8 @@
       else entry.element.style.removeProperty(prop);
     });
     if (entry.originalText !== null) entry.element.textContent = entry.originalText;
+    if (entry.originalAriaLabel !== null) entry.element.setAttribute('aria-label',entry.originalAriaLabel);
+    else entry.element.removeAttribute('aria-label');
   }
 
   function hideGuides() {
@@ -840,6 +850,8 @@
         layoutAdjusted: !!state.layoutAdjusted,
         layout: Object.assign({}, state.layout || {}),
         tokenStyles: Object.assign({}, state.tokenStyles || {}),
+        accessibilityAdjusted: !!state.accessibilityAdjusted,
+        accessibilityLabel: state.accessibilityLabel || '',
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -924,6 +936,8 @@
         layoutAdjusted: !!saved.layoutAdjusted,
         layout: Object.assign({}, saved.layout || {}),
         tokenStyles: Object.assign({}, saved.tokenStyles || {}),
+        accessibilityAdjusted: !!saved.accessibilityAdjusted,
+        accessibilityLabel: saved.accessibilityLabel || '',
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -1549,31 +1563,39 @@
     (lastAuditIssues||[]).forEach(function(issue){
       let el=null;try{el=issue.selector==='html'?document.documentElement:document.querySelector(issue.selector)}catch(_){}
       if(!el)return;
+      const st=remember(el);
+      if(!st)return;
+      st.tokenStyles=st.tokenStyles||{};
       if(issue.type==='touch-target'){
-        el.style.setProperty('min-width','44px','important');
-        el.style.setProperty('min-height','44px','important');
+        st.tokenStyles['min-width']='44px';
+        st.tokenStyles['min-height']='44px';
         fixed.push(issue);
       }
       if(issue.type==='text-clipped'){
-        el.style.setProperty('white-space','normal','important');
-        el.style.setProperty('overflow','visible','important');
-        el.style.setProperty('text-overflow','clip','important');
+        st.tokenStyles['white-space']='normal';
+        st.tokenStyles['overflow']='visible';
+        st.tokenStyles['text-overflow']='clip';
         fixed.push(issue);
       }
-      if(issue.type==='overflow-x'&&el===document.documentElement){
-        document.body.style.setProperty('max-width','100vw','important');
-        document.body.style.setProperty('overflow-x','hidden','important');
+      if(issue.type==='overflow-x'){
+        st.tokenStyles['max-width']='100vw';
+        st.tokenStyles['overflow-x']='hidden';
         fixed.push(issue);
       }
       if(issue.type==='accessible-name'){
         const text=String(el.textContent||el.getAttribute('title')||'Action').trim().slice(0,80);
-        el.setAttribute('aria-label',text||'Action');
+        st.accessibilityAdjusted=true;
+        st.accessibilityLabel=text||'Action';
         fixed.push(issue);
       }
+      applyState(el,st,false);
     });
+    if(fixed.length)commitHistory();
+    updateOverlay();
     auditInterface();
     emit('audit-fixed',{count:fixed.length});
   }
+
 
   function parseRgb(value) {
     const m = String(value || '').match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)(?:\D+([\d.]+))?/i);
