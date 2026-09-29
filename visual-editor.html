@@ -1128,13 +1128,23 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   function updateResponsiveControls(p){
-    var r=(p&&p.responsive)||{};
+    var base=(p&&p.responsive)||{};
     var selected=!!(p&&p.selected);
-    var enabled=selected&&!!r.enabled;
+    var editBp=(p&&p.editingBreakpoint)||breakpointEdit.value||'base';
+    if(Array.from(breakpointEdit.options).some(function(o){return o.value===editBp}))breakpointEdit.value=editBp;
+    var activeBp=(p&&p.activeBreakpoint)||'phone';
+    breakpointActive.textContent='actif : '+(activeBp==='phone'?'téléphone':activeBp==='tablet'?'tablette':'grand écran');
+
+    var r=base;
+    if(editBp!=='base'&&base.breakpoints&&base.breakpoints[editBp])r=base.breakpoints[editBp];
+    else if(editBp!=='base'&&p&&p.responsiveEffective)r=p.responsiveEffective;
+
+    var enabled=selected&&!!base.enabled;
     responsiveEnabled.disabled=!selected;
     responsiveEnabled.checked=enabled;
     responsiveCard.classList.toggle('off',!enabled);
     [hAnchor,vAnchor,widthMode,heightMode,marginLeft,marginRight,marginTop,marginBottom,widthPercent,heightPercent,respectSafeArea].forEach(function(el){el.disabled=!selected||!enabled});
+    breakpointEdit.disabled=!selected;
     document.getElementById('captureResponsive').disabled=!selected;
     if(!selected){
       responsiveSummary.textContent='Sélectionne un élément puis active les contraintes.';
@@ -1152,9 +1162,25 @@ body.desktop .desktop-badge{display:inline-flex}
     heightPercent.value=Number(r.heightPercent)||100;
     respectSafeArea.checked=r.safeArea!==false;
     responsiveSummary.textContent=enabled
-      ? 'Règles actives : '+(r.hAnchor||'libre')+' / '+(r.vAnchor||'libre')+' · largeur '+(r.widthMode||'auto')+' · hauteur '+(r.heightMode||'auto')+(r.safeArea!==false?' · zone sûre':'')
+      ? 'Règles '+(editBp==='base'?'de base':editBp)+' : '+(r.hAnchor||'libre')+' / '+(r.vAnchor||'libre')+' · largeur '+(r.widthMode||'auto')+' · hauteur '+(r.heightMode||'auto')+(r.safeArea!==false?' · zone sûre':'')
       : 'Mode pixels actif. Coche la case pour conserver la disposition sur d’autres tailles d’écran.';
   }
+
+  function updateLayoutControls(layout){
+    layout=layout||{};
+    var editable=!!layout.editable;
+    [layoutDisplay,layoutGap,layoutFlexDirection,layoutJustify,layoutAlign,layoutColumns,document.getElementById('applyParentLayout')].forEach(function(el){if(el)el.disabled=!editable});
+    layoutParentName.textContent=editable?'Parent : '+(layout.selector||'conteneur')+' · '+(layout.display||'bloc'):'Sélectionne un objet dans un conteneur modifiable.';
+    if(!editable)return;
+    if(Array.from(layoutDisplay.options).some(function(o){return o.value===layout.display}))layoutDisplay.value=layout.display;
+    else layoutDisplay.value=layout.display.indexOf('flex')>=0?'flex':layout.display.indexOf('grid')>=0?'grid':'block';
+    layoutGap.value=layout.gap||'0px';
+    if(Array.from(layoutFlexDirection.options).some(function(o){return o.value===layout.flexDirection}))layoutFlexDirection.value=layout.flexDirection;
+    if(Array.from(layoutJustify.options).some(function(o){return o.value===layout.justifyContent}))layoutJustify.value=layout.justifyContent;
+    if(Array.from(layoutAlign.options).some(function(o){return o.value===layout.alignItems}))layoutAlign.value=layout.alignItems;
+    layoutColumns.value=layout.gridTemplateColumns&&layout.gridTemplateColumns!=='none'?layout.gridTemplateColumns:'';
+  }
+
 
   function updateState(p){
     lastState=p;
@@ -1214,6 +1240,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
 
     updateResponsiveControls(p);
+    updateLayoutControls(p.parentLayout);
     if(selectionCount>1){
       responsiveSummary.textContent='Sélection multiple : déplace le groupe avec la souris ou les flèches. Les propriétés individuelles restent attachées à l’objet principal.';
     }
