@@ -851,6 +851,27 @@
     commitHistory();
   }
 
+  function exportProject() {
+    return {
+      format: 'radio-layout-project',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      snapshot: snapshot(),
+      css: cssText()
+    };
+  }
+
+  function importProject(project) {
+    if (!project || project.format !== 'radio-layout-project') return false;
+    const snap = project.snapshot || project;
+    if (!snap || !Array.isArray(snap.items)) return false;
+    loadSnapshot(snap);
+    commitHistory();
+    emit('project-imported', { ok: true, count: snap.items.length });
+    return true;
+  }
+
   async function copyCss() {
     const value = cssText();
     try {
@@ -1080,6 +1101,8 @@
       }
     }
     if (data.type === 'get-css') emit('css', { css: cssText() });
+    if (data.type === 'get-project') emit('project', { project: exportProject() });
+    if (data.type === 'load-project') importProject(payload.project);
     if (data.type === 'download-css') downloadCss();
     if (data.type === 'copy-css') copyCss();
   });
@@ -1096,6 +1119,8 @@
     enable: enable,
     disable: disable,
     css: cssText,
+    exportProject: exportProject,
+    importProject: importProject,
     reset: restoreAll,
     undo: undo,
     redo: redo,
