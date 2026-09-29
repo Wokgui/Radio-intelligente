@@ -869,6 +869,38 @@ ipcMain.handle('source:apply-native-edit',async (_event,payload)=>{
   }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
 
+
+async function auditSourceAtConfig(source,css,cfg){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)throw new Error('Source invalide.');
+  const width=Math.max(240,Number(cfg.width)||412),height=Math.max(260,Number(cfg.height)||915),keyboard=Math.max(0,Number(cfg.keyboard)||0);
+  const win=new BrowserWindow({show:false,width,height:Math.max(240,height-keyboard),useContentSize:true,frame:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}});
+  try{
+    await win.loadURL(target);await new Promise(r=>setTimeout(r,320));
+    let injected='';
+    if(css&&String(css).trim()!=='/* Aucun ajustement. */')injected+=String(css);
+    injected+='\nhtml{-webkit-text-size-adjust:'+Math.round((Number(cfg.fontScale)||1)*100)+'%!important;text-size-adjust:'+Math.round((Number(cfg.fontScale)||1)*100)+'%!important;color-scheme:'+(cfg.dark?'dark':'light')+';}';
+    if(injected)await win.webContents.insertCSS(injected,{cssOrigin:'author'});
+    await new Promise(r=>setTimeout(r,90));
+    const audit=await win.webContents.executeJavaScript("(function(){var issues=[];if(document.documentElement.scrollWidth>innerWidth+2)issues.push({type:'overflow-x',amount:document.documentElement.scrollWidth-innerWidth});var nodes=Array.from(document.body.querySelectorAll('*')).slice(0,900);var clipped=0,small=0;nodes.forEach(function(el){var cs=getComputedStyle(el),r=el.getBoundingClientRect();if(cs.display==='none'||cs.visibility==='hidden'||r.width<1||r.height<1)return;if(el.children.length===0&&String(el.textContent||'').trim()&&(el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2)&&/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY))clipped++;if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)&&(r.width<44||r.height<44))small++;});if(clipped)issues.push({type:'text-clipped',count:clipped});if(small)issues.push({type:'touch-target',count:small});return {issues:issues,scrollWidth:document.documentElement.scrollWidth,viewport:{width:innerWidth,height:innerHeight}};})()");
+    let screenshot=null;
+    if(audit.issues.length){const img=await win.webContents.capturePage();screenshot=img.toDataURL()}
+    return {config:cfg,issues:audit.issues,screenshot,viewport:audit.viewport};
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
+  const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
+  const sizes=[{name:'compact',width:360,height:800},{name:'phone',width:412,height:915},{name:'tablet',width:768,height:1024},{name:'desktop',width:1366,height:768}];
+  const scales=[1,1.3,1.5],configs=[];
+  sizes.forEach(size=>scales.forEach(fontScale=>configs.push({name:size.name,width:size.width,height:size.height,fontScale,dark:false,keyboard:size.width<600&&fontScale>=1.3?280:0})));
+  const results=[];
+  try{
+    for(const cfg of configs)results.push(await auditSourceAtConfig(source,payload.css,cfg));
+    return {ok:true,results,summary:{tested:results.length,failed:results.filter(x=>x.issues.length).length,totalIssues:results.reduce((n,x)=>n+x.issues.length,0)}};
+  }catch(error){return {ok:false,error:'Matrice de tests impossible : '+String(error&&error.message||error),results}}
+});
+
 ipcMain.handle('source:open-url'');
 }
 
