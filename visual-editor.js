@@ -515,6 +515,12 @@
         if (state.resized) {
           declarations.push('  width: ' + Math.max(1, state.width) + 'px !important;');
           declarations.push('  height: ' + Math.max(1, state.height) + 'px !important;');
+          declarations.push('  min-width: 0 !important;');
+          declarations.push('  min-height: 0 !important;');
+          declarations.push('  max-width: none !important;');
+          declarations.push('  max-height: none !important;');
+          declarations.push('  box-sizing: border-box !important;');
+          declarations.push('  flex: none !important;');
         }
         if (state.fontAdjusted) {
           declarations.push('  font-size: ' + Math.max(4, state.fontSize).toFixed(1).replace(/\.0$/, '') + 'px !important;');
@@ -608,6 +614,9 @@
 
   function select(element) {
     if (!element || isEditorNode(element)) return;
+    if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
+      element = element.closest('svg');
+    }
     selected = element;
     remember(element);
     hideGuides();
@@ -617,6 +626,7 @@
   function adjustMove(dx, dy, commit) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.dx = snapGrid(state.dx + dx);
     state.dy = snapGrid(state.dy + dy);
     applyState(selected, state, false);
@@ -628,6 +638,7 @@
   function adjustSize(dw, dh, commit, proportional) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.resized = true;
 
     const square = proportional || Math.abs(state.width - state.height) <= Math.max(4, Math.min(state.width, state.height) * 0.12);
@@ -655,6 +666,7 @@
   function adjustFont(delta, commit) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.fontAdjusted = true;
     state.fontSize = Math.max(4, Math.round((state.fontSize + delta) * 10) / 10);
     applyState(selected, state);
@@ -805,6 +817,7 @@
   function setVisualStyle(kind, value) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     if (kind === 'color') {
       state.color = String(value || '');
       state.colorAdjusted = true;
@@ -824,6 +837,7 @@
   function adjustZ(delta) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.zAdjusted = true;
     state.zIndex = (Number(state.zIndex) || 0) + delta;
     applyState(selected, state);
@@ -833,6 +847,7 @@
   function setZ(value) {
     if (!active || !selected) return;
     const state = remember(selected);
+    if (state.locked) return;
     state.zAdjusted = true;
     state.zIndex = Number(value) || 0;
     applyState(selected, state);
@@ -933,6 +948,7 @@
     event.stopImmediatePropagation();
     select(event.target);
     const state = remember(selected);
+    if (state.locked) return;
     drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dx: state.dx, dy: state.dy };
   }, true);
 
@@ -963,6 +979,7 @@
       event.preventDefault();
       event.stopPropagation();
       const state = remember(selected);
+      if (state.locked) return;
       const rect = selected.getBoundingClientRect();
       resizeDrag = {
         pointerId: event.pointerId,
