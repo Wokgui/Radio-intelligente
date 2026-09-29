@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.webkit.RenderProcessGoneDetail;
 import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -49,6 +51,9 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.WHITE);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
+        }
         setContentView(webView);
 
         WebSettings settings = webView.getSettings();
@@ -75,6 +80,20 @@ public class MainActivity extends Activity {
                     return serveBundledAsset(uri.getPath());
                 }
                 return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                try {
+                    if (fileCallback != null) {
+                        fileCallback.onReceiveValue(null);
+                        fileCallback = null;
+                    }
+                    view.stopLoading();
+                    view.loadUrl("about:blank");
+                } catch (Exception ignored) {}
+                recreateWebViewAfterRendererCrash();
+                return true;
             }
 
             @Override
@@ -130,6 +149,22 @@ public class MainActivity extends Activity {
         } else {
             webView.restoreState(savedInstanceState);
         }
+    }
+
+    private void recreateWebViewAfterRendererCrash() {
+        runOnUiThread(() -> {
+            try {
+                if (webView != null) {
+                    webView.setWebChromeClient(null);
+                    webView.setWebViewClient(null);
+                    webView.destroy();
+                }
+            } catch (Exception ignored) {}
+            Intent intent = getIntent();
+            finish();
+            startActivity(intent);
+            overridePendingTransition(0, 0);
+        });
     }
 
     private WebResourceResponse serveBundledAsset(String rawPath) {
