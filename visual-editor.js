@@ -68,6 +68,7 @@
   let grid = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
+  let defaultResponsive = true;
   let responsiveResizeTimer = null;
 
   const history = [];
@@ -169,7 +170,7 @@
       responsiveDx: 0,
       responsiveDy: 0,
       responsive: {
-        enabled: true,
+        enabled: defaultResponsive,
         hAnchor: 'free',
         vAnchor: 'free',
         widthMode: 'auto',
@@ -186,17 +187,19 @@
       }
     };
     touched.set(element, state);
-    captureResponsiveFromCurrent(element, state, false);
-    const bounds = responsiveBounds(element, state);
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const rx = bounds.width > 0 ? (cx - bounds.left) / bounds.width : .5;
-    const ry = bounds.height > 0 ? (cy - bounds.top) / bounds.height : .5;
-    state.responsive.hAnchor = rx < .34 ? 'left' : (rx > .66 ? 'right' : 'center');
-    state.responsive.vAnchor = ry < .34 ? 'top' : (ry > .66 ? 'bottom' : 'center');
-    if (rect.width >= bounds.width * .78) {
-      state.responsive.widthMode = 'fill';
-      state.responsive.hAnchor = 'stretch';
+    if (defaultResponsive) {
+      captureResponsiveFromCurrent(element, state, false);
+      const bounds = responsiveBounds(element, state);
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const rx = bounds.width > 0 ? (cx - bounds.left) / bounds.width : .5;
+      const ry = bounds.height > 0 ? (cy - bounds.top) / bounds.height : .5;
+      state.responsive.hAnchor = rx < .34 ? 'left' : (rx > .66 ? 'right' : 'center');
+      state.responsive.vAnchor = ry < .34 ? 'top' : (ry > .66 ? 'bottom' : 'center');
+      if (rect.width >= bounds.width * .78) {
+        state.responsive.widthMode = 'fill';
+        state.responsive.hAnchor = 'stretch';
+      }
     }
     return state;
   }
@@ -1551,6 +1554,9 @@
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
     if (data.type === 'responsive-capture') captureResponsiveRules();
     if (data.type === 'safe-area') setSafeArea(payload);
+    if (data.type === 'preferences') {
+      if (payload.defaultResponsive !== undefined) defaultResponsive = !!payload.defaultResponsive;
+    }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
     if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
