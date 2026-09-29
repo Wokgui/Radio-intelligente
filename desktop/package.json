@@ -1,6 +1,6 @@
 {
   "name": "app-interface-studio",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "private": true,
   "description": "Éditeur visuel universel Windows pour applications web, PWA et interfaces HTML",
   "main": "main.cjs",
