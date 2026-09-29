@@ -41,7 +41,7 @@ expect(main,"androidWebViewUserAgent","android webview user-agent");
 expect(preload,"setPreviewMode","preview mode preload bridge");
 expect(preload,"openAsApp","open app preload bridge");
 expect(runtime,'id="content"','frameless runtime iframe');
-expect(engine,"version: 3","project format v3");
+expect(engine,"version: 4","project format v4");
 expect(engine,"function buildLayerTree()","layers tree");
 expect(engine,"function setParentLayout","flex grid editing");
 expect(engine,"function distributeSelection","distribution tools");
