@@ -1710,7 +1710,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.56.0'};
+      project.studio={name:'App Interface Studio',version:'6.57.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2851,6 +2851,7 @@ body.desktop .desktop-badge{display:inline-flex}
       selector:pendingDirectDiff.selector,
       sourceSelector:pendingDirectDiff.sourceSelector||lastState.selector,
       preferredHref:pendingDirectDiff.preferredHref||'',
+      preferredContext:pendingDirectDiff.preferredContext||'',
       selectedProperties:selected,
       css:lastState.css||cssOut.value
     });
@@ -2859,7 +2860,7 @@ body.desktop .desktop-badge{display:inline-flex}
       return;
     }
     pendingDirectDiff=result;
-    sourceDiffFile.textContent=result.relativePath||result.file;
+    sourceDiffFile.textContent=(result.relativePath||result.file)+(result.matchedContext?' · '+result.matchedContext:'');
     sourceDiffCode.textContent=result.diff||'Aucune différence.';
     renderDirectPropertyToggles(result);
     document.getElementById('applyDirectDiffBtn').disabled=false;
@@ -2876,16 +2877,17 @@ body.desktop .desktop-badge{display:inline-flex}
       selector:cascadeRule?cascadeRule.selector:lastState.selector,
       sourceSelector:lastState.selector,
       preferredHref:cascadeRule?cascadeRule.href:'',
+      preferredContext:cascadeRule?cascadeRule.context:'',
       css:lastState.css||cssOut.value
     });
     if(!result||!result.ok){directSourceStatus.textContent=result&&result.error||'Diff impossible.';return}
     pendingDirectDiff=result;pendingNativeDiff=null;pendingDiffKind='direct';
-    sourceDiffFile.textContent=result.relativePath||result.file;
+    sourceDiffFile.textContent=(result.relativePath||result.file)+(result.matchedContext?' · '+result.matchedContext:'');
     sourceDiffCode.textContent=result.diff||'Aucune différence.';
     renderDirectPropertyToggles(result);
     document.getElementById('applyDirectDiffBtn').disabled=false;
     sourceDiffModal.classList.add('visible');
-    directSourceStatus.textContent='Diff prêt : '+(result.relativePath||result.file)+'.';
+    directSourceStatus.textContent=(result.contextMatched===false?'Attention : contexte CSS exact introuvable, diff de secours créé. ':'Diff prêt : ')+(result.relativePath||result.file)+(result.matchedContext?' · '+result.matchedContext:'')+'.';
   }
 
   function renderNativeTree(nodes){
@@ -3938,7 +3940,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.56.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.57.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4065,7 +4067,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.56.0'};
+    project.studio={name:'App Interface Studio',version:'6.57.0'};
     return project;
   }
 
@@ -4162,7 +4164,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.56.0'};
+    project.studio={name:'App Interface Studio',version:'6.57.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
