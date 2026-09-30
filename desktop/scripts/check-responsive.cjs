@@ -378,6 +378,14 @@ expect(main,"const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourc
 expect(html,"function projectSourceSelectors(project)","project source selector extraction");
 expect(html,"sourceSelectors:sourceSelectors","stable selector payload");
 expect(html,"cible(s) stabilisée(s)","stable locator host feedback");
+expect(html,"prototypeLinks:prototypeLinks","prototype links local payload");
+expect(html,"lien(s) de prototype","prototype links host feedback");
+expect(main,"const cleanPrototypeLinks=","prototype links sanitization");
+expect(main,"function onPrototypeClick(event)","prototype runtime click handler");
+expect(main,"prototypeRunning","prototype recursion guard");
+expect(main,"target.scrollIntoView","prototype target scroll");
+expect(main,"target.click&&target!==source","prototype target activation");
+expect(main,"prototypeCount:Object.keys(prototypeLinks).length","prototype result count");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -385,4 +393,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.27 feature checks passed.');
+console.log('App Interface Studio 6.28 feature checks passed.');
