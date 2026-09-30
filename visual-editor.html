@@ -661,6 +661,7 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="iphone-island">iPhone · Dynamic Island</option>
         </select></div>
       </div>
+      <button class="btn" id="rotateDeviceBtn" type="button" style="width:100%;margin-top:7px">↻ Pivoter portrait / paysage</button>
       <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre, parent, zone sûre et objets proches</label>
       <label class="checkline"><input id="gridOverlayToggle" type="checkbox"> Afficher la grille d’accrochage dans l’écran</label>
       <label class="checkline"><input id="columnGridToggle" type="checkbox"> Afficher et utiliser une grille de colonnes</label>
@@ -1490,7 +1491,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.33.0'};
+      project.studio={name:'App Interface Studio',version:'6.34.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2027,6 +2028,19 @@ body.desktop .desktop-badge{display:inline-flex}
       workspace.scrollTop+=screenY-workspace.clientHeight/2;
     });
     setStatus('Zoom centré sur la sélection.');
+  }
+
+  function rotateDevice(){
+    var size=currentDeviceSize();
+    var nextW=size.height;
+    var nextH=size.width;
+    preset.value='custom';
+    screenCustomW.value=String(nextW);
+    screenCustomH.value=String(nextH);
+    customDeviceWidth.value=String(nextW);
+    customDeviceHeight.value=String(nextH);
+    setDevice();
+    setStatus('Écran pivoté : '+nextW+' × '+nextH+'.');
   }
 
   function setDevice(){
@@ -3062,7 +3076,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.33.0'};
+    project.studio={name:'App Interface Studio',version:'6.34.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -3120,7 +3134,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.33.0'};
+    project.studio={name:'App Interface Studio',version:'6.34.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -3213,6 +3227,7 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Ajuster le zoom à l’écran',hint:'Ctrl+0',run:function(){zoom.value='fit';setDevice()}},
     {label:'Zoom 100 %',hint:'Ctrl+1',run:function(){setRuntimeZoom(1)}},
     {label:'Zoom sur la sélection',hint:'Ctrl+2',run:zoomToSelection},
+    {label:'Pivoter l’écran portrait / paysage',hint:'',run:rotateDevice},
     {label:'Zoom avant',hint:'+ / Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
     {label:'Zoom arrière',hint:'Ctrl+molette ↓',run:function(){setRuntimeZoom(currentZoomScale()-.1)}},
     {label:'Recentrer le canevas',hint:'',run:resetCanvasPosition},
@@ -3483,6 +3498,7 @@ body.desktop .desktop-badge{display:inline-flex}
     setDevice();
   });
   zoom.addEventListener('change',setDevice);
+  document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
   safeProfile.addEventListener('change',applySafeArea);
   screenCustomW.addEventListener('input',function(){customDeviceWidth.value=screenCustomW.value;setDevice()});
   screenCustomH.addEventListener('input',function(){customDeviceHeight.value=screenCustomH.value;setDevice()});
