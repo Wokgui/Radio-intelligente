@@ -357,6 +357,7 @@ body.desktop .desktop-badge{display:inline-flex}
 .modal-head strong{font-size:.94rem}.modal-head span{font-size:.7rem;color:#cfc4da}.modal-head .btn:first-of-type{margin-left:auto}
 .modal-body{min-height:0;overflow:auto;padding:14px}
 .diff-code{width:100%;min-height:60vh;white-space:pre;overflow:auto;padding:14px;border:1px solid #ffffff1f;border-radius:12px;background:#0f0d13;color:#ece6f3;font:600 11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+.patch-diff-section{margin-bottom:16px}.patch-diff-section h3{display:flex;gap:8px;align-items:baseline;margin:0 0 6px}.patch-diff-section .diff-code{min-height:180px;max-height:38vh}.patch-diff-section small{color:#b8aac8}
 .source-edit-status,.smart-status,.native-status,.consistency-status,.matrix-status{font-size:.68rem;line-height:1.42;color:var(--muted);margin-top:7px}
 .advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .smart-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
@@ -480,6 +481,21 @@ body.desktop .desktop-badge{display:inline-flex}
   <div class="multi-grid" id="multiPreviewGrid"></div>
 </div>
 
+
+<div class="diff-modal" id="patchPreviewModal">
+  <div class="modal-head">
+    <div><strong>Diff complet avant application</strong><br><span id="patchPreviewSummary">Aucun patch préparé.</span></div>
+    <label class="checkline" style="margin-left:auto"><input id="patchApplyCss" type="checkbox" checked> CSS</label>
+    <label class="checkline"><input id="patchApplyStructure" type="checkbox" checked> Structure / DOM</label>
+    <button class="btn primary" id="applyPatchPreviewBtn">Appliquer la sélection</button>
+    <button class="btn" id="closePatchPreviewBtn">Fermer</button>
+  </div>
+  <div class="modal-body">
+    <section class="patch-diff-section"><h3>HTML <small id="patchHtmlStatus"></small></h3><pre class="diff-code" id="patchHtmlDiff"></pre></section>
+    <section class="patch-diff-section"><h3>CSS généré <small id="patchCssStatus"></small></h3><pre class="diff-code" id="patchCssDiff"></pre></section>
+    <section class="patch-diff-section"><h3>JS structurel / DOM <small id="patchJsStatus"></small></h3><pre class="diff-code" id="patchJsDiff"></pre></section>
+  </div>
+</div>
 
 <div class="diff-modal" id="sourceDiffModal">
   <div class="modal-head">
@@ -1309,6 +1325,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var regressionStatus=document.getElementById('regressionStatus');
   var regressionDiff=document.getElementById('regressionDiff');
   var gitStatusText=document.getElementById('gitStatusText');
+  var patchPreviewModal=document.getElementById('patchPreviewModal');
+  var patchHtmlDiff=document.getElementById('patchHtmlDiff');
+  var patchCssDiff=document.getElementById('patchCssDiff');
+  var patchJsDiff=document.getElementById('patchJsDiff');
+  var patchPreviewSummary=document.getElementById('patchPreviewSummary');
   var sourceDiffModal=document.getElementById('sourceDiffModal');
   var sourceDiffCode=document.getElementById('sourceDiffCode');
   var sourceDiffFile=document.getElementById('sourceDiffFile');
@@ -1342,6 +1363,8 @@ body.desktop .desktop-badge{display:inline-flex}
   var namedVersions=[];
   var componentCatalog=[];
   var regressionBaseline=null;
+  var pendingPatchPayload=null;
+  var pendingPatchPreview=null;
   var pendingDirectDiff=null;
   var pendingNativeDiff=null;
   var pendingDiffKind=null;
@@ -1430,7 +1453,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.30.0'};
+      project.studio={name:'App Interface Studio',version:'6.31.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2634,28 +2657,61 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
-  async function applyToLocalSource(){
-    if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
-    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
-    var project=await requestProject();
-    if(!project){setStatus('Projet non récupéré.',true);return}
-    var generatedNodes=project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
+  function localPatchPayload(project){
+    var generatedNodes=project&&project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
     var domPatches=projectDomPatches(project);
     var sourceSelectors=projectSourceSelectors(project);
-    var prototypeLinks=project.prototypeLinks&&typeof project.prototypeLinks==='object'?project.prototypeLinks:{};
-    var message='Appliquer un patch réversible au code local ? Le CSS sera écrit dans un fichier généré et les duplications, textes et labels d’accessibilité dans un patch structurel JavaScript. Une sauvegarde du HTML sera créée.';
-    if(generatedNodes.length||domPatches.length)message+='\n\nStructure : '+generatedNodes.length+' duplication(s) · '+domPatches.length+' modification(s) DOM.';
-    if(!confirm(message))return;
-    var result=await desktop.applyCssToSource({source:currentSource,css:project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches,sourceSelectors:sourceSelectors,prototypeLinks:prototypeLinks});
-    if(result&&result.ok){
-      var parts=[];
-      if(result.cssApplied&&result.cssPath)parts.push('CSS : '+result.cssPath);
-      if(result.structureApplied&&result.jsPath)parts.push('structure : '+result.jsPath+' · '+(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.prototypeCount||0)+' lien(s) de prototype · '+(result.locatorCount||0)+' cible(s) stabilisée(s)');
-      parts.push('sauvegarde : '+result.backupPath);
-      setStatus('Patch appliqué · '+parts.join(' · '));
-    }else setStatus((result&&result.error)||'Application au code impossible.',true);
+    var prototypeLinks=project&&project.prototypeLinks&&typeof project.prototypeLinks==='object'?project.prototypeLinks:{};
+    return {source:currentSource,css:project&&project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches,sourceSelectors:sourceSelectors,prototypeLinks:prototypeLinks};
   }
 
+  function renderPatchPreview(result){
+    function fill(key,pre,statusId){
+      var file=result&&result.files&&result.files[key]||{};
+      pre.textContent=file.diff||'Aucune différence.';
+      document.getElementById(statusId).textContent=file.changed?'modifié':'inchangé';
+    }
+    fill('html',patchHtmlDiff,'patchHtmlStatus');
+    fill('css',patchCssDiff,'patchCssStatus');
+    fill('js',patchJsDiff,'patchJsStatus');
+    patchPreviewSummary.textContent=(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.prototypeCount||0)+' lien(s) prototype · '+(result.locatorCount||0)+' cible(s) stable(s)';
+  }
+
+  async function previewLocalPatch(){
+    if(!desktop||!desktop.previewPatch){setStatus('Fonction disponible dans l’application Windows.',true);return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local.',true);return}
+    var project=await requestProject();
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    var payload=localPatchPayload(project);
+    var result=await desktop.previewPatch(payload);
+    if(!result||!result.ok){setStatus((result&&result.error)||'Préparation du patch impossible.',true);return}
+    pendingPatchPayload=payload;pendingPatchPreview=result;
+    renderPatchPreview(result);
+    document.getElementById('patchApplyCss').checked=true;
+    document.getElementById('patchApplyStructure').checked=true;
+    patchPreviewModal.classList.add('visible');
+    setStatus('Diff complet préparé. Vérifie HTML, CSS et JS avant application.');
+  }
+
+  async function applyPreviewedLocalPatch(){
+    if(!pendingPatchPayload||!desktop||!desktop.applyCssToSource)return;
+    var applyParts={css:document.getElementById('patchApplyCss').checked,structure:document.getElementById('patchApplyStructure').checked};
+    if(!applyParts.css&&!applyParts.structure){setStatus('Coche au moins CSS ou Structure / DOM.',true);return}
+    var payload=Object.assign({},pendingPatchPayload,{applyParts:applyParts});
+    var result=await desktop.applyCssToSource(payload);
+    if(!result||!result.ok){setStatus((result&&result.error)||'Application au code impossible.',true);return}
+    patchPreviewModal.classList.remove('visible');
+    pendingPatchPayload=null;pendingPatchPreview=null;
+    var parts=[];
+    if(result.cssApplied||result.cssRemoved)parts.push('CSS');
+    if(result.structureApplied||result.structureRemoved)parts.push('structure/DOM');
+    setStatus('Patch appliqué : '+parts.join(' + ')+' · sauvegarde transactionnelle créée.');
+    try{frame.contentWindow.location.reload()}catch(_){}
+  }
+
+  async function applyToLocalSource(){
+    return previewLocalPatch();
+  }
 
   async function rollbackLastLocalPatch(){
     if(!desktop||!desktop.rollbackLastPatch){setStatus('Fonction disponible dans l’application Windows.',true);return}
@@ -2841,7 +2897,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.30.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.31.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2891,7 +2947,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.30.0'};
+    project.studio={name:'App Interface Studio',version:'6.31.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2949,7 +3005,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.30.0'};
+    project.studio={name:'App Interface Studio',version:'6.31.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -3636,6 +3692,8 @@ body.desktop .desktop-badge{display:inline-flex}
     compareStatus.textContent='Comparaison retirée.';
   });
   document.getElementById('applySourceBtn').addEventListener('click',applyToLocalSource);
+  document.getElementById('applyPatchPreviewBtn').addEventListener('click',applyPreviewedLocalPatch);
+  document.getElementById('closePatchPreviewBtn').addEventListener('click',function(){patchPreviewModal.classList.remove('visible')});
   document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
   document.getElementById('prepareDirectEditBtn').addEventListener('click',prepareDirectSourceEdit);
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
