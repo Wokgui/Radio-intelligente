@@ -159,6 +159,17 @@ body.ve-active .ve-selection{
 .ve-handle-s{bottom:-5px;left:75%;transform:translateX(-50%);cursor:ns-resize}
 .ve-handle-w{left:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
 .ve-handle-e{right:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
+.ve-media-focal{
+  position:absolute;z-index:8;display:none;align-items:center;justify-content:center;
+  width:26px;height:26px;padding:0;border:2px solid #fff;border-radius:50%;
+  background:#7c3aed;color:#fff;font:900 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 0 0 2px #7c3aed,0 3px 10px #0005;
+  transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;cursor:move!important
+}
+.ve-media-focal:active{transform:translate(-50%,-50%) scale(.94)}
+body.ve-media-drop-ready{cursor:copy!important}
+body.ve-media-drop-ready .ve-selection{box-shadow:0 0 0 2px #22c55e,0 0 0 100vmax #16a34a10!important}
+
 .ve-anchor-pin{
   position:absolute;z-index:4;display:none;align-items:center;justify-content:center;
   width:22px;height:22px;padding:0;border:1px solid #7c3aed;border-radius:7px;
