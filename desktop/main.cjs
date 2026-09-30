@@ -565,6 +565,26 @@ ipcMain.handle('asset:thumbnail',async (_event,payload)=>{
   }catch(error){return {ok:false,error:'Miniature impossible : '+String(error&&error.message||error)}}
 });
 
+ipcMain.handle('asset:stage-data',async (_event,payload)=>{
+  try{
+    const name=path.basename(String(payload&&payload.name||'image')).replace(/[^a-zA-Z0-9._-]+/g,'-');
+    const ext=path.extname(name).toLowerCase();
+    if(!/^\.(png|jpe?g|webp|gif|svg|avif)$/i.test(ext))return {ok:false,error:'Format d’image non pris en charge.'};
+    const dataUrl=String(payload&&payload.dataUrl||'');
+    const match=/^data:(image\/(?:png|jpeg|webp|gif|svg\+xml|avif));base64,([A-Za-z0-9+/=]+)$/i.exec(dataUrl);
+    if(!match)return {ok:false,error:'Données d’image invalides.'};
+    const bytes=Buffer.from(match[2],'base64');
+    if(!bytes.length||bytes.length>24*1024*1024)return {ok:false,error:'Image vide ou supérieure à 24 Mo.'};
+    const hash=crypto.createHash('sha1').update(bytes).digest('hex').slice(0,16);
+    const base=path.basename(name,ext).replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48)||'asset';
+    const dir=path.join(app.getPath('temp'),'app-interface-studio-staged-assets');
+    fs.mkdirSync(dir,{recursive:true});
+    const file=path.join(dir,base+'-'+hash+ext);
+    if(!fs.existsSync(file))fs.writeFileSync(file,bytes);
+    return {ok:true,path:file,name:path.basename(file),size:bytes.length,dataUrl};
+  }catch(error){return {ok:false,error:'Import par glisser-déposer impossible : '+String(error&&error.message||error)}}
+});
+
 function localSourceEntry(source){
   if(!source)return null;
   if(source.type==='folder'&&source.path){
@@ -1049,6 +1069,47 @@ ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>{
   }
 });
 
+function generatedAssetReferences(local){
+  const dir=path.dirname(local.html);
+  const files=[
+    local.html,
+    path.join(dir,'app-interface-studio.generated.css'),
+    path.join(dir,'app-interface-studio.generated.js')
+  ].filter(fs.existsSync);
+  const used=new Set();
+  const pattern=/app-interface-studio-assets\/([^"'\x60)\s?#]+)/g;
+  files.forEach(file=>{
+    let content='';
+    try{content=fs.readFileSync(file,'utf8')}catch(_){return}
+    let match;
+    while((match=pattern.exec(content))){
+      let decoded=match[1];
+      try{decoded=decodeURIComponent(decoded)}catch(_){}
+      const safe=path.basename(decoded);
+      if(safe===decoded&&safe)used.add(safe);
+    }
+  });
+  return used;
+}
+
+function cleanupGeneratedAssets(local){
+  const dir=path.dirname(local.html);
+  const assetDir=path.join(dir,'app-interface-studio-assets');
+  if(!fs.existsSync(assetDir))return {removed:[],kept:[]};
+  const used=generatedAssetReferences(local);
+  const removed=[],kept=[];
+  fs.readdirSync(assetDir).forEach(name=>{
+    const file=path.join(assetDir,name);
+    let stat=null;
+    try{stat=fs.statSync(file)}catch(_){return}
+    if(!stat.isFile())return;
+    if(used.has(name)){kept.push(file);return}
+    try{fs.unlinkSync(file);removed.push(file)}catch(_){}
+  });
+  try{if(fs.existsSync(assetDir)&&fs.readdirSync(assetDir).length===0)fs.rmdirSync(assetDir)}catch(_){}
+  return {removed,kept};
+}
+
 function sourceRoot(source){
   const local=localSourceEntry(source);
   if(!local)return null;
@@ -1069,6 +1130,15 @@ function gitPathTracked(root,relativePath){
     return true;
   }catch(_){return false}
 }
+
+ipcMain.handle('source:clean-assets',async (_event,payload)=>{
+  const local=localSourceEntry(payload&&payload.source);
+  if(!local)return {ok:false,error:'Nettoyage disponible uniquement pour une source HTML locale.'};
+  try{
+    const cleanup=cleanupGeneratedAssets(local);
+    return {ok:true,removed:cleanup.removed,kept:cleanup.kept};
+  }catch(error){return {ok:false,error:'Nettoyage des assets impossible : '+String(error&&error.message||error)}}
+});
 
 ipcMain.handle('source:git-status',async (_event,payload)=>{
   const root=sourceRoot(payload&&payload.source);
@@ -1098,6 +1168,7 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
       try{execFileSync('git',['-C',root,'checkout','-b',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
       catch(_){execFileSync('git',['-C',root,'checkout',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
     }
+    const cleanup=cleanupGeneratedAssets(local);
     const files=[path.relative(root,local.html)];
     const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
     const generatedRelative=path.relative(root,generated);
@@ -1119,7 +1190,7 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
         prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
       }catch(_){}
     }
-    return {ok:true,branch,staged,prUrl};
+    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length};
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
 });
 
