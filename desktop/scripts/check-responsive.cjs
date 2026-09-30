@@ -460,7 +460,7 @@ expect(html,'id="mediaPositionX"',"media focal horizontal control");
 expect(html,'id="mediaPositionY"',"media focal vertical control");
 expect(html,'id="mediaAssetLibrary"',"reusable media asset library");
 expect(html,"function reuseMediaAsset(item)","reusable media asset host flow");
-expect(html,"mediaPositionX:item.mediaPositionX","media focal DOM patch");
+expect(html,"mediaPositionX:Math.max","media focal DOM patch");
 expect(main,"mediaPositionX:Number.isFinite(Number(item&&item.mediaPositionX))","media focal structure patch");
 expect(main,"element.style.objectPosition=px+","runtime image focal position");
 expect(main,"background-position\",px+\"% \"+py+\"%","runtime background focal position");
