@@ -641,6 +641,13 @@ function commandExists(command){
   }catch(_){return false}
 }
 
+function gitPathTracked(root,relativePath){
+  try{
+    execFileSync('git',['-C',root,'ls-files','--error-unmatch','--',relativePath],{encoding:'utf8',windowsHide:true,timeout:5000});
+    return true;
+  }catch(_){return false}
+}
+
 ipcMain.handle('source:git-status',async (_event,payload)=>{
   const root=sourceRoot(payload&&payload.source);
   if(!root)return {ok:false,error:'GitHub direct nécessite un dossier ou fichier HTML local dans un dépôt Git.'};
@@ -671,10 +678,12 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     }
     const files=[path.relative(root,local.html)];
     const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
-    if(fs.existsSync(generated))files.push(path.relative(root,generated));
+    const generatedRelative=path.relative(root,generated);
+    if(fs.existsSync(generated)||gitPathTracked(root,generatedRelative))files.push(generatedRelative);
     const generatedStructure=path.join(path.dirname(local.html),'app-interface-studio.generated.js');
-    if(fs.existsSync(generatedStructure))files.push(path.relative(root,generatedStructure));
-    execFileSync('git',['-C',root,'add','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
+    const generatedStructureRelative=path.relative(root,generatedStructure);
+    if(fs.existsSync(generatedStructure)||gitPathTracked(root,generatedStructureRelative))files.push(generatedStructureRelative);
+    execFileSync('git',['-C',root,'add','-A','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
     execFileSync('git',['-C',root,'commit','-m',title],{encoding:'utf8',windowsHide:true,timeout:15000});
