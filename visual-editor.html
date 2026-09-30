@@ -1432,6 +1432,8 @@ body.desktop .desktop-badge{display:inline-flex}
   var selectedNativeNode=null;
   var lastRepairItems=[];
   var marqueeModeActive=false;
+  var mediaAssetThumbCache=new Map();
+  var mediaAssetThumbPending=new Map();
 
   function postTo(target,type,payload){
     if(!target||!target.contentWindow)return;
@@ -2202,23 +2204,44 @@ body.desktop .desktop-badge{display:inline-flex}
     selectionBreadcrumbs.scrollLeft=selectionBreadcrumbs.scrollWidth;
   }
 
-  function renderMediaAssetLibrary(items){
+  function loadMediaAssetThumb(path,img){
+    if(!path||!img||!desktop||!desktop.assetThumbnail)return;
+    if(mediaAssetThumbCache.has(path)){img.src=mediaAssetThumbCache.get(path);return}
+    var pending=mediaAssetThumbPending.get(path);
+    if(!pending){
+      pending=desktop.assetThumbnail(path).then(function(result){
+        mediaAssetThumbPending.delete(path);
+        if(result&&result.ok&&result.dataUrl){mediaAssetThumbCache.set(path,result.dataUrl);return result.dataUrl}
+        return '';
+      },function(){mediaAssetThumbPending.delete(path);return ''});
+      mediaAssetThumbPending.set(path,pending);
+    }
+    pending.then(function(dataUrl){if(dataUrl&&img.isConnected)img.src=dataUrl});
+  }
+
+  function renderMediaAssetLibrary(items,activePath){
     mediaAssetLibrary.innerHTML='';
     items=Array.isArray(items)?items:[];
     if(!items.length){mediaAssetLibrary.innerHTML='<div class="hint">Aucun asset réutilisable dans ce projet.</div>';return}
     items.forEach(function(item){
       var row=document.createElement('div');
       row.className='component-item';
+      row.style.gridTemplateColumns='46px minmax(0,1fr)';
+      if(activePath&&item.path===activePath)row.style.boxShadow='inset 0 0 0 1px var(--accent)';
+      var thumb=document.createElement('img');
+      thumb.alt='';
+      thumb.style.cssText='width:42px;height:42px;object-fit:contain;border:1px solid var(--line);border-radius:7px;background:#f5f5f7';
+      loadMediaAssetThumb(item.path,thumb);
       var button=document.createElement('button');
       button.type='button';
       button.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit;width:100%';
       var strong=document.createElement('strong');
-      strong.textContent=item.name||'asset';
+      strong.textContent=(activePath&&item.path===activePath?'✓ ':'')+(item.name||'asset');
       var small=document.createElement('small');
-      small.textContent='Réutiliser sans réimporter';
+      small.textContent=activePath&&item.path===activePath?'Utilisé par la sélection':'Réutiliser sans réimporter';
       button.append(strong,small);
       button.addEventListener('click',function(){reuseMediaAsset(item)});
-      row.appendChild(button);
+      row.append(thumb,button);
       mediaAssetLibrary.appendChild(row);
     });
   }
@@ -2294,7 +2317,7 @@ body.desktop .desktop-badge{display:inline-flex}
     mediaPositionY.value=String(Math.max(0,Math.min(100,Number.isFinite(Number(p.mediaPositionY))?Number(p.mediaPositionY):50)));
     mediaPositionXValue.textContent=mediaPositionX.value+' %';
     mediaPositionYValue.textContent=mediaPositionY.value+' %';
-    renderMediaAssetLibrary(p.mediaAssets||[]);
+    renderMediaAssetLibrary(p.mediaAssets||[],p.mediaAssetPath||'');
     if(!mediaEditable)mediaStatus.textContent='Sélectionne un seul objet pour remplacer son image ou son icône.';
     else if(p.mediaAdjusted)mediaStatus.textContent='Visuel remplacé : '+(p.mediaName||'asset')+' · '+(p.mediaKind||'image')+'.';
     else mediaStatus.textContent='Objet prêt : le remplacement utilisera '+(p.mediaKind==='background'?'une image de fond':p.mediaKind==='svg'?'le SVG sélectionné':p.mediaKind==='svg-image'?'l’image SVG sélectionnée':'la source de l’image')+'.';
