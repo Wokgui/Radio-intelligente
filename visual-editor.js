@@ -2722,7 +2722,41 @@
 
   function syncAnchorPins(cfg,count) {
     outline.classList.toggle('ve-single-selection',count===1);
-    outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
+    outline.querySelectorAll('.ve-box-handle').forEach(function(handle){
+    handle.addEventListener('pointerdown',function(event){
+      if(!active||!selected||selectionElements().length!==1)return;
+      event.preventDefault();event.stopPropagation();
+      const kind=handle.dataset.boxKind,side=handle.dataset.side;
+      const values=boxValues(selected);
+      boxDrag={pointerId:event.pointerId,kind:kind,side:side,startX:event.clientX,startY:event.clientY,startValue:values[kind][side],startSnapshot:snapshot()};
+      handle.setPointerCapture&&handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener('pointermove',function(event){
+      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
+      event.preventDefault();event.stopPropagation();
+      const dx=event.clientX-boxDrag.startX,dy=event.clientY-boxDrag.startY;
+      let delta=0;
+      if(boxDrag.kind==='margin'){
+        if(boxDrag.side==='left')delta=-dx;
+        if(boxDrag.side==='right')delta=dx;
+        if(boxDrag.side==='top')delta=-dy;
+        if(boxDrag.side==='bottom')delta=dy;
+      }else{
+        if(boxDrag.side==='left')delta=dx;
+        if(boxDrag.side==='right')delta=-dx;
+        if(boxDrag.side==='top')delta=dy;
+        if(boxDrag.side==='bottom')delta=-dy;
+      }
+      setBoxModel({kind:boxDrag.kind,side:boxDrag.side,value:Math.max(0,boxDrag.startValue+delta),commit:false});
+    });
+    handle.addEventListener('pointerup',function(event){
+      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
+      event.preventDefault();event.stopPropagation();
+      boxDrag=null;commitHistory();updateOverlay();
+    });
+  });
+
+  outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
       const axis=pin.dataset.anchorAxis;
       const value=pin.dataset.anchorValue;
       const activeValue=axis==='h'?(cfg&&cfg.hAnchor):(cfg&&cfg.vAnchor);
@@ -4051,6 +4085,8 @@
     if (data.type === 'auto-layout') inferAutoLayout(!!payload.apply);
     if (data.type === 'smart-constraints') inferSmartConstraints(!!payload.apply);
     if (data.type === 'advanced-style') setAdvancedStyles(payload.styles || {});
+    if (data.type === 'box-model') setBoxModel(payload);
+    if (data.type === 'box-model-visible') { boxModelVisible=payload.active!==false; updateOverlay(); }
     if (data.type === 'design-consistency') analyzeDesignConsistency();
     if (data.type === 'repair-suggest') makeRepairSuggestions();
     if (data.type === 'repair-preview') previewRepair(payload.id);
@@ -4138,6 +4174,7 @@
     cycleOverlapSelection: cycleOverlapSelection,
     cancelActiveInteraction: cancelActiveInteraction,
     setResponsiveConfig: setResponsiveConfig,
+    setBoxModel: setBoxModel,
     copySelection: copySelection,
     copySelectionStyle: copySelectionStyle,
     pasteSelectionStyle: pasteSelectionStyle,
