@@ -6,6 +6,9 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 
+const smokeMode=process.env.AIS_SMOKE_TEST==='1';
+if(smokeMode)app.disableHardwareAcceleration();
+
 let studioServer;
 let studioBaseUrl = '';
 let targetServer;
@@ -299,6 +302,7 @@ function createWindow(){
     title:'App Interface Studio',
     icon:windowIcon,
     autoHideMenuBar:true,
+    show:!smokeMode,
     webPreferences:{
       preload:path.join(__dirname,'preload.cjs'),
       contextIsolation:true,
@@ -311,6 +315,42 @@ function createWindow(){
   });
 
   mainWindow.loadURL(studioBaseUrl+'/visual-editor.html?desktop=1');
+
+  if(smokeMode){
+    mainWindow.webContents.once('did-finish-load',async ()=>{
+      try{
+        const result=await mainWindow.webContents.executeJavaScript(`
+          (async function(){
+            const api=window.AppInterfaceStudio;
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','appFrame'];
+            const missing=required.filter(function(id){return !document.getElementById(id)});
+            if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
+            if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
+            const info=await api.appInfo();
+            const demo=await api.openDemo();
+            if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
+            const shot=await api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'});
+            const captureOk=!!(shot&&shot.ok&&typeof shot.dataUrl==='string'&&shot.dataUrl.indexOf('data:image/png')===0);
+            return {
+              ok:!!(info&&info.name==='App Interface Studio'&&captureOk),
+              version:info&&info.version,
+              bridge:true,
+              ui:true,
+              demoUrl:demo.source.url,
+              captureOk:captureOk,
+              captureSize:shot&&shot.width+'x'+shot.height
+            };
+          })()
+        `,true);
+        if(!result||!result.ok)throw new Error('Smoke test renderer échoué : '+JSON.stringify(result));
+        console.log('AIS_SMOKE_OK '+JSON.stringify(result));
+        setTimeout(()=>app.exit(0),80);
+      }catch(error){
+        console.error('AIS_SMOKE_FAIL '+String(error&&error.stack||error));
+        setTimeout(()=>app.exit(1),80);
+      }
+    });
+  }
 
   mainWindow.webContents.on('did-frame-finish-load',(_event,isMainFrame,frameProcessId,frameRoutingId)=>{
     if(isMainFrame)return;
