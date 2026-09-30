@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.20.0",
+  "version": "6.21.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec navigation des éléments superposés sous le pointeur, copier-coller de style, poignées latérales, ancrages directs et redimensionnement de groupe",
+  "description": "Éditeur visuel universel Windows avec verrouillage d’axe au glisser, annulation Échap des interactions, navigation des éléments superposés, copier-coller de style et ancrages directs",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
