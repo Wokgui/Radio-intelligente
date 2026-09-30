@@ -2848,6 +2848,95 @@
     };
   }
 
+  function rgbHex(rgb){
+    function part(value){return Math.max(0,Math.min(255,Math.round(Number(value)||0))).toString(16).padStart(2,'0')}
+    return '#'+part(rgb.r)+part(rgb.g)+part(rgb.b);
+  }
+
+  function mixedRgb(a,b,t){
+    return {r:a.r+(b.r-a.r)*t,g:a.g+(b.g-a.g)*t,b:a.b+(b.b-a.b)*t,a:1};
+  }
+
+  function contrastColorProposal(element,level){
+    if(!element||activeInteractiveState!=='normal')return {ok:false,error:'La correction automatique s’applique à l’état normal.'};
+    if(element.children.length!==0||!String(element.textContent||'').trim())return {ok:false,error:'Sélectionne un élément de texte simple.'};
+    const cs=getComputedStyle(element);
+    const fg=parseRgb(cs.color),bgInfo=resolvedBackground(element);
+    if(!fg||!bgInfo||!bgInfo.color)return {ok:false,error:'Couleurs impossibles à analyser.'};
+    if(bgInfo.complex)return {ok:false,error:'Le fond contient une image ou un dégradé : correction automatique désactivée.'};
+    const bg=bgInfo.color;
+    const current=fg.a<1?compositeRgb(fg,bg):fg;
+    const threshold=wcagTextThreshold(parseFloat(cs.fontSize),cs.fontWeight);
+    const normalizedLevel=String(level||'AA').toUpperCase()==='AAA'?'AAA':'AA';
+    const target=normalizedLevel==='AAA'?threshold.aaa:threshold.aa;
+    const currentRatio=contrastRatio(current,bg);
+    if(currentRatio>=target)return {ok:true,level:normalizedLevel,target:target,currentRatio:currentRatio,color:rgbHex(current),alreadyPasses:true};
+
+    const ends=[{r:0,g:0,b:0,a:1},{r:255,g:255,b:255,a:1}];
+    const candidates=[];
+    ends.forEach(function(end){
+      if(contrastRatio(end,bg)<target)return;
+      let lo=0,hi=1;
+      for(let i=0;i<28;i+=1){
+        const mid=(lo+hi)/2;
+        if(contrastRatio(mixedRgb(current,end,mid),bg)>=target)hi=mid;
+        else lo=mid;
+      }
+      const candidate=mixedRgb(current,end,hi);
+      const distance=Math.pow(candidate.r-current.r,2)+Math.pow(candidate.g-current.g,2)+Math.pow(candidate.b-current.b,2);
+      candidates.push({color:rgbHex(candidate),ratio:contrastRatio(candidate,bg),distance:distance,mix:hi});
+    });
+    candidates.sort(function(a,b){return a.distance-b.distance||a.mix-b.mix});
+    if(!candidates.length)return {ok:false,error:'Aucune correction de contraste sûre trouvée.'};
+    return {ok:true,level:normalizedLevel,target:target,currentRatio:currentRatio,color:candidates[0].color,ratio:candidates[0].ratio,alreadyPasses:false};
+  }
+
+  function clearContrastPreview(){
+    if(!contrastPreview)return;
+    const item=contrastPreview;
+    contrastPreview=null;
+    if(item.element&&item.element.style){
+      if(item.value)item.element.style.setProperty('color',item.value,item.priority||'');
+      else item.element.style.removeProperty('color');
+    }
+    updateOverlay();
+    emit('contrast-proposal',{active:false});
+  }
+
+  function previewContrastFix(level){
+    if(!selected)return;
+    clearContrastPreview();
+    const proposal=contrastColorProposal(selected,level);
+    if(!proposal.ok){emit('contrast-proposal',proposal);return}
+    if(proposal.alreadyPasses){emit('contrast-proposal',Object.assign({active:false},proposal));return}
+    contrastPreview={
+      element:selected,
+      value:selected.style.getPropertyValue('color'),
+      priority:selected.style.getPropertyPriority('color'),
+      proposal:proposal
+    };
+    selected.style.setProperty('color',proposal.color,'important');
+    updateOverlay();
+    emit('contrast-proposal',Object.assign({active:true},proposal));
+  }
+
+  function applyContrastFix(){
+    if(!contrastPreview||!contrastPreview.element)return;
+    const item=contrastPreview;
+    const element=item.element,proposal=item.proposal;
+    contrastPreview=null;
+    if(item.value)element.style.setProperty('color',item.value,item.priority||'');
+    else element.style.removeProperty('color');
+    const state=remember(element);
+    if(!state||state.locked)return;
+    state.color=proposal.color;
+    state.colorAdjusted=true;
+    applyState(element,state,false);
+    commitHistory();
+    updateOverlay();
+    emit('contrast-proposal',{active:false,applied:true,color:proposal.color,level:proposal.level,ratio:proposal.ratio,target:proposal.target});
+  }
+
   function mediaAssetSummary(){
     const byPath=new Map();
     touched.forEach(function(state){
