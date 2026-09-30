@@ -73,6 +73,7 @@
   let drag = null;
   let resizeDrag = null;
   let grid = 1;
+  let smartGuidesEnabled = true;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
@@ -307,6 +308,7 @@
     if (!effective || !effective.enabled) {
       state.dx = snapGrid(state.dx + dx);
       state.dy = snapGrid(state.dy + dy);
+      applyState(element, state, false);
       return;
     }
     const cfg = editableResponsive(state, editingBreakpoint);
@@ -757,13 +759,13 @@
 
     if (parent) {
       Array.from(parent.children).forEach(function (el) {
-        if (el !== element) candidates.push(el);
+        if (el !== element && !selectedSet.has(el)) candidates.push(el);
       });
     }
 
     const scope = element.closest('.track,.cover,.music-player,.player,.app-page') || document.body;
     Array.from(scope.querySelectorAll('[id],button,.choice,.stat,.tag,.artist,h1')).forEach(function (el) {
-      if (el !== element && !candidates.includes(el)) candidates.push(el);
+      if (el !== element && !selectedSet.has(el) && !candidates.includes(el)) candidates.push(el);
     });
 
     candidates.slice(0, 120).forEach(function (el) {
@@ -782,14 +784,22 @@
     return { x: x, y: y };
   }
 
-  function smartSnap(element, state) {
+  function smartSnapSelection() {
     hideGuides();
-    if (!element || !state || state.deleted) return;
+    if (!smartGuidesEnabled || !selected) return;
 
-    let rect = element.getBoundingClientRect();
+    const items = selectionElements().filter(function(element){
+      const state = remember(element);
+      return state && !state.deleted && !state.locked;
+    });
+    if (!items.length) return;
+
+    let rect = items.length > 1 ? selectionBounds() : items[0].getBoundingClientRect();
+    if (!rect) return;
+
     const anchorsX = [rect.left, rect.left + rect.width / 2, rect.right];
     const anchorsY = [rect.top, rect.top + rect.height / 2, rect.bottom];
-    const candidates = alignmentCandidates(element);
+    const candidates = alignmentCandidates(items[0]);
     let bestX = null;
     let bestY = null;
 
@@ -813,16 +823,21 @@
       });
     });
 
-    if (bestX) state.dx = Math.round(state.dx + bestX.diff);
-    if (bestY) state.dy = Math.round(state.dy + bestY.diff);
-    if (bestX || bestY) applyState(element, state, false);
+    const dx = bestX ? bestX.diff : 0;
+    const dy = bestY ? bestY.diff : 0;
+    if (dx || dy) {
+      items.forEach(function (element) {
+        const state = remember(element);
+        moveResponsiveState(element, state, dx, dy);
+      });
+    }
 
-    rect = element.getBoundingClientRect();
+    rect = items.length > 1 ? selectionBounds() : items[0].getBoundingClientRect();
     if (bestX) showVerticalGuide(bestX.value, bestX.label);
-    else if (Math.abs((rect.left + rect.width / 2) - innerWidth / 2) < 0.75) showVerticalGuide(innerWidth / 2, 'Centre écran');
+    else if (rect && Math.abs((rect.left + rect.width / 2) - innerWidth / 2) < 0.75) showVerticalGuide(innerWidth / 2, 'Centre écran');
 
     if (bestY) showHorizontalGuide(bestY.value, bestY.label);
-    else if (Math.abs((rect.top + rect.height / 2) - innerHeight / 2) < 0.75) showHorizontalGuide(innerHeight / 2, 'Milieu écran');
+    else if (rect && Math.abs((rect.top + rect.height / 2) - innerHeight / 2) < 0.75) showHorizontalGuide(innerHeight / 2, 'Milieu écran');
   }
 
   function snapshot() {
@@ -1223,6 +1238,48 @@
     if (!el) return;
     select(el, !!additive);
     emitLayers();
+  }
+
+  function navigateSelection(direction) {
+    if (!active || !selected) return;
+    let target = null;
+    const current = selected;
+
+    function usable(element) {
+      if (!element || element === document.body || element === document.documentElement || isEditorNode(element)) return false;
+      const cs = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return cs.display !== 'none' && rect.width >= 1 && rect.height >= 1;
+    }
+
+    if (direction === 'parent') {
+      let parent = current.parentElement;
+      while (parent && !usable(parent)) parent = parent.parentElement;
+      target = parent;
+    } else if (direction === 'child') {
+      target = Array.from(current.children || []).find(usable) || null;
+    } else if (direction === 'prev') {
+      let node = current.previousElementSibling;
+      while (node && !usable(node)) node = node.previousElementSibling;
+      target = node;
+    } else if (direction === 'next') {
+      let node = current.nextElementSibling;
+      while (node && !usable(node)) node = node.nextElementSibling;
+      target = node;
+    }
+
+    if (!target) {
+      emit('selection-navigation',{ok:false,direction:direction});
+      return;
+    }
+
+    select(target, false);
+    emit('selection-navigation',{
+      ok:true,
+      direction:direction,
+      selector:selectorFor(target),
+      title:layerTitle(target)
+    });
   }
 
   function setLayerLock(selector, value) {
@@ -2536,7 +2593,8 @@
       drag.lastDx = totalDx;
       drag.lastDy = totalDy;
     }
-    hideGuides();
+    if (smartGuidesEnabled && !event.altKey) smartSnapSelection();
+    else hideGuides();
     updateOverlay();
   }, true);
 
@@ -2674,6 +2732,15 @@
     }
     if (!selected || !key.startsWith('Arrow')) return false;
 
+    if (event.altKey) {
+      event.preventDefault();
+      if (key === 'ArrowUp') navigateSelection('parent');
+      if (key === 'ArrowDown') navigateSelection('child');
+      if (key === 'ArrowLeft') navigateSelection('prev');
+      if (key === 'ArrowRight') navigateSelection('next');
+      return true;
+    }
+
     event.preventDefault();
     const step = modifier ? 10 : 1;
     if (event.shiftKey) {
@@ -2729,6 +2796,8 @@
     if (data.type === 'safe-area') setSafeArea(payload);
     if (data.type === 'preferences') {
       if (payload.defaultResponsive !== undefined) defaultResponsive = !!payload.defaultResponsive;
+      if (payload.smartGuides !== undefined) smartGuidesEnabled = !!payload.smartGuides;
+      if (!smartGuidesEnabled) hideGuides();
     }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
@@ -2740,6 +2809,7 @@
     if (data.type === 'measure-spacing') measureSpacing();
     if (data.type === 'get-layers') emitLayers();
     if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
+    if (data.type === 'navigate-selection') navigateSelection(String(payload.direction || ''));
     if (data.type === 'layer-lock') setLayerLock(payload.selector, payload.value);
     if (data.type === 'layer-hidden') setLayerHidden(payload.selector, payload.value);
     if (data.type === 'parent-layout') setParentLayout(payload);
@@ -2824,6 +2894,8 @@
     toggleLock: toggleLock,
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
+    navigateSelection: navigateSelection,
+    smartSnapSelection: smartSnapSelection,
     setParentLayout: setParentLayout,
     inferAutoLayout: inferAutoLayout,
     inferSmartConstraints: inferSmartConstraints,
