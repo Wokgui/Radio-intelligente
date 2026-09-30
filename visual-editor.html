@@ -795,6 +795,30 @@ body.desktop .desktop-badge{display:inline-flex}
 
 
 
+    <section class="card" id="boxModelCard">
+      <h2>Box model <small>marges / padding</small></h2>
+      <label class="checkline" style="margin-top:0"><input id="boxModelVisibleToggle" type="checkbox" checked> Afficher les poignées et zones du box model dans l’aperçu</label>
+      <div class="hint" style="margin:6px 0 8px">Orange = marges extérieures. Vert = padding intérieur. Les poignées autour de l’objet se glissent directement.</div>
+      <div class="fields">
+        <div class="field"><label>Marge haut</label><input id="boxMarginTop" data-box-kind="margin" data-box-side="top" type="number" min="0" step="1"></div>
+        <div class="field"><label>Marge droite</label><input id="boxMarginRight" data-box-kind="margin" data-box-side="right" type="number" min="0" step="1"></div>
+        <div class="field"><label>Marge bas</label><input id="boxMarginBottom" data-box-kind="margin" data-box-side="bottom" type="number" min="0" step="1"></div>
+        <div class="field"><label>Marge gauche</label><input id="boxMarginLeft" data-box-kind="margin" data-box-side="left" type="number" min="0" step="1"></div>
+      </div>
+      <div class="toolbar" style="margin:7px 0 9px">
+        <button class="btn wide" id="boxMarginUniformBtn" type="button">Même marge partout</button>
+      </div>
+      <div class="fields">
+        <div class="field"><label>Padding haut</label><input id="boxPaddingTop" data-box-kind="padding" data-box-side="top" type="number" min="0" step="1"></div>
+        <div class="field"><label>Padding droite</label><input id="boxPaddingRight" data-box-kind="padding" data-box-side="right" type="number" min="0" step="1"></div>
+        <div class="field"><label>Padding bas</label><input id="boxPaddingBottom" data-box-kind="padding" data-box-side="bottom" type="number" min="0" step="1"></div>
+        <div class="field"><label>Padding gauche</label><input id="boxPaddingLeft" data-box-kind="padding" data-box-side="left" type="number" min="0" step="1"></div>
+      </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="boxPaddingUniformBtn" type="button">Même padding partout</button>
+      </div>
+    </section>
+
     <section class="card">
       <h2>Inspecteur avancé <small>CSS structurel</small></h2>
       <div class="advanced-grid">
@@ -2135,6 +2159,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     updateResponsiveControls(p);
     updateLayoutControls(p.parentLayout);
+    syncBoxModelControls(p);
     syncAdvancedControls(p);
     if(p.tokens)syncTokenInputs(p.tokens);
     if(p.animation){
@@ -3162,6 +3187,7 @@ body.desktop .desktop-badge{display:inline-flex}
       else setStatus('Aucun autre élément éditable sous le pointeur.',true);
     }
     if(data.type==='interaction-cancelled')setStatus((p.kind==='resize'?'Redimensionnement':'Déplacement')+' annulé.');
+    if(data.type==='box-model-changed')setStatus((p.kind==='margin'?'Marge ':'Padding ')+(p.side||'')+' : '+Math.round(Number(p.value)||0)+' px.');
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
       var marqueeButton=document.getElementById('marqueeModeBtn');
@@ -3452,6 +3478,35 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('applyAutoLayoutBtn').addEventListener('click',function(){post('auto-layout',{apply:true})});
   document.getElementById('suggestConstraintsBtn').addEventListener('click',function(){post('smart-constraints',{apply:false})});
   document.getElementById('applyConstraintsBtn').addEventListener('click',function(){post('smart-constraints',{apply:true})});
+
+  function syncBoxModelControls(state){
+    var selected=!!(state&&state.selected);
+    var box=state&&state.boxModel||{margin:{},padding:{}};
+    document.querySelectorAll('[data-box-kind][data-box-side]').forEach(function(input){
+      var kind=input.dataset.boxKind,side=input.dataset.boxSide;
+      input.disabled=!selected||(Number(state.selectionCount)||0)>1;
+      var value=box[kind]&&box[kind][side];
+      input.value=selected&&Number.isFinite(Number(value))?Math.round(Number(value)*10)/10:'';
+    });
+  }
+
+  document.querySelectorAll('[data-box-kind][data-box-side]').forEach(function(input){
+    input.addEventListener('change',function(){
+      if(!hasSelection)return;
+      post('box-model',{kind:input.dataset.boxKind,side:input.dataset.boxSide,value:Number(input.value)||0});
+    });
+  });
+  document.getElementById('boxModelVisibleToggle').addEventListener('change',function(){
+    post('box-model-visible',{active:this.checked});
+  });
+  document.getElementById('boxMarginUniformBtn').addEventListener('click',function(){
+    var value=Number(document.getElementById('boxMarginTop').value)||0;
+    ['top','right','bottom','left'].forEach(function(side){post('box-model',{kind:'margin',side:side,value:value})});
+  });
+  document.getElementById('boxPaddingUniformBtn').addEventListener('click',function(){
+    var value=Number(document.getElementById('boxPaddingTop').value)||0;
+    ['top','right','bottom','left'].forEach(function(side){post('box-model',{kind:'padding',side:side,value:value})});
+  });
 
   document.getElementById('applyAdvancedBtn').addEventListener('click',function(){
     post('advanced-style',{styles:{
