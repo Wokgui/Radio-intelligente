@@ -487,6 +487,17 @@ body.desktop .desktop-badge{display:inline-flex}
   <div class="multi-grid" id="multiPreviewGrid"></div>
 </div>
 
+<div class="multi-modal" id="versionCompareModal">
+  <div class="multi-head">
+    <div><strong>Comparaison de points de contrôle</strong><br><span id="versionCompareStatus">Choisis deux versions enregistrées.</span></div>
+    <button class="btn" id="versionCompareSwapBtn">Permuter</button>
+    <button class="btn" id="versionCompareCloseBtn">Fermer</button>
+  </div>
+  <div class="version-compare-grid">
+    <figure class="version-compare-pane"><figcaption id="versionCompareLabelA">Version A</figcaption><img id="versionCompareImageA" alt="Version A"></figure>
+    <figure class="version-compare-pane"><figcaption id="versionCompareLabelB">Version B</figcaption><img id="versionCompareImageB" alt="Version B"></figure>
+  </div>
+</div>
 
 <div class="diff-modal" id="patchPreviewModal">
   <div class="modal-head">
@@ -1120,6 +1131,11 @@ body.desktop .desktop-badge{display:inline-flex}
       <h2>Historique visuel <small>points de contrôle</small></h2>
       <div class="field"><label>Nom de la version</label><input id="versionName" type="text" placeholder="Avant refonte du lecteur"></div>
       <button class="btn primary" id="saveNamedVersionBtn" style="width:100%;margin-top:7px">Créer un point de contrôle</button>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Comparer A</label><select id="versionCompareA"><option value="">—</option></select></div>
+        <div class="field"><label>Comparer B</label><select id="versionCompareB"><option value="">—</option></select></div>
+      </div>
+      <button class="btn" id="openVersionCompareBtn" style="width:100%;margin-top:7px">Comparer côte à côte</button>
       <div class="version-list" id="versionList"><div class="hint">Aucun point de contrôle.</div></div>
     </section>
 
@@ -1144,6 +1160,16 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <button class="btn" id="cleanAssetsBtn" style="width:100%;margin-top:7px">Nettoyer les assets inutilisés</button>
       <div class="compare-status" id="gitStatusText">Disponible pour une application ouverte depuis un dossier Git local. Le nettoyage des assets orphelins est aussi automatique avant publication.</div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Audit des assets <small>poids / doublons / dimensions</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="auditAssetsBtn">Analyser les images</button>
+        <button class="btn wide" id="auditCleanAssetsBtn">Nettoyer les orphelins</button>
+      </div>
+      <div class="compare-status" id="assetAuditStatus" style="margin-top:7px">Aucun audit lancé.</div>
+      <div class="version-list" id="assetAuditList"><div class="hint">L’audit est en lecture seule.</div></div>
     </section>
 
     <section class="card">
@@ -1383,6 +1409,16 @@ body.desktop .desktop-badge{display:inline-flex}
   var multiPreviewGrid=document.getElementById('multiPreviewGrid');
   var componentList=document.getElementById('componentList');
   var versionList=document.getElementById('versionList');
+  var versionCompareA=document.getElementById('versionCompareA');
+  var versionCompareB=document.getElementById('versionCompareB');
+  var versionCompareModal=document.getElementById('versionCompareModal');
+  var versionCompareStatus=document.getElementById('versionCompareStatus');
+  var versionCompareImageA=document.getElementById('versionCompareImageA');
+  var versionCompareImageB=document.getElementById('versionCompareImageB');
+  var versionCompareLabelA=document.getElementById('versionCompareLabelA');
+  var versionCompareLabelB=document.getElementById('versionCompareLabelB');
+  var assetAuditStatus=document.getElementById('assetAuditStatus');
+  var assetAuditList=document.getElementById('assetAuditList');
   var prototypeStatus=document.getElementById('prototypeStatus');
   var regressionStatus=document.getElementById('regressionStatus');
   var regressionDiff=document.getElementById('regressionDiff');
@@ -3086,8 +3122,50 @@ body.desktop .desktop-badge{display:inline-flex}
     setStatus('Point de contrôle dupliqué : '+copy.name);
   }
 
+  function syncVersionCompareOptions(){
+    var previousA=versionCompareA.value,previousB=versionCompareB.value;
+    [versionCompareA,versionCompareB].forEach(function(select){
+      select.innerHTML='<option value="">—</option>';
+      namedVersions.forEach(function(item){
+        if(!item.thumbnail)return;
+        var option=document.createElement('option');
+        option.value=item.id;option.textContent=item.name;select.appendChild(option);
+      });
+    });
+    if(namedVersions.some(function(v){return v.id===previousA&&v.thumbnail}))versionCompareA.value=previousA;
+    if(namedVersions.some(function(v){return v.id===previousB&&v.thumbnail}))versionCompareB.value=previousB;
+    var available=namedVersions.filter(function(v){return !!v.thumbnail});
+    if(!versionCompareA.value&&available.length)versionCompareA.value=available[Math.max(0,available.length-2)].id;
+    if(!versionCompareB.value&&available.length)versionCompareB.value=available[available.length-1].id;
+  }
+
+  function namedVersionById(id){
+    return namedVersions.find(function(item){return item.id===id})||null;
+  }
+
+  async function openVersionComparison(){
+    var a=namedVersionById(versionCompareA.value),b=namedVersionById(versionCompareB.value);
+    if(!a||!b||!a.thumbnail||!b.thumbnail){setStatus('Choisis deux points de contrôle avec miniature.',true);return}
+    if(a.id===b.id){setStatus('Choisis deux points de contrôle différents.',true);return}
+    versionCompareImageA.src=a.thumbnail;versionCompareImageB.src=b.thumbnail;
+    versionCompareLabelA.textContent=a.name;versionCompareLabelB.textContent=b.name;
+    versionCompareStatus.textContent='Calcul de la différence visuelle…';
+    versionCompareModal.classList.add('visible');
+    if(desktop&&desktop.compareRegression){
+      var result=await desktop.compareRegression({baseline:a.thumbnail,current:b.thumbnail});
+      if(result&&result.ok)versionCompareStatus.textContent=result.differencePercent+' % de différence · '+result.changedPixels+' pixels modifiés.';
+      else versionCompareStatus.textContent='Comparaison côte à côte prête.';
+    }else versionCompareStatus.textContent='Comparaison côte à côte prête.';
+  }
+
+  function swapVersionComparison(){
+    var value=versionCompareA.value;versionCompareA.value=versionCompareB.value;versionCompareB.value=value;
+    openVersionComparison();
+  }
+
   function renderVersions(){
     versionList.innerHTML='';
+    syncVersionCompareOptions();
     if(!namedVersions.length){versionList.innerHTML='<div class="hint">Aucun point de contrôle.</div>';return}
     namedVersions.slice().reverse().forEach(function(item){
       var row=document.createElement('div');row.className='version-item';
@@ -3190,6 +3268,54 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Comparaison impossible.';return}
     regressionStatus.textContent='Différence visuelle : '+result.differencePercent+' % · '+result.changedPixels+' pixels modifiés.';
     regressionDiff.src=result.diffDataUrl;regressionDiff.classList.add('visible');
+  }
+
+  function formatAssetBytes(value){
+    var bytes=Math.max(0,Number(value)||0);
+    if(bytes<1024)return bytes+' o';
+    if(bytes<1024*1024)return (bytes/1024).toFixed(bytes<10240?1:0)+' Ko';
+    return (bytes/1024/1024).toFixed(2)+' Mo';
+  }
+
+  function assetIssueLabel(issue){
+    return issue==='orphan'?'orphelin':
+      issue==='duplicate'?'doublon':
+      issue==='large-file'?'fichier lourd':
+      issue==='oversized-dimensions'?'dimensions excessives':
+      issue==='large-svg'?'SVG lourd':issue;
+  }
+
+  function renderAssetAudit(result){
+    assetAuditList.innerHTML='';
+    if(!result||!result.ok){assetAuditStatus.textContent=result&&result.error||'Audit impossible.';return}
+    assetAuditStatus.textContent=result.scanned+' image(s) · '+formatAssetBytes(result.totalBytes)+' · '+result.orphanCount+' orpheline(s) · '+result.duplicateCount+' doublon(s) · '+result.largeCount+' lourde(s) · '+result.oversizedCount+' surdimensionnée(s).';
+    var relevant=(result.files||[]).filter(function(item){return item.issues&&item.issues.length});
+    if(!relevant.length){assetAuditList.innerHTML='<div class="hint">Aucun problème détecté dans les images analysées.</div>';return}
+    relevant.slice(0,80).forEach(function(item){
+      var row=document.createElement('div');row.className='version-item';
+      var info=document.createElement('div');
+      var strong=document.createElement('strong');strong.textContent=item.relative||item.name;
+      var small=document.createElement('small');
+      var dimensions=item.width&&item.height?' · '+item.width+' × '+item.height:'';
+      small.textContent=formatAssetBytes(item.size)+dimensions+' · '+item.issues.map(assetIssueLabel).join(' · ');
+      info.append(strong,small);row.appendChild(info);assetAuditList.appendChild(row);
+    });
+  }
+
+  async function runAssetAudit(){
+    if(!desktop||!desktop.auditAssets){assetAuditStatus.textContent='Audit disponible dans l’application Windows.';return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){assetAuditStatus.textContent='Ouvre une source locale avant l’audit.';return}
+    assetAuditStatus.textContent='Analyse des images du projet…';
+    var result=await desktop.auditAssets(currentSource);
+    renderAssetAudit(result);
+  }
+
+  async function cleanAssetsFromAudit(){
+    if(!desktop||!desktop.cleanGeneratedAssets){assetAuditStatus.textContent='Nettoyage indisponible.';return}
+    var result=await desktop.cleanGeneratedAssets(currentSource);
+    if(!result||!result.ok){assetAuditStatus.textContent=result&&result.error||'Nettoyage impossible.';return}
+    setStatus((result.removed||[]).length+' asset(s) orphelin(s) supprimé(s).');
+    await runAssetAudit();
   }
 
   async function checkGit(){
@@ -4016,6 +4142,9 @@ body.desktop .desktop-badge{display:inline-flex}
   });
   document.getElementById('resetStressBtn').addEventListener('click',function(){post('stress-test',{mode:'normal'})});
   document.getElementById('saveNamedVersionBtn').addEventListener('click',saveNamedVersion);
+  document.getElementById('openVersionCompareBtn').addEventListener('click',openVersionComparison);
+  document.getElementById('versionCompareCloseBtn').addEventListener('click',function(){versionCompareModal.classList.remove('visible')});
+  document.getElementById('versionCompareSwapBtn').addEventListener('click',swapVersionComparison);
 
   document.getElementById('batchCaptureBtn').addEventListener('click',captureAllFormats);
   document.getElementById('saveBaselineBtn').addEventListener('click',saveRegressionBaseline);
@@ -4023,6 +4152,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('gitStatusBtn').addEventListener('click',checkGit);
   document.getElementById('gitPublishBtn').addEventListener('click',publishGit);
   document.getElementById('cleanAssetsBtn').addEventListener('click',cleanGeneratedAssetsNow);
+  document.getElementById('auditAssetsBtn').addEventListener('click',runAssetAudit);
+  document.getElementById('auditCleanAssetsBtn').addEventListener('click',cleanAssetsFromAudit);
 
   function sendEnvironment(){
     post('environment-set',{
