@@ -187,6 +187,15 @@ expect(engine,"function isolateSelection(value)","selection isolation");
 expect(engine,"data-ais-isolation-hidden","isolation hidden marker");
 expect(engine,"data.type === 'isolate-selection'","isolation command");
 expect(css,"[data-ais-isolation-hidden=\"1\"]","isolation CSS");
+expect(html,'data-selection-related="siblings"','select siblings control');
+expect(html,'data-selection-related="similar"','select similar control');
+expect(html,'id="showAllLayersBtn"','show all layers button');
+expect(html,'id="unlockAllLayersBtn"','unlock all layers button');
+expect(engine,"function selectRelated(mode)","bulk related selection");
+expect(engine,"function bulkLayerAction(action)","bulk layer action");
+expect(engine,"data.type === 'selection-related'","related selection command");
+expect(engine,"data.type === 'layers-bulk'","bulk layers command");
+expect(html,"Ctrl+Maj+A","similar selection shortcut");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -194,4 +203,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.7 feature checks passed.');
+console.log('App Interface Studio 6.8 feature checks passed.');
