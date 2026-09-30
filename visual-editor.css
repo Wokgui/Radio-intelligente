@@ -153,6 +153,12 @@ body.ve-active .ve-selection{
 .ve-handle-ne{right:-7px;top:-7px;cursor:nesw-resize}
 .ve-handle-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
 .ve-handle-se{right:-7px;bottom:-7px;cursor:nwse-resize}
+.ve-handle-n,.ve-handle-s{width:24px;height:8px;border-radius:999px}
+.ve-handle-w,.ve-handle-e{width:8px;height:24px;border-radius:999px}
+.ve-handle-n{top:-5px;left:75%;transform:translateX(-50%);cursor:ns-resize}
+.ve-handle-s{bottom:-5px;left:75%;transform:translateX(-50%);cursor:ns-resize}
+.ve-handle-w{left:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
+.ve-handle-e{right:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
 .ve-anchor-pin{
   position:absolute;z-index:4;display:none;align-items:center;justify-content:center;
   width:22px;height:22px;padding:0;border:1px solid #7c3aed;border-radius:7px;
