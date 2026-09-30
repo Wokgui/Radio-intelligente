@@ -3006,6 +3006,61 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function projectCapturePayload(project,extra){
+    project=project||{};
+    var payload={
+      source:currentSource,
+      css:project.css||cssOut.value,
+      generatedNodes:project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[],
+      domPatches:projectDomPatches(project),
+      sourceSelectors:projectSourceSelectors(project),
+      prototypeLinks:project.prototypeLinks&&typeof project.prototypeLinks==='object'?project.prototypeLinks:{}
+    };
+    return Object.assign(payload,extra||{});
+  }
+
+  async function compareNamedVersion(item){
+    if(!item||!item.thumbnail){setStatus('Cette version ne possède pas de miniature comparable.',true);return}
+    if(!desktop||!desktop.compareRegression){setStatus('Comparaison disponible dans l’application Windows.',true);return}
+    var current=await captureCurrentForRegression();
+    if(!current||!current.ok){setStatus((current&&current.error)||'Capture actuelle impossible.',true);return}
+    var result=await desktop.compareRegression({baseline:item.thumbnail,current:current.dataUrl});
+    if(!result||!result.ok){setStatus((result&&result.error)||'Comparaison impossible.',true);return}
+    regressionBaseline=item.thumbnail;
+    regressionStatus.textContent='Version « '+item.name+' » : '+result.differencePercent+' % de différence · '+result.changedPixels+' pixels modifiés.';
+    regressionDiff.src=result.diffDataUrl;
+    regressionDiff.classList.add('visible');
+    setStatus('Comparaison terminée avec « '+item.name+' ».');
+  }
+
+  function renameNamedVersion(item){
+    if(!item)return;
+    var next=prompt('Nouveau nom du point de contrôle',item.name||'Version');
+    if(next===null)return;
+    next=String(next).trim();
+    if(!next)return;
+    item.name=next;
+    renderVersions();
+    scheduleRecovery();
+    setStatus('Point de contrôle renommé : '+next);
+  }
+
+  function duplicateNamedVersion(item){
+    if(!item)return;
+    var copy={
+      id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),
+      name:'Copie de '+(item.name||'Version'),
+      createdAt:new Date().toISOString(),
+      project:JSON.parse(JSON.stringify(item.project||{})),
+      thumbnail:item.thumbnail||null
+    };
+    namedVersions.push(copy);
+    if(namedVersions.length>20)namedVersions.shift();
+    renderVersions();
+    scheduleRecovery();
+    setStatus('Point de contrôle dupliqué : '+copy.name);
+  }
+
   function renderVersions(){
     versionList.innerHTML='';
     if(!namedVersions.length){versionList.innerHTML='<div class="hint">Aucun point de contrôle.</div>';return}
@@ -3023,9 +3078,15 @@ body.desktop .desktop-badge{display:inline-flex}
       var actions=document.createElement('div');actions.className='mini-actions';
       var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer';
       restore.addEventListener('click',function(){post('load-project',{project:item.project});setStatus('Version restaurée : '+item.name)});
+      var compare=document.createElement('button');compare.textContent='Δ';compare.title='Comparer à l’état actuel';compare.disabled=!item.thumbnail||!desktop;
+      compare.addEventListener('click',function(){compareNamedVersion(item)});
+      var rename=document.createElement('button');rename.textContent='✎';rename.title='Renommer';
+      rename.addEventListener('click',function(){renameNamedVersion(item)});
+      var duplicate=document.createElement('button');duplicate.textContent='⧉';duplicate.title='Dupliquer';
+      duplicate.addEventListener('click',function(){duplicateNamedVersion(item)});
       var del=document.createElement('button');del.textContent='×';del.title='Supprimer';
-      del.addEventListener('click',function(){namedVersions=namedVersions.filter(function(v){return v.id!==item.id});renderVersions()});
-      actions.append(restore,del);row.append(text,actions);versionList.appendChild(row);
+      del.addEventListener('click',function(){namedVersions=namedVersions.filter(function(v){return v.id!==item.id});renderVersions();scheduleRecovery()});
+      actions.append(restore,compare,rename,duplicate,del);row.append(text,actions);versionList.appendChild(row);
     });
   }
 
@@ -3037,7 +3098,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(desktop&&desktop.captureCurrentSource&&currentSource){
       try{
         var size=currentDeviceSize();
-        var shot=await desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project.css||cssOut.value});
+        var shot=await desktop.captureCurrentSource(projectCapturePayload(project,{width:size.width,height:size.height}));
         if(shot&&shot.ok)thumbnail=shot.dataUrl;
       }catch(_){}
     }
@@ -3068,9 +3129,7 @@ body.desktop .desktop-badge{display:inline-flex}
   async function captureAllFormats(){
     if(!desktop||!desktop.captureBatch||!currentSource){setStatus('Captures automatiques disponibles dans l’application Windows.',true);return}
     var project=await requestProject();
-    var result=await desktop.captureBatch({
-      source:currentSource,
-      css:project&&project.css||cssOut.value,
+    var result=await desktop.captureBatch(projectCapturePayload(project,{
       configs:[
         {name:'telephone-compact',width:360,height:800},
         {name:'grand-telephone',width:412,height:915},
@@ -3078,7 +3137,7 @@ body.desktop .desktop-badge{display:inline-flex}
         {name:'bureau',width:1366,height:768},
         {name:'tv-full-hd',width:1920,height:1080}
       ]
-    });
+    }));
     if(result&&result.ok)setStatus(result.files.length+' captures enregistrées dans '+result.dir);
     else if(result&&!result.canceled)setStatus(result.error||'Capture impossible.',true);
   }
@@ -3087,7 +3146,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!desktop||!desktop.captureCurrentSource||!currentSource)return null;
     var size=currentDeviceSize();
     var project=await requestProject();
-    return desktop.captureCurrentSource({source:currentSource,width:size.width,height:size.height,css:project&&project.css||cssOut.value});
+    return desktop.captureCurrentSource(projectCapturePayload(project,{width:size.width,height:size.height}));
   }
 
   async function saveRegressionBaseline(){
