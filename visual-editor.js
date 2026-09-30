@@ -2493,6 +2493,7 @@
       }
     });
     buildForcedStateStyle();
+    updateOverlay();
     emit('interactive-state',{state:activeInteractiveState});
   }
 
