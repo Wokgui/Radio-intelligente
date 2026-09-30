@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.56.0",
+  "version": "6.57.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec diagnostic responsive jusqu’à la règle CSS active, diff source propriété par propriété, contrôle final, validation préalable 12 configurations et nettoyage sûr des surcharges",
+  "description": "Éditeur visuel universel Windows avec cascade CSS durcie (@layer, :is/:not/:has, feuilles inaccessibles), ciblage exact @media/@layer, scans bornés pour gros projets, diagnostic responsive, diff source par propriété et validation 12 configurations",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
