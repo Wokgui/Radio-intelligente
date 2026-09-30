@@ -269,7 +269,7 @@ expect(engine,"outline.style.left = groupRect.left + 'px'","group outline left")
 expect(engine,"resizeDrag.snapshots","group resize snapshots");
 expect(engine,"event.shiftKey||resizeDrag.preserveRatio","proportional group resize");
 expect(engine,"emit('resize-measure'","resize measurement event");
-expect(html,"les poignées redimensionnent toute la sélection","group resize help");
+expect(html,"poignées des coins et des côtés redimensionnent toute la sélection","group resize help");
 expect(engine,"function equalSpacingSnap(rect)","equal spacing snap analysis");
 expect(engine,"const spacingSnap = equalSpacingSnap(rect)","equal spacing snap integration");
 expect(engine,"showSpacingVisuals(rect,visual)","equal spacing visual feedback");
