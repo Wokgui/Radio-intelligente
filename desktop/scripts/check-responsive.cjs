@@ -270,6 +270,12 @@ expect(engine,"resizeDrag.snapshots","group resize snapshots");
 expect(engine,"event.shiftKey||resizeDrag.preserveRatio","proportional group resize");
 expect(engine,"emit('resize-measure'","resize measurement event");
 expect(html,"les poignées redimensionnent toute la sélection","group resize help");
+expect(engine,"function equalSpacingSnap(rect)","equal spacing snap analysis");
+expect(engine,"const spacingSnap = equalSpacingSnap(rect)","equal spacing snap integration");
+expect(engine,"showSpacingVisuals(rect,visual)","equal spacing visual feedback");
+expect(engine,"emit('equal-spacing'","equal spacing event");
+expect(html,"aux espacements égaux","equal spacing help");
+expect(html,"data.type==='equal-spacing'","equal spacing host status");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -277,4 +283,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.15 feature checks passed.');
+console.log('App Interface Studio 6.16 feature checks passed.');
