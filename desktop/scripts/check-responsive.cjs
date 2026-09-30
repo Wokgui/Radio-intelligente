@@ -313,6 +313,16 @@ expect(html,'data-cycle-selection="-1"','previous under-pointer button');
 expect(html,'data-cycle-selection="1"','next under-pointer button');
 expect(html,"key==='Tab'","under-pointer tab shortcut");
 expect(html,"data.type==='selection-cycle'","under-pointer selection feedback");
+expect(engine,"axisLock: null","drag axis lock state");
+expect(engine,"if(event.shiftKey)","drag axis lock modifier");
+expect(engine,"startSnapshot: snapshot()","interaction start snapshot");
+expect(engine,"function cancelActiveInteraction()","interaction cancellation");
+expect(engine,"data.type === 'interaction-cancel'","interaction cancel command");
+expect(engine,"emit('interaction-cancelled'","interaction cancelled event");
+expect(html,"Maj</kbd> pendant un glisser verrouille l’axe X/Y","axis lock help");
+expect(html,"Échap</kbd> annule un déplacement/redimensionnement en cours","interaction cancel help");
+expect(html,"post('interaction-cancel')","host escape cancel");
+expect(html,"data.type==='interaction-cancelled'","interaction cancel host feedback");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -320,4 +330,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.20 feature checks passed.');
+console.log('App Interface Studio 6.21 feature checks passed.');
