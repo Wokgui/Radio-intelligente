@@ -2183,9 +2183,13 @@ body.desktop .desktop-badge{display:inline-flex}
   async function applyToLocalSource(){
     if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
-    if(!confirm('Créer un patch CSS réversible dans le dossier source et l’ajouter à la page HTML ? Une sauvegarde du HTML sera créée.'))return;
+    var project=await requestProject();
+    var generatedCount=project&&project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes.length:0;
+    var message='Créer un patch CSS réversible dans le dossier source et l’ajouter à la page HTML ? Une sauvegarde du HTML sera créée.';
+    if(generatedCount)message+='\n\nAttention : '+generatedCount+' duplication(s) structurelle(s) sont conservées dans le projet et l’export ChatGPT, mais ce bouton CSS ne les injecte pas encore dans le HTML source.';
+    if(!confirm(message))return;
     var result=await desktop.applyCssToSource({source:currentSource,css:cssOut.value});
-    if(result&&result.ok)setStatus('Patch appliqué : '+result.cssPath+' · sauvegarde : '+result.backupPath);
+    if(result&&result.ok)setStatus('Patch CSS appliqué : '+result.cssPath+' · sauvegarde : '+result.backupPath+(generatedCount?' · '+generatedCount+' duplication(s) restent à reporter structurellement.':''));
     else setStatus((result&&result.error)||'Application au code impossible.',true);
   }
 
@@ -2354,7 +2358,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid et auto-layout, les contraintes intelligentes, les composants et leurs variantes, les éléments dupliqués dans generatedNodes, les design tokens, l’inspecteur avancé, les animations, les liens de prototype, l’accessibilité, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Pour un projet Android, traduis les intentions vers XML/ConstraintLayout ou Jetpack Compose/WindowInsets. Utilise les diffs source préparés lorsqu’ils existent et préfère les modifications structurelles aux coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid et auto-layout, les contraintes intelligentes, les composants et leurs variantes, les éléments dupliqués décrits dans snapshot.generatedNodes, les design tokens, l’inspecteur avancé, les animations, les liens de prototype, l’accessibilité, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Pour un projet Android, traduis les intentions vers XML/ConstraintLayout ou Jetpack Compose/WindowInsets. Utilise les diffs source préparés lorsqu’ils existent et préfère les modifications structurelles aux coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
