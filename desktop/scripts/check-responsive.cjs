@@ -465,6 +465,16 @@ expect(main,"mediaPositionX:Number.isFinite(Number(item&&item.mediaPositionX))",
 expect(main,"element.style.objectPosition=px+","runtime image focal position");
 expect(main,"background-position\",px+\"% \"+py+\"%","runtime background focal position");
 expect(main,"const ext=/^\\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)","media extension preservation");
+expect(main,"function captureStructureScript(payload)","complete project capture structure builder");
+expect(main,"executeJavaScript(structureScript,true)","complete project capture DOM application");
+expect(main,"captureSourceAtSize(source,width,height,payload.css,payload)","batch capture includes DOM patches");
+expect(html,"function projectCapturePayload(project,extra)","complete visual capture payload");
+expect(html,"function compareNamedVersion(item)","checkpoint comparison");
+expect(html,"function renameNamedVersion(item)","checkpoint rename");
+expect(html,"function duplicateNamedVersion(item)","checkpoint duplication");
+expect(html,"compare.textContent='Δ'","checkpoint compare control");
+expect(html,"rename.textContent='✎'","checkpoint rename control");
+expect(html,"duplicate.textContent='⧉'","checkpoint duplicate control");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
@@ -488,4 +498,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.36 feature checks passed.');
+console.log('App Interface Studio 6.37 feature checks passed.');
