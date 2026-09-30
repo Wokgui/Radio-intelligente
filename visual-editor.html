@@ -2478,7 +2478,11 @@ body.desktop .desktop-badge{display:inline-flex}
   function renderAudit(payload){
     payload=payload||{};
     var summary=payload.summary||{};
-    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>';
+    auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>'+
+      '<span class="audit-chip">Contraste testé : '+(summary.contrastTested||0)+'</span>'+
+      '<span class="audit-chip warning">AA : '+(summary.contrastAaFailures||0)+' échec(s)</span>'+
+      '<span class="audit-chip">AAA : '+(summary.contrastAaaFailures||0)+' sous le seuil</span>'+
+      (summary.contrastUncertain?'<span class="audit-chip">'+summary.contrastUncertain+' fond(s) complexe(s)</span>':'');
     auditList.innerHTML='';
     var issues=payload.issues||[];
     if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
