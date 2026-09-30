@@ -822,6 +822,15 @@ body.desktop .desktop-badge{display:inline-flex}
         <label class="color-control">Bordure<input id="colorBorder" type="color" value="#dddddd"></label>
       </div>
       <div class="layout-note" id="selectedContrastStatus" style="margin-top:8px">Contraste : sélectionne un texte pour mesurer AA / AAA.</div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="previewContrastAABtn">Aperçu correction AA</button>
+        <button class="btn wide" id="previewContrastAAABtn">Aperçu correction AAA</button>
+      </div>
+      <div class="toolbar" style="margin-top:6px">
+        <button class="btn primary wide" id="applyContrastFixBtn" disabled>Appliquer la couleur proposée</button>
+        <button class="btn wide" id="cancelContrastFixBtn" disabled>Annuler l’aperçu</button>
+      </div>
+      <div class="compare-status" id="contrastFixStatus">La proposition choisit la couleur la plus proche atteignant le seuil demandé.</div>
       <div class="fields" style="margin-top:8px">
         <div class="field"><label>Plan (z-index)</label><input id="zIndex" type="number" value="0"></div>
         <div class="field"><label>Ajustement rapide</label><div class="toolbar">
@@ -1324,6 +1333,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var colorBg=document.getElementById('colorBg');
   var colorBorder=document.getElementById('colorBorder');
   var selectedContrastStatus=document.getElementById('selectedContrastStatus');
+  var previewContrastAABtn=document.getElementById('previewContrastAABtn');
+  var previewContrastAAABtn=document.getElementById('previewContrastAAABtn');
+  var applyContrastFixBtn=document.getElementById('applyContrastFixBtn');
+  var cancelContrastFixBtn=document.getElementById('cancelContrastFixBtn');
+  var contrastFixStatus=document.getElementById('contrastFixStatus');
   var interactiveStateHint=document.getElementById('interactiveStateHint');
   var interactiveStateOpacity=document.getElementById('interactiveStateOpacity');
   var interactiveStateOpacityValue=document.getElementById('interactiveStateOpacityValue');
@@ -2323,8 +2337,11 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
-  function renderSelectedContrast(contrast){
+  function renderSelectedContrast(contrast,interactiveState){
     contrast=contrast||{};
+    var fixable=!!contrast.available&&!contrast.uncertain&&(interactiveState||'normal')==='normal';
+    previewContrastAABtn.disabled=!fixable;
+    previewContrastAAABtn.disabled=!fixable;
     if(!contrast.available){
       selectedContrastStatus.textContent='Contraste : sélectionne un texte sans sous-éléments pour mesurer AA / AAA.';
       return;
@@ -2335,6 +2352,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     var ratio=Number(contrast.ratio)||0;
     selectedContrastStatus.textContent='Contraste '+ratio.toFixed(2)+':1 · AA '+(contrast.passesAA?'✓':'✗')+' (≥ '+Number(contrast.aaMinimum||4.5).toFixed(1)+':1) · AAA '+(contrast.passesAAA?'✓':'✗')+' (≥ '+Number(contrast.aaaMinimum||7).toFixed(1)+':1) · '+(contrast.largeText?'grand texte':'texte normal')+'.';
+    if((interactiveState||'normal')!=='normal')contrastFixStatus.textContent='Correction automatique disponible sur l’état Normal ; repasse en Normal pour proposer une couleur.';
   }
 
   function updateState(p){
@@ -2347,7 +2365,7 @@ body.desktop .desktop-badge{display:inline-flex}
     metrics.y.textContent=p.selected?p.y:'—';
     metrics.w.textContent=p.selected?p.width:'—';
     metrics.h.textContent=p.selected?p.height:'—';
-    renderSelectedContrast(p.selected?p.contrast:null);
+    renderSelectedContrast(p.selected?p.contrast:null,p.interactiveState);
 
     var responsiveActive=!!(p.selected&&p.responsive&&p.responsive.enabled);
     [sizeW,sizeH,zIndex].forEach(function(el){el.disabled=!p.selected||selectionCount>1});
@@ -3930,6 +3948,30 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='media-error')setStatus(p.message||'Remplacement du visuel impossible.',true);
     if(data.type==='svg-tint-updated')setStatus(p.enabled?'Teinte SVG appliquée ('+(p.mode||'both')+').':'Teinte SVG d’origine restaurée.');
     if(data.type==='svg-tint-error')setStatus(p.message||'Modification SVG impossible.',true);
+    if(data.type==='contrast-proposal'){
+      if(p.error){
+        contrastFixStatus.textContent=p.error;
+        applyContrastFixBtn.disabled=true;
+        cancelContrastFixBtn.disabled=true;
+      }else if(p.applied){
+        contrastFixStatus.textContent='Couleur '+(p.color||'')+' appliquée · '+(p.level||'AA')+' atteint ('+Number(p.ratio||0).toFixed(2)+':1).';
+        applyContrastFixBtn.disabled=true;
+        cancelContrastFixBtn.disabled=true;
+      }else if(p.alreadyPasses){
+        contrastFixStatus.textContent='Le texte respecte déjà '+(p.level||'AA')+' avec '+Number(p.currentRatio||0).toFixed(2)+':1.';
+        applyContrastFixBtn.disabled=true;
+        cancelContrastFixBtn.disabled=true;
+      }else if(p.active){
+        contrastFixStatus.textContent='Aperçu '+(p.level||'AA')+' : '+(p.color||'')+' · '+Number(p.ratio||0).toFixed(2)+':1 (seuil '+Number(p.target||0).toFixed(1)+':1).';
+        applyContrastFixBtn.disabled=false;
+        cancelContrastFixBtn.disabled=false;
+        if(p.color)colorText.value=p.color;
+      }else{
+        contrastFixStatus.textContent='Aperçu annulé.';
+        applyContrastFixBtn.disabled=true;
+        cancelContrastFixBtn.disabled=true;
+      }
+    }
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
       var marqueeButton=document.getElementById('marqueeModeBtn');
