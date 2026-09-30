@@ -138,6 +138,16 @@ expect(engine,"data.type === 'marquee-mode'","marquee engine command");
 expect(engine,"emit('marquee-selection'","marquee selection event");
 expect(engine,"node === marqueeBox","marquee editor-node exclusion");
 expect(html,"Ctrl</kbd> + glisser","marquee shortcut help");
+expect(html,'id="resetCanvasBtn"','canvas recenter button');
+expect(html,"function setRuntimeZoom","runtime canvas zoom");
+expect(html,"function resetCanvasPosition","canvas recenter logic");
+expect(html,"data.type==='canvas-pan'","canvas pan host event");
+expect(html,"data.type==='canvas-zoom'","canvas zoom host event");
+expect(engine,"let spaceHeld = false","space pan state");
+expect(engine,"emit('canvas-pan'","canvas pan engine event");
+expect(engine,"emit('canvas-zoom'","canvas zoom engine event");
+expect(engine,"window.addEventListener('wheel'","canvas wheel listener");
+expect(engine,"ve-canvas-panning","canvas panning cursor state");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -145,4 +155,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.3 feature checks passed.');
+console.log('App Interface Studio 6.4 feature checks passed.');
