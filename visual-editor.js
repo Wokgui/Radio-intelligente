@@ -1636,6 +1636,121 @@
   }
 
 
+  function cssSpecificity(selectorText) {
+    const selector=String(selectorText||'').replace(/:where\([^)]*\)/g,'');
+    const a=(selector.match(/#[\w-]+/g)||[]).length;
+    const b=(selector.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+(?:\([^)]*\))?/g)||[]).length;
+    const cleaned=selector
+      .replace(/#[\w-]+|\.[\w-]+|\[[^\]]+\]|::[\w-]+|:(?!:)[\w-]+(?:\([^)]*\))?/g,' ')
+      .replace(/[>+~,*]/g,' ');
+    const c=(cleaned.match(/(^|\s)[a-zA-Z][\w-]*/g)||[]).length+(selector.match(/::[\w-]+/g)||[]).length;
+    return [a,b,c];
+  }
+
+  function compareSpecificity(a,b) {
+    for(let i=0;i<3;i+=1){if(a[i]!==b[i])return a[i]-b[i]}
+    return 0;
+  }
+
+  function selectorMatches(element,selector) {
+    try{return element.matches(selector)}catch(_){return false}
+  }
+
+  function inspectCssCascade() {
+    if(!selected){emit('css-cascade',{selected:false,rules:[],computed:{}});return}
+    const element=selected;
+    const candidates=[];
+    let order=0;
+    function visitRules(rules,href,context){
+      Array.from(rules||[]).forEach(function(rule){
+        if(rule.type===1&&rule.selectorText){
+          order+=1;
+          String(rule.selectorText).split(',').map(function(x){return x.trim()}).filter(Boolean).forEach(function(selector){
+            if(!selectorMatches(element,selector))return;
+            const declarations=[];
+            for(let i=0;i<rule.style.length;i+=1){
+              const property=rule.style[i];
+              declarations.push({
+                property:property,
+                value:rule.style.getPropertyValue(property).trim(),
+                important:rule.style.getPropertyPriority(property)==='important'
+              });
+            }
+            candidates.push({
+              selector:selector,
+              selectorText:rule.selectorText,
+              href:href||'',
+              context:context||'',
+              specificity:cssSpecificity(selector),
+              order:order,
+              declarations:declarations
+            });
+          });
+          return;
+        }
+        if(rule.cssRules){
+          let active=true,nextContext=context||'';
+          if(rule.type===4&&rule.conditionText){
+            try{active=matchMedia(rule.conditionText).matches}catch(_){active=true}
+            nextContext='@media '+rule.conditionText;
+          }else if(rule.conditionText){
+            nextContext=String(rule.conditionText);
+          }
+          if(active)visitRules(rule.cssRules,href,nextContext);
+        }
+      });
+    }
+    Array.from(document.styleSheets||[]).forEach(function(sheet){
+      try{visitRules(sheet.cssRules,sheet.href||'','')}catch(_){}
+    });
+    if(element.style&&element.style.length){
+      const declarations=[];
+      for(let i=0;i<element.style.length;i+=1){
+        const property=element.style[i];
+        declarations.push({property:property,value:element.style.getPropertyValue(property).trim(),important:element.style.getPropertyPriority(property)==='important'});
+      }
+      candidates.push({selector:'style=""',selectorText:'style=""',href:'inline',context:'attribut style',specificity:[1000,0,0],order:1000000,declarations:declarations,inline:true});
+    }
+
+    const winners={};
+    candidates.forEach(function(rule){
+      rule.declarations.forEach(function(dec){
+        const previous=winners[dec.property];
+        const rank={important:dec.important?1:0,specificity:rule.specificity,order:rule.order};
+        let wins=!previous;
+        if(previous){
+          if(rank.important!==previous.rank.important)wins=rank.important>previous.rank.important;
+          else{
+            const cmp=compareSpecificity(rank.specificity,previous.rank.specificity);
+            wins=cmp>0||(cmp===0&&rank.order>=previous.rank.order);
+          }
+        }
+        if(wins)winners[dec.property]={rule:rule,dec:dec,rank:rank};
+      });
+    });
+    candidates.forEach(function(rule){
+      rule.declarations.forEach(function(dec){
+        const winner=winners[dec.property];
+        dec.winner=!!winner&&winner.rule===rule&&winner.dec===dec;
+      });
+      rule.winningProperties=rule.declarations.filter(function(d){return d.winner}).map(function(d){return d.property});
+    });
+    const cs=getComputedStyle(element),computed={};
+    ['display','position','width','height','min-width','max-width','min-height','max-height','margin','padding','gap','flex','flex-direction','flex-wrap','justify-content','align-items','grid-template-columns','overflow','overflow-x','overflow-y','font-size','line-height','color','background-color','z-index'].forEach(function(prop){
+      computed[prop]=cs.getPropertyValue(prop);
+    });
+    candidates.sort(function(a,b){
+      const aw=a.winningProperties.length?1:0,bw=b.winningProperties.length?1:0;
+      return bw-aw||b.order-a.order;
+    });
+    emit('css-cascade',{
+      selected:true,
+      selector:selectorFor(element),
+      rules:candidates.slice(0,120),
+      computed:computed
+    });
+  }
+
   function parentLayoutPayload(element) {
     const parent = element && element.parentElement;
     if (!parent || parent === document.body || parent === document.documentElement) {
@@ -5014,6 +5129,7 @@
     if (data.type === 'component-variant-save') saveComponentVariant(payload.name,payload.variant);
     if (data.type === 'component-variant-apply') applyComponentVariant(payload.name,payload.variant,!!payload.allInstances);
     if (data.type === 'get-components') emitComponents();
+    if (data.type === 'get-css-cascade') inspectCssCascade();
     if (data.type === 'get-selection-groups') emitSelectionGroups();
     if (data.type === 'selection-group-create') createSelectionGroup(payload.name);
     if (data.type === 'selection-group-select') selectSelectionGroup(payload.name);
