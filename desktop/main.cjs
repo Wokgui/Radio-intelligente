@@ -1263,6 +1263,8 @@ async function smokeTransactionRoundtrip(){
     if(tx.createdAssets.some(file=>fs.existsSync(file)))throw new Error('Asset créé non supprimé au rollback.');
     const rolledTx=JSON.parse(fs.readFileSync(rolled.transactionPath,'utf8'));
     if(rolledTx.rolledBack!==true||!rolledTx.rolledBackAt)throw new Error('Transaction non marquée comme annulée.');
+    const history=listLocalTransactions({source});
+    if(!history.ok||history.transactions.length!==1||history.transactions[0].rolledBack!==true||history.nextRollbackPath)throw new Error('Historique transactionnel incohérent après rollback.');
 
     const renderedRollback=await inspectSmokeFixture(url);
     if(renderedRollback.text!=='Original')throw new Error('Texte non restauré après rollback.');
@@ -1270,7 +1272,7 @@ async function smokeTransactionRoundtrip(){
     if(renderedRollback.iconStroke!=='rgb(34, 34, 34)')throw new Error('SVG non restauré après rollback : '+renderedRollback.iconStroke);
     if(renderedRollback.generatedCss||renderedRollback.generatedJs)throw new Error('Balises générées encore présentes après rollback.');
 
-    return {ok:true,preview:true,apply:true,render:true,rollback:true,asset:true,svg:true};
+    return {ok:true,preview:true,apply:true,render:true,rollback:true,history:true,asset:true,svg:true};
   }finally{
     await stopTargetServer();
     try{fs.rmSync(dir,{recursive:true,force:true})}catch(_){}
