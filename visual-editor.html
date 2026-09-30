@@ -100,12 +100,13 @@ main{
 .safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
 .safe-outline.visible{display:block}
 .persistent-guides{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}
-.persistent-guide-v,.persistent-guide-h{position:absolute;background:#00a7c8;box-shadow:0 0 0 1px #ffffff99}
-.persistent-guide-v{top:0;bottom:0;width:1px}
-.persistent-guide-h{left:0;right:0;height:1px}
+.persistent-guide-v,.persistent-guide-h{position:absolute;pointer-events:auto;touch-action:none}
+.persistent-guide-v{top:0;bottom:0;width:5px;margin-left:-2px;cursor:ew-resize;background:linear-gradient(90deg,transparent 2px,#00a7c8 2px 3px,transparent 3px)}
+.persistent-guide-h{left:0;right:0;height:5px;margin-top:-2px;cursor:ns-resize;background:linear-gradient(180deg,transparent 2px,#00a7c8 2px 3px,transparent 3px)}
 .persistent-guide-v:after,.persistent-guide-h:after{position:absolute;padding:2px 4px;border-radius:5px;background:#007f99;color:#fff;font:800 9px/1 system-ui;white-space:nowrap}
-.persistent-guide-v:after{content:attr(data-label);top:5px;left:3px}
-.persistent-guide-h:after{content:attr(data-label);top:3px;left:5px}
+.persistent-guide-v:after{content:attr(data-label);top:5px;left:4px}
+.persistent-guide-h:after{content:attr(data-label);top:4px;left:5px}
+body.preview-mode .persistent-guides,body.android-mode .persistent-guides{display:none}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
 .android-status,.android-nav{display:none;position:absolute;left:0;right:0;z-index:6;pointer-events:none;color:#fff}
 .device{--android-status:28px;--android-nav:24px;--android-status-color:#6f42c1;--android-nav-color:#000}
@@ -632,6 +633,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="addGuideYBtn">+ Horizontal</button>
         <button class="btn wide" id="clearGuidesBtn">Effacer repères</button>
       </div>
+      <div class="component-list" id="guideList"><div class="hint">Aucun repère personnalisé.</div></div>
       <div class="fields" style="margin-top:7px">
         <div class="field" style="grid-column:1/-1"><label>Sensibilité de l’accrochage</label><select id="guideThresholdPref">
           <option value="3">Précise · 3 px</option>
@@ -1167,8 +1169,10 @@ body.desktop .desktop-badge{display:inline-flex}
   var safeProfile=document.getElementById('safeProfile');
   var safeOutline=document.getElementById('safeOutline');
   var persistentGuides=document.getElementById('persistentGuides');
+  var guideList=document.getElementById('guideList');
   var customGuideX=document.getElementById('customGuideX');
   var customGuideY=document.getElementById('customGuideY');
+  var guideDrag=null;
   var responsiveCard=document.getElementById('responsiveCard');
   var responsiveEnabled=document.getElementById('responsiveEnabled');
   var hAnchor=document.getElementById('hAnchor');
@@ -1349,7 +1353,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.9.0'};
+      project.studio={name:'App Interface Studio',version:'6.10.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1403,20 +1407,56 @@ body.desktop .desktop-badge{display:inline-flex}
     prefs.customGuidesX=normalizedGuideList(prefs.customGuidesX,size.width);
     prefs.customGuidesY=normalizedGuideList(prefs.customGuidesY,size.height);
     persistentGuides.innerHTML='';
-    prefs.customGuidesX.forEach(function(value){
+    guideList.innerHTML='';
+
+    function addListItem(axis,value,index){
+      var row=document.createElement('div');
+      row.className='component-item';
+      var main=document.createElement('button');
+      main.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit';
+      main.innerHTML='<strong></strong><small></small>';
+      main.querySelector('strong').textContent=axis==='x'?'Repère vertical':'Repère horizontal';
+      main.querySelector('small').textContent=Math.round(value)+' px';
+      main.addEventListener('click',function(){
+        if(axis==='x')customGuideX.value=Math.round(value);
+        else customGuideY.value=Math.round(value);
+      });
+      var actions=document.createElement('div');
+      actions.className='mini-actions';
+      var del=document.createElement('button');
+      del.textContent='×';
+      del.title='Supprimer ce repère';
+      del.addEventListener('click',function(){removeCustomGuide(axis,index)});
+      actions.appendChild(del);
+      row.append(main,actions);
+      guideList.appendChild(row);
+    }
+
+    prefs.customGuidesX.forEach(function(value,index){
       var line=document.createElement('div');
       line.className='persistent-guide-v';
       line.style.left=value+'px';
       line.dataset.label=Math.round(value)+' px';
+      line.dataset.axis='x';
+      line.dataset.index=String(index);
+      line.addEventListener('pointerdown',startGuideDrag);
+      line.addEventListener('dblclick',function(){removeCustomGuide('x',index)});
       persistentGuides.appendChild(line);
+      addListItem('x',value,index);
     });
-    prefs.customGuidesY.forEach(function(value){
+    prefs.customGuidesY.forEach(function(value,index){
       var line=document.createElement('div');
       line.className='persistent-guide-h';
       line.style.top=value+'px';
       line.dataset.label=Math.round(value)+' px';
+      line.dataset.axis='y';
+      line.dataset.index=String(index);
+      line.addEventListener('pointerdown',startGuideDrag);
+      line.addEventListener('dblclick',function(){removeCustomGuide('y',index)});
       persistentGuides.appendChild(line);
+      addListItem('y',value,index);
     });
+    if(!guideList.childNodes.length)guideList.innerHTML='<div class="hint">Aucun repère personnalisé.</div>';
   }
 
   function syncCustomGuides(){
@@ -1424,6 +1464,61 @@ body.desktop .desktop-badge{display:inline-flex}
     savePrefs();
     post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
   }
+
+  function removeCustomGuide(axis,index){
+    var key=axis==='x'?'customGuidesX':'customGuidesY';
+    var list=Array.isArray(prefs[key])?prefs[key].slice():[];
+    if(index<0||index>=list.length)return;
+    list.splice(index,1);
+    prefs[key]=list;
+    syncCustomGuides();
+    setStatus('Repère supprimé.');
+  }
+
+  function guideValueFromClient(axis,clientX,clientY){
+    var rect=device.getBoundingClientRect();
+    var size=currentDeviceSize();
+    if(axis==='x'){
+      var scaleX=rect.width/size.width;
+      return Math.max(0,Math.min(size.width,Math.round((clientX-rect.left)/Math.max(.0001,scaleX))));
+    }
+    var scaleY=rect.height/size.height;
+    return Math.max(0,Math.min(size.height,Math.round((clientY-rect.top)/Math.max(.0001,scaleY))));
+  }
+
+  function startGuideDrag(event){
+    if(currentPreviewMode!=='edit')return;
+    event.preventDefault();
+    event.stopPropagation();
+    guideDrag={
+      axis:event.currentTarget.dataset.axis,
+      index:Number(event.currentTarget.dataset.index),
+      line:event.currentTarget
+    };
+    document.body.classList.add('guide-dragging');
+  }
+
+  document.addEventListener('pointermove',function(event){
+    if(!guideDrag)return;
+    event.preventDefault();
+    var value=guideValueFromClient(guideDrag.axis,event.clientX,event.clientY);
+    var key=guideDrag.axis==='x'?'customGuidesX':'customGuidesY';
+    var list=Array.isArray(prefs[key])?prefs[key].slice():[];
+    if(guideDrag.index<0||guideDrag.index>=list.length)return;
+    list[guideDrag.index]=value;
+    prefs[key]=list;
+    if(guideDrag.axis==='x')guideDrag.line.style.left=value+'px';
+    else guideDrag.line.style.top=value+'px';
+    guideDrag.line.dataset.label=value+' px';
+  },true);
+
+  document.addEventListener('pointerup',function(){
+    if(!guideDrag)return;
+    guideDrag=null;
+    document.body.classList.remove('guide-dragging');
+    syncCustomGuides();
+    setStatus('Repère déplacé.');
+  },true);
 
   function addCustomGuide(axis,value){
     var size=currentDeviceSize();
@@ -2491,7 +2586,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.9.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.10.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2536,7 +2631,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.9.0'};
+    project.studio={name:'App Interface Studio',version:'6.10.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2594,7 +2689,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.9.0'};
+    project.studio={name:'App Interface Studio',version:'6.10.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
