@@ -1342,6 +1342,58 @@ async function smokeTransactionRoundtrip(){
 
 if(smokeMode)ipcMain.handle('smoke:transaction-roundtrip',async ()=>smokeTransactionRoundtrip());
 
+async function smokePortableProjectRoundtrip(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-portable-smoke-'));
+  const sourceDir=path.join(root,'original-source');
+  const externalDir=path.join(root,'external');
+  const bundle=path.join(root,'roundtrip.ais-portable');
+  fs.mkdirSync(sourceDir,{recursive:true});
+  fs.mkdirSync(externalDir,{recursive:true});
+  const htmlPath=path.join(sourceDir,'index.html');
+  const assetPath=path.join(externalDir,'icon.svg');
+  const capture='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z2V8AAAAASUVORK5CYII=';
+  fs.writeFileSync(htmlPath,'<!doctype html><html><body><div id="portable">Portable</div></body></html>','utf8');
+  fs.writeFileSync(path.join(sourceDir,'app.js'),'document.body.dataset.portable="yes";','utf8');
+  fs.writeFileSync(assetPath,'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><path d="M0 0h4v4H0z"/></svg>','utf8');
+  const project={
+    format:'app-layout-project',
+    version:6,
+    source:{type:'folder',path:sourceDir,root:sourceDir,entry:'index.html',label:'Portable fixture',url:'http://127.0.0.1:1/index.html'},
+    snapshot:{items:[{selector:'#portable',mediaAdjusted:true,mediaAssetPath:assetPath,mediaName:'icon.svg'}],generatedNodes:[],selectedSelector:'#portable',selectedSelectors:['#portable']},
+    namedVersions:[{id:'portable-v1',name:'Capture portable',createdAt:new Date().toISOString(),project:{snapshot:{items:[]}},thumbnail:capture}],
+    hostPreferences:{fontScale:117,density:'compact',autoRecovery:true},
+    regressionBaseline:capture,
+    referenceCapture:capture,
+    studio:{name:'App Interface Studio',version:app.getVersion()}
+  };
+  try{
+    const written=writePortableBundle(project,bundle);
+    if(!written.ok)throw new Error(written.error||'Écriture portable échouée.');
+    if(written.assetCount!==1)throw new Error('Nombre d’assets portables incorrect : '+written.assetCount);
+    if(written.sourceFiles<2)throw new Error('Copie de source portable incomplète.');
+    if(!fs.existsSync(path.join(bundle,'project.json')))throw new Error('Manifest portable absent.');
+    const opened=readPortableBundle(bundle);
+    if(!opened.ok)throw new Error(opened.error||'Lecture portable échouée.');
+    const loaded=opened.project||{};
+    if(!loaded.source||!fs.existsSync(loaded.source.path))throw new Error('Source portable non relocalisée.');
+    const loadedAsset=loaded.snapshot&&loaded.snapshot.items&&loaded.snapshot.items[0]&&loaded.snapshot.items[0].mediaAssetPath;
+    if(!loadedAsset||!fs.existsSync(loadedAsset)||path.dirname(loadedAsset)!==path.join(bundle,'assets'))throw new Error('Asset portable non relocalisé.');
+    if(!loaded.namedVersions||loaded.namedVersions[0].thumbnail!==capture)throw new Error('Capture de version portable perdue.');
+    if(!loaded.hostPreferences||loaded.hostPreferences.fontScale!==117||loaded.hostPreferences.density!=='compact')throw new Error('Préférences portables perdues.');
+    if(loaded.regressionBaseline!==capture||loaded.referenceCapture!==capture)throw new Error('Captures de référence portables perdues.');
+    const sourceIndex=path.join(bundle,'source','index.html');
+    const sourceScript=path.join(bundle,'source','app.js');
+    if(!fs.existsSync(sourceIndex)||!fs.existsSync(sourceScript))throw new Error('Fichiers source portables absents.');
+    const serialized=fs.readFileSync(path.join(bundle,'project.json'),'utf8');
+    if(serialized.includes(assetPath)||serialized.includes(sourceDir))throw new Error('Le manifest portable contient encore un chemin absolu de la machine source.');
+    return {ok:true,assetCount:written.assetCount,sourceFiles:written.sourceFiles,relocatedAsset:true,relocatedSource:true,captures:true,preferences:true};
+  }finally{
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+
+if(smokeMode)ipcMain.handle('smoke:portable-roundtrip',async ()=>smokePortableProjectRoundtrip());
+
 function generatedAssetReferences(local){
   const dir=path.dirname(local.html);
   const files=[
