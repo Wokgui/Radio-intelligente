@@ -310,3 +310,12 @@ body.ve-active .ve-spacing-label{
   visibility:hidden!important;
   pointer-events:none!important;
 }
+[data-ais-inline-editing="1"]{
+  outline:2px solid #00a7c8!important;
+  outline-offset:2px!important;
+  caret-color:#00a7c8!important;
+  cursor:text!important;
+  user-select:text!important
+}
+body.ve-inline-text-editing{cursor:text!important}
+body.ve-inline-text-editing [data-ais-inline-editing="1"] *{pointer-events:auto!important}
