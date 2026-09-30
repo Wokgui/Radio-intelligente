@@ -196,6 +196,20 @@ expect(engine,"function bulkLayerAction(action)","bulk layer action");
 expect(engine,"data.type === 'selection-related'","related selection command");
 expect(engine,"data.type === 'layers-bulk'","bulk layers command");
 expect(html,"Ctrl+Maj+A","similar selection shortcut");
+expect(html,'id="persistentGuides"','persistent custom guides overlay');
+expect(html,'id="customGuideX"','custom vertical guide input');
+expect(html,'id="customGuideY"','custom horizontal guide input');
+expect(html,'id="addGuideXBtn"','add vertical guide button');
+expect(html,'id="addGuideYBtn"','add horizontal guide button');
+expect(html,"function renderPersistentGuides","persistent guide rendering");
+expect(html,"rulerX.addEventListener('click'","ruler vertical-guide click");
+expect(html,"rulerY.addEventListener('click'","ruler horizontal-guide click");
+expect(engine,"let customGuides = {x:[],y:[]}","custom guide engine state");
+expect(engine,"data.type === 'custom-guides'","custom guide engine command");
+expect(engine,"Repère vertical","custom vertical snapping");
+expect(engine,"Repère horizontal","custom horizontal snapping");
+expect(html,"--frame-size:10px","non-consuming phone frame");
+expect(html,"position:relative;border:0;border-radius:34px","exact logical viewport frame");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -203,4 +217,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.8 feature checks passed.');
+console.log('App Interface Studio 6.9 feature checks passed.');
