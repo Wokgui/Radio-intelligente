@@ -1616,7 +1616,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.49.0'};
+      project.studio={name:'App Interface Studio',version:'6.50.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -3567,7 +3567,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.49.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.50.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3620,7 +3620,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.49.0'};
+    project.studio={name:'App Interface Studio',version:'6.50.0'};
     return project;
   }
 
@@ -3717,7 +3717,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.49.0'};
+    project.studio={name:'App Interface Studio',version:'6.50.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
