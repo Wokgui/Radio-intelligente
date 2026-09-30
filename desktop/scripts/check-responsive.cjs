@@ -349,7 +349,7 @@ expect(html,"function renderColumnGrid()","column grid rendering");
 expect(html,"function applyColumnGridPreset()","column grid automatic preset");
 expect(html,"post('layout-guides'","column grid snapping feed");
 expect(html,"Afficher / masquer la grille de colonnes","column grid command palette action");
-expect(main,"function generatedStructureScript(nodes,patches)","generated structure patch builder");
+expect(main,"function generatedStructureScript(nodes,patches,locators)","generated structure patch builder");
 expect(main,"app-interface-studio.generated.js","generated structure patch filename");
 expect(main,'data-app-interface-studio="generated-structure"',"generated structure marker");
 expect(main,"function removeGeneratedStructureTag(html)","generated structure cleanup");
