@@ -2785,6 +2785,7 @@
       mediaAdjusted: !!state.mediaAdjusted,
       mediaKind: state.mediaKind || mediaKindForElement(selected),
       mediaName: state.mediaName || '',
+      mediaAssetPath: state.mediaAssetPath || '',
       mediaFit: state.mediaFit || 'contain',
       mediaPositionX: mediaPercent(state.mediaPositionX,50),
       mediaPositionY: mediaPercent(state.mediaPositionY,50),
