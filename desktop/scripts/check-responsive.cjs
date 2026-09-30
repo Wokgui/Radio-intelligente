@@ -148,6 +148,22 @@ expect(engine,"emit('canvas-pan'","canvas pan engine event");
 expect(engine,"emit('canvas-zoom'","canvas zoom engine event");
 expect(engine,"window.addEventListener('wheel'","canvas wheel listener");
 expect(engine,"ve-canvas-panning","canvas panning cursor state");
+expect(html,'id="duplicateSelectionBtn"','duplicate selection button');
+expect(html,'id="copySelectionBtn"','copy selection button');
+expect(html,'id="pasteSelectionBtn"','paste selection button');
+expect(html,'data-selection-z="front"','bring-to-front control');
+expect(html,'data-selection-z="back"','send-to-back control');
+expect(engine,"function duplicateSelection()","persistent selection duplication");
+expect(engine,"function copySelection()","selection clipboard copy");
+expect(engine,"function pasteSelection()","selection clipboard paste");
+expect(engine,"function generatedNodesSnapshot()","generated node persistence");
+expect(engine,"generatedNodes: generatedNodesSnapshot()","generated nodes in snapshot");
+expect(engine,"function restoreGeneratedNodes(list)","generated node restoration");
+expect(engine,"function setSelectionZ(mode)","selection z-order control");
+expect(engine,"data.type === 'selection-duplicate'","duplicate engine command");
+expect(engine,"data.type === 'selection-z'","z-order engine command");
+expect(html,"duplication(s) structurelle(s)","direct CSS structural warning");
+expect(html,"snapshot.generatedNodes","generated nodes export guidance");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -155,4 +171,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.4 feature checks passed.');
+console.log('App Interface Studio 6.5 feature checks passed.');
