@@ -3042,8 +3042,33 @@ body.desktop .desktop-badge{display:inline-flex}
       strong.textContent=(item.path===result.nextRollbackPath?'↶ Prochain rollback · ':'')+date;
       var small=document.createElement('small');
       small.textContent=(item.rolledBack?'Annulé':'Actif')+' · '+transactionPartsText(item)+(item.rolledBackAt?' · annulé '+new Date(item.rolledBackAt).toLocaleString():'');
-      info.append(strong,small);row.appendChild(info);transactionHistoryList.appendChild(row);
+      info.append(strong,small);
+      if(!item.rolledBack){
+        var actions=document.createElement('div');actions.className='mini-actions';
+        var through=document.createElement('button');
+        var rollbackCount=active.findIndex(function(candidate){return candidate.path===item.path})+1;
+        through.textContent=rollbackCount>1?'↶…':'↶';
+        through.title=rollbackCount>1?'Annuler ce patch et les '+(rollbackCount-1)+' patch(es) actif(s) plus récent(s)':'Annuler ce patch';
+        through.addEventListener('click',function(){rollbackThroughHistory(item,rollbackCount)});
+        actions.appendChild(through);row.append(info,actions);
+      }else row.appendChild(info);
+      transactionHistoryList.appendChild(row);
     });
+  }
+
+  async function rollbackThroughHistory(item,count){
+    if(!item||!item.path||!desktop||!desktop.rollbackThroughTransaction)return;
+    var total=Math.max(1,Number(count)||1);
+    var message=total===1
+      ?'Annuler ce patch local ?'
+      :'Annuler ce patch et les '+(total-1)+' patch(es) actif(s) plus récent(s), soit '+total+' rollback(s) successifs ?';
+    if(!confirm(message))return;
+    var result=await desktop.rollbackThroughTransaction({source:currentSource,transactionPath:item.path});
+    if(!result||!result.ok){setStatus((result&&result.error)||'Rollback jusqu’à cette transaction impossible.',true);await refreshLocalTransactions();return}
+    setStatus(result.count+' patch(es) annulé(s) jusqu’à la transaction choisie.');
+    await refreshLocalTransactions();
+    try{frame.contentWindow.location.reload()}catch(_){}
+    multiFrames.forEach(function(rec){try{rec.iframe.contentWindow.location.reload()}catch(_){}});
   }
 
   async function refreshLocalTransactions(){
