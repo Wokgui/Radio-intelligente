@@ -97,6 +97,16 @@ main{
 .device.notch-hole:before{display:block;top:8px;left:50%;width:10px;height:10px;transform:translateX(-50%);border-radius:50%}
 .device.notch-island:before{display:block;top:7px;left:50%;width:94px;height:28px;transform:translateX(-50%);border-radius:999px}
 .device.wide:before{display:none}
+.layout-grid-overlay{
+  display:none;position:absolute;inset:0;z-index:3;pointer-events:none;
+  --grid-step:8px;
+  background-image:
+    linear-gradient(to right,rgba(111,73,245,.14) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(111,73,245,.14) 1px,transparent 1px);
+  background-size:var(--grid-step) var(--grid-step)
+}
+.layout-grid-overlay.visible{display:block}
+body.preview-mode .layout-grid-overlay,body.android-mode .layout-grid-overlay{display:none!important}
 .safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
 .safe-outline.visible{display:block}
 .persistent-guides{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}
@@ -579,6 +589,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="android-status" id="androidStatus"><span id="androidClock">12:00</span><span class="icons">● ◒ ▰</span></div>
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
         <div class="android-nav" id="androidNav"></div>
+        <div class="layout-grid-overlay" id="layoutGridOverlay"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
         <div class="persistent-guides" id="persistentGuides"></div>
         <img class="reference-overlay" id="referenceOverlay" alt="Capture de référence">
@@ -624,6 +635,7 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
       </div>
       <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre, parent, zone sûre et objets proches</label>
+      <label class="checkline"><input id="gridOverlayToggle" type="checkbox"> Afficher la grille d’accrochage dans l’écran</label>
       <div class="fields" style="margin-top:7px">
         <div class="field"><label>Repère X</label><input id="customGuideX" type="number" min="0" step="1" placeholder="206"></div>
         <div class="field"><label>Repère Y</label><input id="customGuideY" type="number" min="0" step="1" placeholder="450"></div>
@@ -1176,6 +1188,8 @@ body.desktop .desktop-badge{display:inline-flex}
   var keepRatio=document.getElementById('keepRatio');
   var safeProfile=document.getElementById('safeProfile');
   var safeOutline=document.getElementById('safeOutline');
+  var layoutGridOverlay=document.getElementById('layoutGridOverlay');
+  var gridOverlayToggle=document.getElementById('gridOverlayToggle');
   var persistentGuides=document.getElementById('persistentGuides');
   var guideList=document.getElementById('guideList');
   var customGuideX=document.getElementById('customGuideX');
@@ -1306,7 +1320,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   var PREF_KEY='app-interface-studio.preferences.v1';
   var RECOVERY_KEY='app-interface-studio.recovery.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5,customGuidesX:[],customGuidesY:[],nudgeStep:1};
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5,customGuidesX:[],customGuidesY:[],nudgeStep:1,gridStep:1,showGridOverlay:false};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1331,6 +1345,9 @@ body.desktop .desktop-badge{display:inline-flex}
     smartGuidesPref.checked=prefs.smartGuides!==false;
     guideThresholdPref.value=String(Number(prefs.guideThreshold)||5);
     step.value=String(Number(prefs.nudgeStep)||1);
+    if(Array.from(grid.options).some(function(o){return Number(o.value)===Number(prefs.gridStep)}))grid.value=String(Number(prefs.gridStep)||1);
+    gridOverlayToggle.checked=!!prefs.showGridOverlay;
+    renderGridOverlay();
     renderPersistentGuides();
     post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5,nudgeStep:Number(prefs.nudgeStep)||1});
     post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
@@ -1363,7 +1380,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.22.0'};
+      project.studio={name:'App Interface Studio',version:'6.23.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1405,6 +1422,13 @@ body.desktop .desktop-badge{display:inline-flex}
     try{localStorage.removeItem(RECOVERY_KEY)}catch(_){}
     refreshRecoveryStatus();
     setStatus('État de récupération effacé.');
+  }
+
+  function renderGridOverlay(){
+    if(!layoutGridOverlay)return;
+    var stepValue=Math.max(1,Number(grid.value)||1);
+    layoutGridOverlay.style.setProperty('--grid-step',stepValue+'px');
+    layoutGridOverlay.classList.toggle('visible',!!prefs.showGridOverlay&&stepValue>1&&currentPreviewMode==='edit');
   }
 
   function normalizedGuideList(values,limit){
@@ -1877,6 +1901,7 @@ body.desktop .desktop-badge{display:inline-flex}
       device.style.setProperty('--android-nav',a.bottom+'px');
     }
     applySafeArea();
+    renderGridOverlay();
     renderPersistentGuides();
   }
 
@@ -2650,7 +2675,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.22.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.23.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2700,7 +2725,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.22.0'};
+    project.studio={name:'App Interface Studio',version:'6.23.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2758,7 +2783,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.22.0'};
+    project.studio={name:'App Interface Studio',version:'6.23.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2853,6 +2878,7 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Zoom avant',hint:'+ / Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
     {label:'Zoom arrière',hint:'Ctrl+molette ↓',run:function(){setRuntimeZoom(currentZoomScale()-.1)}},
     {label:'Recentrer le canevas',hint:'',run:resetCanvasPosition},
+    {label:'Afficher / masquer la grille d’accrochage',hint:'',run:function(){prefs.showGridOverlay=!prefs.showGridOverlay;gridOverlayToggle.checked=prefs.showGridOverlay;savePrefs();renderGridOverlay()}},
     {label:'Mesurer les espacements autour de la sélection',hint:'Alt+M',run:function(){post('measure-spacing')}},
     {label:'Ajouter un repère vertical au centre de la sélection',hint:'Alt+Maj+V',run:function(){addGuideAtSelection('x')}},
     {label:'Ajouter un repère horizontal au centre de la sélection',hint:'Alt+Maj+H',run:function(){addGuideAtSelection('y')}},
@@ -3111,7 +3137,17 @@ body.desktop .desktop-badge{display:inline-flex}
   screenCustomH.addEventListener('input',function(){customDeviceHeight.value=screenCustomH.value;setDevice()});
   customDeviceWidth.addEventListener('input',function(){screenCustomW.value=customDeviceWidth.value;if(selectedDeviceKind==='custom')setDevice()});
   customDeviceHeight.addEventListener('input',function(){screenCustomH.value=customDeviceHeight.value;if(selectedDeviceKind==='custom')setDevice()});
-  grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
+  grid.addEventListener('change',function(){
+    prefs.gridStep=Number(grid.value)||1;
+    savePrefs();
+    renderGridOverlay();
+    post('grid',{grid:Number(grid.value)});
+  });
+  gridOverlayToggle.addEventListener('change',function(){
+    prefs.showGridOverlay=gridOverlayToggle.checked;
+    savePrefs();
+    renderGridOverlay();
+  });
   step.addEventListener('change',function(){
     prefs.nudgeStep=Number(step.value)||1;
     savePrefs();
