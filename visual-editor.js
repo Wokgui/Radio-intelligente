@@ -162,6 +162,7 @@
   let repairSuggestions = [];
   let repairPreviewSnapshot = null;
   let stressBackup = null;
+  let contrastPreview = null;
   let responsiveResizeTimer = null;
   let spacingVisualTimer = null;
 
@@ -3212,6 +3213,7 @@
   }
 
   function select(element, additive) {
+    if(contrastPreview&&contrastPreview.element!==element)clearContrastPreview();
     if (!element || isEditorNode(element)) return;
     if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
       element = element.closest('svg');
