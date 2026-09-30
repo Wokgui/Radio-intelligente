@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.55.0",
+  "version": "6.56.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec contrôle final consolidé, tests composants/variantes, variables CSS, réparations structurelles groupées, validation préalable des écritures source et nettoyage sûr des surcharges",
+  "description": "Éditeur visuel universel Windows avec diagnostic responsive jusqu’à la règle CSS active, diff source propriété par propriété, contrôle final, validation préalable 12 configurations et nettoyage sûr des surcharges",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
