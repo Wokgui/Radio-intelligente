@@ -701,7 +701,7 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     '  else start();',
     '})();',
     ''
-  ].join('\\n');
+  ].join('\n');
 }
 
 function ensureGeneratedTag(html,tag,marker){
