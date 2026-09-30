@@ -213,7 +213,7 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform','padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','top','right','bottom','left','object-fit','background-image','background-size','background-position','background-repeat'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform','padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','top','right','bottom','left','object-fit','object-position','background-image','background-size','background-position','background-repeat'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
@@ -281,6 +281,8 @@
       mediaAssetPath: '',
       mediaName: '',
       mediaFit: 'contain',
+      mediaPositionX: 50,
+      mediaPositionY: 50,
       animationAdjusted: false,
       animation: {
         property: 'all',
@@ -740,19 +742,24 @@
     if(state.mediaAdjusted&&state.mediaSource){
       const kind=state.mediaKind||mediaKindForElement(element);
       const fit=state.mediaFit||'contain';
+      const px=Math.max(0,Math.min(100,Number(state.mediaPositionX)||50));
+      const py=Math.max(0,Math.min(100,Number(state.mediaPositionY)||50));
+      const ax=px<34?'xMin':px>66?'xMax':'xMid';
+      const ay=py<34?'YMin':py>66?'YMax':'YMid';
       if(kind==='img'){
-        element.setAttribute('src',state.mediaSource);setInline(element,'object-fit',fit);
+        element.setAttribute('src',state.mediaSource);setInline(element,'object-fit',fit);setInline(element,'object-position',px+'% '+py+'%');
       }else if(kind==='svg-image'){
         element.setAttribute('href',state.mediaSource);element.setAttributeNS('http://www.w3.org/1999/xlink','href',state.mediaSource);
+        element.setAttribute('preserveAspectRatio',fit==='fill'?'none':ax+ay+(fit==='cover'?' slice':' meet'));
       }else if(kind==='svg'){
         while(element.firstChild)element.removeChild(element.firstChild);
         const image=document.createElementNS('http://www.w3.org/2000/svg','image');
         image.setAttribute('href',state.mediaSource);image.setAttribute('x','0');image.setAttribute('y','0');image.setAttribute('width','100%');image.setAttribute('height','100%');
-        image.setAttribute('preserveAspectRatio',fit==='fill'?'none':fit==='cover'?'xMidYMid slice':'xMidYMid meet');element.appendChild(image);
+        image.setAttribute('preserveAspectRatio',fit==='fill'?'none':ax+ay+(fit==='cover'?' slice':' meet'));element.appendChild(image);
       }else{
         setInline(element,'background-image','url("'+String(state.mediaSource).replace(/"/g,'%22')+'")');
         setInline(element,'background-size',fit==='fill'?'100% 100%':fit==='none'?'auto':fit);
-        setInline(element,'background-position','center');setInline(element,'background-repeat','no-repeat');
+        setInline(element,'background-position',px+'% '+py+'%');setInline(element,'background-repeat','no-repeat');
       }
     }
 
@@ -785,9 +792,9 @@
       if(state.tokenStyles&&state.tokenStyles[prop])setInline(element,prop,state.tokenStyles[prop]);
       else if(!((prop==='min-width'||prop==='min-height'||prop==='max-width')&&state.resized))restoreOriginalProp(state.selector,prop);
     });
-    const advancedProps=['padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','opacity','transform','position','top','right','bottom','left','object-fit'];
+    const advancedProps=['padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','opacity','transform','position','top','right','bottom','left','object-fit','object-position'];
     advancedProps.forEach(function(prop){
-      if(prop==='object-fit'&&state.mediaAdjusted)return;
+      if((prop==='object-fit'||prop==='object-position')&&state.mediaAdjusted)return;
       if(state.advancedAdjusted&&state.advancedStyles&&Object.prototype.hasOwnProperty.call(state.advancedStyles,prop))setInline(element,prop,state.advancedStyles[prop]);
       else if(!(prop==='position'&&state.zAdjusted))restoreOriginalProp(state.selector,prop);
     });
@@ -1317,6 +1324,8 @@
         mediaAssetPath: state.mediaAssetPath || '',
         mediaName: state.mediaName || '',
         mediaFit: state.mediaFit || 'contain',
+        mediaPositionX: Math.max(0,Math.min(100,Number(state.mediaPositionX)||50)),
+        mediaPositionY: Math.max(0,Math.min(100,Number(state.mediaPositionY)||50)),
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -1414,6 +1423,8 @@
         mediaAssetPath: saved.mediaAssetPath || '',
         mediaName: saved.mediaName || '',
         mediaFit: saved.mediaFit || 'contain',
+        mediaPositionX: Math.max(0,Math.min(100,Number(saved.mediaPositionX)||50)),
+        mediaPositionY: Math.max(0,Math.min(100,Number(saved.mediaPositionY)||50)),
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -2714,6 +2725,16 @@
     return path;
   }
 
+  function mediaAssetSummary(){
+    const byPath=new Map();
+    touched.forEach(function(state){
+      if(!state||!state.mediaAdjusted||!state.mediaAssetPath)return;
+      const key=String(state.mediaAssetPath);
+      if(!byPath.has(key))byPath.set(key,{path:key,name:state.mediaName||'asset'});
+    });
+    return Array.from(byPath.values()).sort(function(a,b){return String(a.name).localeCompare(String(b.name))});
+  }
+
   function currentPayload() {
     if (!selected || !document.documentElement.contains(selected)) {
       return { active: active, selected: false, css: cssText(), grid: grid };
@@ -2765,6 +2786,9 @@
       mediaKind: state.mediaKind || mediaKindForElement(selected),
       mediaName: state.mediaName || '',
       mediaFit: state.mediaFit || 'contain',
+      mediaPositionX: Math.max(0,Math.min(100,Number(state.mediaPositionX)||50)),
+      mediaPositionY: Math.max(0,Math.min(100,Number(state.mediaPositionY)||50)),
+      mediaAssets: mediaAssetSummary(),
       boxModel: (function(){
         var cs=getComputedStyle(selected);
         return {
@@ -3372,6 +3396,8 @@
     state.mediaAssetPath=String(payload&&payload.path||'');
     state.mediaName=String(payload&&payload.name||'image');
     state.mediaFit=['contain','cover','fill','none'].indexOf(String(payload&&payload.fit||''))>=0?String(payload.fit):state.mediaFit||'contain';
+    state.mediaPositionX=Math.max(0,Math.min(100,Number(payload&&payload.positionX)||50));
+    state.mediaPositionY=Math.max(0,Math.min(100,Number(payload&&payload.positionY)||50));
     applyState(selected,state,false);
     updateOverlay();
     commitHistory();
@@ -3390,6 +3416,18 @@
     emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:fit});
   }
 
+  function setMediaPosition(payload){
+    if(!active||!selected)return;
+    const state=remember(selected);
+    if(!state||!state.mediaAdjusted)return;
+    if(payload&&payload.x!==undefined)state.mediaPositionX=Math.max(0,Math.min(100,Number(payload.x)||0));
+    if(payload&&payload.y!==undefined)state.mediaPositionY=Math.max(0,Math.min(100,Number(payload.y)||0));
+    applyState(selected,state,false);
+    updateOverlay();
+    commitHistory();
+    emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:state.mediaFit,positionX:state.mediaPositionX,positionY:state.mediaPositionY});
+  }
+
   function resetMediaAsset(){
     if(!active||!selected)return;
     const state=remember(selected);
@@ -3401,6 +3439,8 @@
     state.mediaAssetPath='';
     state.mediaName='';
     state.mediaFit='contain';
+    state.mediaPositionX=50;
+    state.mediaPositionY=50;
     applyState(selected,state,false);
     updateOverlay();
     commitHistory();
@@ -4301,6 +4341,7 @@
     if (data.type === 'text-content') setTextContent(payload.value);
     if (data.type === 'media-set') setMediaAsset(payload);
     if (data.type === 'media-fit') setMediaFit(payload.value);
+    if (data.type === 'media-position') setMediaPosition(payload);
     if (data.type === 'media-reset') resetMediaAsset();
     if (data.type === 'inline-text-edit') {
       if(payload.active===false)finishInlineTextEdit(payload.commit!==false);
