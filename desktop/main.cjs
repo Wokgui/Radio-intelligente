@@ -93,11 +93,26 @@ async function startStudioServer(){
   return studioBaseUrl;
 }
 
+async function closeHttpServer(server){
+  if(!server)return;
+  await new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;resolve()};
+    const timer=setTimeout(finish,1200);
+    if(timer&&timer.unref)timer.unref();
+    try{
+      server.close(finish);
+      if(typeof server.closeIdleConnections==='function')server.closeIdleConnections();
+      if(typeof server.closeAllConnections==='function')server.closeAllConnections();
+    }catch(_){finish()}
+  });
+}
+
 async function stopTargetServer(){
-  if(!targetServer)return;
-  await new Promise(resolve=>targetServer.close(()=>resolve()));
+  const server=targetServer;
   targetServer=null;
   targetBaseUrl='';
+  await closeHttpServer(server);
 }
 
 async function startLocalTarget(root, entry){
@@ -1218,8 +1233,11 @@ async function smokeTransactionRoundtrip(){
   fs.writeFileSync(assetPath,png);
 
   let url='';
+  let fixtureServer=null;
   try{
-    url=await startLocalTarget(dir,'index.html');
+    fixtureServer=serveStatic(dir);
+    const fixtureBase=await listen(fixtureServer);
+    url=fixtureBase+'/index.html';
     const source={type:'html',path:htmlPath,root:dir,entry:'index.html',url,label:'AIS transaction fixture'};
     const payload={
       source,
@@ -1274,7 +1292,7 @@ async function smokeTransactionRoundtrip(){
 
     return {ok:true,preview:true,apply:true,render:true,rollback:true,history:true,asset:true,svg:true};
   }finally{
-    await stopTargetServer();
+    await closeHttpServer(fixtureServer);
     try{fs.rmSync(dir,{recursive:true,force:true})}catch(_){}
   }
 }
