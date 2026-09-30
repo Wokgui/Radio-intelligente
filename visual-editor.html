@@ -1279,6 +1279,10 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="saveProjectBtn2">Enregistrer projet</button>
         <button class="btn wide" id="openProjectBtn2">Ouvrir projet</button>
       </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn primary wide" id="exportPortableBtn">Exporter portable</button>
+        <button class="btn wide" id="importPortableBtn">Ouvrir portable</button>
+      </div>
       <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
       <button class="btn" id="applySourceBtn" style="width:100%;margin-top:7px">Appliquer au code local (réversible)</button>
@@ -3608,13 +3612,71 @@ body.desktop .desktop-badge{display:inline-flex}
     setTimeout(function(){URL.revokeObjectURL(url)},1000);
   }
 
-  async function saveProject(){
-    var project=await requestProject();
-    if(!project){setStatus('Projet non récupéré.',true);return}
+  function decorateProjectForStorage(project){
+    project=project||{};
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
+    project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
+    project.regressionBaseline=regressionBaseline||null;
+    project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
     project.studio={name:'App Interface Studio',version:'6.48.0'};
+    return project;
+  }
+
+  async function loadStoredProject(project,label){
+    project=project||{};
+    if(project.hostPreferences){
+      prefs=Object.assign({},defaultPrefs,project.hostPreferences||{});
+      savePrefs();applyPrefs();
+    }
+    if(project.source){
+      var restored=await desktop.restoreSource(project.source);
+      if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return false}
+      await loadSource(restored.source);
+    }
+    if(project.preview){
+      selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
+      if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
+      if(project.preview.size&&preset.value==='custom'){
+        screenCustomW.value=project.preview.size.width||412;screenCustomH.value=project.preview.size.height||915;
+      }
+      if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
+      setDevice();
+    }
+    if(project.environment){
+      document.getElementById('systemFontScale').value=String(project.environment.fontScale||1);
+      document.getElementById('systemDisplayScale').value=String(project.environment.displayScale||1);
+      document.getElementById('systemDarkMode').checked=!!project.environment.darkMode;
+      document.getElementById('systemKeyboard').value=String(project.environment.keyboardHeight||0);
+    }
+    namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
+    renderVersions();
+    regressionBaseline=project.regressionBaseline||null;
+    if(project.referenceCapture&&referenceOverlay){
+      referenceOverlay.src=project.referenceCapture;
+      referenceOverlay.classList.add('visible');
+      applyReferenceComparison();
+    }
+    if(project.editingBreakpoint&&Array.from(breakpointEdit.options).some(function(o){return o.value===project.editingBreakpoint})){
+      breakpointEdit.value=project.editingBreakpoint;
+    }
+    if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
+      var profile=String(project.viewport.safeArea.profile);
+      if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
+        safeProfile.value=profile;
+        applySafeArea();
+      }
+    }
+    post('load-project',{project:project});
+    setStatus('Projet ouvert : '+(label||'projet'));
+    return true;
+  }
+
+  async function saveProject(){
+    var project=await requestProject();
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    decorateProjectForStorage(project);
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -3627,43 +3689,26 @@ body.desktop .desktop-badge{display:inline-flex}
   async function openProject(){
     if(!desktop){setStatus('Ouverture native disponible dans le logiciel Windows.',true);return}
     var result=await desktop.openProject();
-    if(result&&result.ok){
-      var project=result.project||{};
-      if(project.source){
-        var restored=await desktop.restoreSource(project.source);
-        if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return}
-        await loadSource(restored.source);
-      }
-      if(project.preview){
-        selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
-        if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
-        if(project.preview.size&&preset.value==='custom'){
-          screenCustomW.value=project.preview.size.width||412;screenCustomH.value=project.preview.size.height||915;
-        }
-        if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
-        setDevice();
-      }
-      if(project.environment){
-        document.getElementById('systemFontScale').value=String(project.environment.fontScale||1);
-        document.getElementById('systemDisplayScale').value=String(project.environment.displayScale||1);
-        document.getElementById('systemDarkMode').checked=!!project.environment.darkMode;
-        document.getElementById('systemKeyboard').value=String(project.environment.keyboardHeight||0);
-      }
-      namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
-      renderVersions();
-      if(project.editingBreakpoint&&Array.from(breakpointEdit.options).some(function(o){return o.value===project.editingBreakpoint})){
-        breakpointEdit.value=project.editingBreakpoint;
-      }
-      if(project.viewport&&project.viewport.safeArea&&project.viewport.safeArea.profile){
-        var profile=String(project.viewport.safeArea.profile);
-        if(Array.from(safeProfile.options).some(function(o){return o.value===profile})){
-          safeProfile.value=profile;
-          applySafeArea();
-        }
-      }
-      post('load-project',{project:project});
-      setStatus('Projet ouvert : '+result.path);
-    }else if(result&&result.error)setStatus(result.error,true);
+    if(result&&result.ok)await loadStoredProject(result.project||{},result.path);
+    else if(result&&result.error)setStatus(result.error,true);
+  }
+
+  async function exportPortableProject(){
+    if(!desktop||!desktop.exportPortableProject){setStatus('Export portable disponible dans l’application Windows.',true);return}
+    var project=await requestProject();
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    decorateProjectForStorage(project);
+    var result=await desktop.exportPortableProject(project);
+    if(!result||!result.ok){if(result&&!result.canceled)setStatus(result&&result.error||'Export portable impossible.',true);return}
+    setStatus('Projet portable exporté : '+result.path+' · '+(result.assetCount||0)+' asset(s) · '+(result.sourceFiles||0)+' fichier(s) source.');
+  }
+
+  async function importPortableProject(){
+    if(!desktop||!desktop.importPortableProject){setStatus('Import portable disponible dans l’application Windows.',true);return}
+    var result=await desktop.importPortableProject();
+    if(!result||!result.ok){if(result&&!result.canceled)setStatus(result&&result.error||'Import portable impossible.',true);return}
+    var ok=await loadStoredProject(result.project||{},result.path);
+    if(ok)setStatus('Projet portable ouvert : '+result.path+' · chemins relocalisés automatiquement.');
   }
 
   async function exportChatGPT(copyOnly){
@@ -4480,6 +4525,8 @@ body.desktop .desktop-badge{display:inline-flex}
 
   ['saveProjectBtn','saveProjectBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',saveProject)});
   ['openProjectBtn','openProjectBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',openProject)});
+  document.getElementById('exportPortableBtn').addEventListener('click',exportPortableProject);
+  document.getElementById('importPortableBtn').addEventListener('click',importPortableProject);
   ['exportChatGPTBtn','exportChatGPTBtn2'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){exportChatGPT(false)})});
   var copyChat=document.getElementById('copyChatGPTBtn');
   if(copyChat)copyChat.addEventListener('click',function(){exportChatGPT(true)});
