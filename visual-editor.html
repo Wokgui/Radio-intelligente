@@ -2662,7 +2662,9 @@ body.desktop .desktop-badge{display:inline-flex}
       },2500);
     });
     projectRequestPromise.then(function(){projectRequestPromise=null},function(){projectRequestPromise=null});
-    return projectRequestPromise;
+    return projectRequestPromise.then(function(project){
+      return project?JSON.parse(JSON.stringify(project)):null;
+    });
   }
 
   function projectPrompt(project){
