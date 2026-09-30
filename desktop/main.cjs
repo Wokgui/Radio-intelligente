@@ -1131,6 +1131,97 @@ function gitPathTracked(root,relativePath){
   }catch(_){return false}
 }
 
+function svgIntrinsicSize(file){
+  try{
+    const text=fs.readFileSync(file,'utf8').slice(0,65536);
+    const viewBox=/\bviewBox\s*=\s*["']\s*[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?\s+[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)/i.exec(text);
+    if(viewBox)return {width:Math.max(0,Number(viewBox[1])||0),height:Math.max(0,Number(viewBox[2])||0)};
+    const w=/\bwidth\s*=\s*["']\s*([\d.]+)/i.exec(text),h=/\bheight\s*=\s*["']\s*([\d.]+)/i.exec(text);
+    return {width:w?Number(w[1])||0:0,height:h?Number(h[1])||0:0};
+  }catch(_){return {width:0,height:0}}
+}
+
+function collectProjectImages(root,limit){
+  const out=[];
+  const skip=new Set(['.git','node_modules','.next','.gradle','.idea','.vscode','build','dist','coverage']);
+  function walk(dir){
+    if(out.length>=limit)return;
+    let names=[];
+    try{names=fs.readdirSync(dir)}catch(_){return}
+    for(const name of names){
+      if(out.length>=limit)break;
+      if(skip.has(name))continue;
+      const file=path.join(dir,name);
+      let stat=null;try{stat=fs.statSync(file)}catch(_){continue}
+      if(stat.isDirectory()){walk(file);continue}
+      if(!stat.isFile()||!/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(name))continue;
+      out.push({file,stat});
+    }
+  }
+  walk(root);
+  return out;
+}
+
+function auditProjectAssets(local){
+  const root=local.root||path.dirname(local.html);
+  const generatedDir=path.join(path.dirname(local.html),'app-interface-studio-assets');
+  const usedGenerated=generatedAssetReferences(local);
+  const entries=collectProjectImages(root,3000);
+  const byHash=new Map();
+  const files=[];
+  let totalBytes=0;
+  entries.forEach(({file,stat})=>{
+    let bytes=null,hash='',width=0,height=0,format=path.extname(file).slice(1).toLowerCase();
+    try{bytes=fs.readFileSync(file);hash=crypto.createHash('sha1').update(bytes).digest('hex')}catch(_){}
+    totalBytes+=stat.size||0;
+    if(format==='svg'){
+      const size=svgIntrinsicSize(file);width=size.width;height=size.height;
+    }else{
+      try{
+        const image=nativeImage.createFromPath(file);
+        if(image&&!image.isEmpty()){const size=image.getSize();width=size.width;height=size.height}
+      }catch(_){}
+    }
+    if(hash){
+      if(!byHash.has(hash))byHash.set(hash,[]);
+      byHash.get(hash).push(file);
+    }
+    const generated=path.dirname(file)===generatedDir;
+    const orphan=generated&&!usedGenerated.has(path.basename(file));
+    const megapixels=width&&height?(width*height/1000000):0;
+    const issues=[];
+    if(orphan)issues.push('orphan');
+    if(stat.size>1024*1024)issues.push('large-file');
+    if(width>4096||height>4096||megapixels>12)issues.push('oversized-dimensions');
+    if(format==='svg'&&stat.size>250*1024)issues.push('large-svg');
+    files.push({
+      path:file,relative:path.relative(root,file),name:path.basename(file),format,size:stat.size||0,width,height,
+      megapixels:Math.round(megapixels*100)/100,hash,generated,orphan,issues
+    });
+  });
+  const duplicateHashes=new Set(Array.from(byHash.entries()).filter(([,items])=>items.length>1).map(([hash])=>hash));
+  files.forEach(item=>{if(item.hash&&duplicateHashes.has(item.hash))item.issues.push('duplicate')});
+  files.sort((a,b)=>{
+    const score=x=>(x.orphan?8:0)+(x.issues.includes('duplicate')?4:0)+(x.issues.includes('large-file')?2:0)+(x.issues.includes('oversized-dimensions')?2:0)+(x.issues.includes('large-svg')?1:0);
+    return score(b)-score(a)||b.size-a.size||a.relative.localeCompare(b.relative);
+  });
+  return {
+    root,scanned:files.length,totalBytes,
+    orphanCount:files.filter(x=>x.orphan).length,
+    duplicateCount:files.filter(x=>x.issues.includes('duplicate')).length,
+    largeCount:files.filter(x=>x.issues.includes('large-file')||x.issues.includes('large-svg')).length,
+    oversizedCount:files.filter(x=>x.issues.includes('oversized-dimensions')).length,
+    files:files.slice(0,500)
+  };
+}
+
+ipcMain.handle('source:audit-assets',async (_event,payload)=>{
+  const local=localSourceEntry(payload&&payload.source);
+  if(!local)return {ok:false,error:'Audit disponible uniquement pour une source locale.'};
+  try{return Object.assign({ok:true},auditProjectAssets(local))}
+  catch(error){return {ok:false,error:'Audit des assets impossible : '+String(error&&error.message||error)}}
+});
+
 ipcMain.handle('source:clean-assets',async (_event,payload)=>{
   const local=localSourceEntry(payload&&payload.source);
   if(!local)return {ok:false,error:'Nettoyage disponible uniquement pour une source HTML locale.'};
