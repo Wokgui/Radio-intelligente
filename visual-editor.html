@@ -1318,6 +1318,17 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
     <section class="card desktop-only">
+      <h2>Nettoyer les surcharges <small>analyse sûre</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="analyzeOverridesBtn">Analyser les anciennes surcharges</button>
+        <button class="btn wide" id="cleanupOverridesBtn" disabled>Supprimer la sélection</button>
+      </div>
+      <div class="compare-status" id="overrideCleanupStatus">Seules les règles strictement redondantes et les fichiers générés vides sont proposés.</div>
+      <div class="version-list" id="overrideCleanupList"><div class="hint">Aucune analyse lancée.</div></div>
+      <p>Avant suppression, Studio crée une sauvegarde <code>.ais-cleanup-backup-…</code>. Les règles seulement « probablement » inutiles ne sont pas touchées.</p>
+    </section>
+
+    <section class="card desktop-only">
       <h2>Projet PC <small>fichier local</small></h2>
       <div class="toolbar">
         <button class="btn wide" id="saveProjectBtn2">Enregistrer projet</button>
@@ -1542,6 +1553,10 @@ body.desktop .desktop-badge{display:inline-flex}
   var nativeStatus=document.getElementById('nativeStatus');
   var nativeList=document.getElementById('nativeList');
   var directSourceStatus=document.getElementById('directSourceStatus');
+  var overrideCleanupStatus=document.getElementById('overrideCleanupStatus');
+  var overrideCleanupList=document.getElementById('overrideCleanupList');
+  var cleanupOverridesBtn=document.getElementById('cleanupOverridesBtn');
+  var lastOverrideItems=[];
   var cascadeSummary=document.getElementById('cascadeSummary');
   var cascadeComputed=document.getElementById('cascadeComputed');
   var cascadeList=document.getElementById('cascadeList');
@@ -1664,7 +1679,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.52.0'};
+      project.studio={name:'App Interface Studio',version:'6.53.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2812,11 +2827,85 @@ body.desktop .desktop-badge{display:inline-flex}
     nativeStatus.textContent='Diff Android prêt.';
   }
 
+  function renderOverrideAnalysis(result){
+    lastOverrideItems=result&&result.items||[];
+    overrideCleanupList.innerHTML='';
+    cleanupOverridesBtn.disabled=!lastOverrideItems.length;
+    if(!result||!result.ok){
+      overrideCleanupStatus.textContent=result&&result.error||'Analyse impossible.';
+      overrideCleanupList.innerHTML='<div class="hint">Aucune proposition.</div>';
+      return;
+    }
+    overrideCleanupStatus.textContent=lastOverrideItems.length
+      ? lastOverrideItems.length+' surcharge(s) strictement redondante(s) ou vide(s) détectée(s).'
+      :'Aucune surcharge strictement redondante détectée.';
+    if(!lastOverrideItems.length){overrideCleanupList.innerHTML='<div class="hint">Rien à nettoyer automatiquement.</div>';return}
+    lastOverrideItems.forEach(function(item){
+      var row=document.createElement('label');row.className='version-item';row.style.gridTemplateColumns='auto minmax(0,1fr)';
+      var check=document.createElement('input');check.type='checkbox';check.checked=true;check.dataset.overrideId=item.id;
+      var text=document.createElement('div');
+      var strong=document.createElement('strong');strong.textContent=(item.kind==='empty-file'?'Fichier vide':'Règle redondante')+' · '+(item.selector||item.relativePath||'');
+      var small=document.createElement('small');small.textContent=(item.relativePath||'')+' · '+(item.reason||'');
+      text.append(strong,small);row.append(check,text);overrideCleanupList.appendChild(row);
+    });
+  }
+
+  async function analyzeOverrides(){
+    if(!desktop||!desktop.analyzeOverrides||!currentSource){overrideCleanupStatus.textContent='Fonction disponible pour une source HTML locale.';return}
+    overrideCleanupStatus.textContent='Analyse des surcharges…';
+    var result=await desktop.analyzeOverrides(currentSource);
+    renderOverrideAnalysis(result);
+  }
+
+  async function cleanupSelectedOverrides(){
+    if(!desktop||!desktop.cleanupOverrides||!currentSource)return;
+    var ids=Array.from(overrideCleanupList.querySelectorAll('input[data-override-id]:checked')).map(function(x){return x.dataset.overrideId});
+    if(!ids.length){overrideCleanupStatus.textContent='Aucune surcharge sélectionnée.';return}
+    var result=await desktop.cleanupOverrides({source:currentSource,ids:ids});
+    if(!result||!result.ok){overrideCleanupStatus.textContent=result&&result.error||'Nettoyage impossible.';return}
+    overrideCleanupStatus.textContent=(result.changed||0)+' élément(s) nettoyé(s) · '+(result.backups||[]).length+' sauvegarde(s) créée(s).';
+    await analyzeOverrides();
+    frame.contentWindow.location.reload();
+  }
+
+  async function validatePendingDirectEdit(){
+    if(!pendingDirectDiff||!desktop||!desktop.validateDirectEdit)return {ok:true,safe:true,skipped:true};
+    directSourceStatus.textContent='Validation préalable sur 12 configurations…';
+    var result=await desktop.validateDirectEdit({
+      source:currentSource,
+      file:pendingDirectDiff.file,
+      after:pendingDirectDiff.after
+    });
+    if(!result||!result.ok){
+      directSourceStatus.textContent=(result&&result.error)||'Validation préalable impossible.';
+      return result||{ok:false,error:'Validation impossible'};
+    }
+    var before=result.baseline||{},after=result.candidate||{};
+    if(!result.safe){
+      directSourceStatus.textContent='Écriture bloquée : régression détectée · configurations en anomalie '+(before.failed||0)+' → '+(after.failed||0)+' · problèmes '+(before.totalIssues||0)+' → '+(after.totalIssues||0)+'.';
+      matrixModal.classList.add('visible');
+      matrixStatus.textContent='Validation refusée : la modification candidate crée une régression structurelle.';
+      matrixList.innerHTML='';
+      (result.regressions||[]).forEach(function(reg){
+        var row=document.createElement('div');row.className='matrix-item fail';
+        row.innerHTML='<b></b><div></div>';
+        row.querySelector('b').textContent=reg.key||'régression';
+        row.querySelector('div').textContent='Avant '+reg.before+' · après '+reg.after;
+        matrixList.appendChild(row);
+      });
+      return result;
+    }
+    directSourceStatus.textContent='Validation réussie : 12 configurations testées sans nouvelle régression grave.';
+    return result;
+  }
+
   async function applyPendingDiff(){
     var result=null;
     if(pendingDiffKind==='native'&&pendingNativeDiff&&desktop&&desktop.applyNativeEdit){
       result=await desktop.applyNativeEdit({source:currentSource,file:pendingNativeDiff.file,beforeHash:pendingNativeDiff.beforeHash,after:pendingNativeDiff.after});
     }else if(pendingDiffKind==='direct'&&pendingDirectDiff&&desktop&&desktop.applyDirectEdit){
+      var validation=await validatePendingDirectEdit();
+      if(!validation||!validation.ok||validation.safe===false)return;
       result=await desktop.applyDirectEdit({source:currentSource,file:pendingDirectDiff.file,beforeHash:pendingDirectDiff.beforeHash,after:pendingDirectDiff.after});
     }
     if(!result||!result.ok){setStatus(result&&result.error||'Application du diff impossible.',true);return}
@@ -3702,7 +3791,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.52.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.53.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3755,7 +3844,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.52.0'};
+    project.studio={name:'App Interface Studio',version:'6.53.0'};
     return project;
   }
 
@@ -3852,7 +3941,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.52.0'};
+    project.studio={name:'App Interface Studio',version:'6.53.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4660,6 +4749,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
   document.getElementById('refreshTransactionsBtn').addEventListener('click',refreshLocalTransactions);
   document.getElementById('prepareDirectEditBtn').addEventListener('click',function(){prepareDirectSourceEdit(null)});
+  document.getElementById('analyzeOverridesBtn').addEventListener('click',analyzeOverrides);
+  cleanupOverridesBtn.addEventListener('click',cleanupSelectedOverrides);
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
@@ -4718,6 +4809,7 @@ body.desktop .desktop-badge{display:inline-flex}
     document.getElementById('sourceModal').hidden=true;
     selector.textContent='Chargement de l’application…';
     cssOut.value='/* Aucun ajustement. */';
+    lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
     directSourceStatus.textContent=source.type==='android-project'
       ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
       : (['folder','html'].indexOf(source.type)>=0?'Sélectionne un objet puis prépare le diff de sa vraie règle CSS.':'L’édition source directe nécessite une source locale.');
