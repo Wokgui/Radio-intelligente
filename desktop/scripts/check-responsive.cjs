@@ -165,7 +165,7 @@ expect(engine,"function restoreGeneratedNodes(list)","generated node restoration
 expect(engine,"function setSelectionZ(mode)","selection z-order control");
 expect(engine,"data.type === 'selection-duplicate'","duplicate engine command");
 expect(engine,"data.type === 'selection-z'","z-order engine command");
-expect(html,"duplication(s) structurelle(s)","direct CSS structural warning");
+expect(html,"Duplications à appliquer","structural duplication confirmation");
 expect(html,"snapshot.generatedNodes","generated nodes export guidance");
 expect(html,'id="selectionGroupName"','selection group name input');
 expect(html,'id="selectionGroupList"','selection group list');
