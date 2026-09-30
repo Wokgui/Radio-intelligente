@@ -349,7 +349,7 @@ expect(html,"function renderColumnGrid()","column grid rendering");
 expect(html,"function applyColumnGridPreset()","column grid automatic preset");
 expect(html,"post('layout-guides'","column grid snapping feed");
 expect(html,"Afficher / masquer la grille de colonnes","column grid command palette action");
-expect(main,"function generatedStructureScript(nodes,patches,locators)","generated structure patch builder");
+expect(main,"function generatedStructureScript(nodes,patches,locators,prototypeLinks)","generated structure patch builder");
 expect(main,"app-interface-studio.generated.js","generated structure patch filename");
 expect(main,'data-app-interface-studio="generated-structure"',"generated structure marker");
 expect(main,"function removeGeneratedStructureTag(html)","generated structure cleanup");
@@ -368,7 +368,7 @@ expect(html,"function projectDomPatches(project)","project DOM patch extraction"
 expect(html,"domPatches:domPatches","local DOM patch payload");
 expect(html,"modification(s) DOM","DOM patch host feedback");
 expect(main,"function sourceLocatorKey(selector)","stable source key");
-expect(main,"function buildSourceLocators(selectors,nodes,patches)","stable source locator map");
+expect(main,"function buildSourceLocators(selectors,nodes,patches,prototypeLinks)","stable source locator map");
 expect(main,"function rewriteGeneratedCss(css,locators)","stable CSS selector rewrite");
 expect(main,'data-ais-source-key',"stable source attribute");
 expect(main,"parentKey:keyBySelector.get","stable clone parent locator");
