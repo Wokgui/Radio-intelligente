@@ -660,6 +660,10 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" data-selection-z="back" title="Mettre derrière">⇩ Arrière-plan</button>
       </div>
       <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" data-selection-related="siblings" title="Sélectionner tous les frères · Ctrl+A">Tous les frères</button>
+        <button class="tool wide" data-selection-related="similar" title="Sélectionner les éléments similaires · Ctrl+Maj+A">Similaires</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
         <button class="tool" data-selection-nav="parent" title="Sélectionner le parent · Alt+↑">↑ Parent</button>
         <button class="tool" data-selection-nav="prev" title="Élément frère précédent · Alt+←">← Frère</button>
         <button class="tool" data-selection-nav="next" title="Élément frère suivant · Alt+→">Frère →</button>
@@ -833,6 +837,10 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="toolbar" style="margin-top:7px">
         <button class="btn wide" id="expandLayersBtn">Tout déplier</button>
         <button class="btn wide" id="collapseLayersBtn">Tout replier</button>
+      </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="showAllLayersBtn">◉ Tout réafficher</button>
+        <button class="btn wide" id="unlockAllLayersBtn">🔓 Tout déverrouiller</button>
       </div>
       <div class="toolbar" style="margin-top:7px">
         <button class="btn wide" id="isolateSelectionBtn">◎ Isoler la sélection</button>
@@ -1318,7 +1326,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.7.0'};
+      project.studio={name:'App Interface Studio',version:'6.8.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2414,7 +2422,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.7.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.8.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2459,7 +2467,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.7.0'};
+    project.studio={name:'App Interface Studio',version:'6.8.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2517,7 +2525,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.7.0'};
+    project.studio={name:'App Interface Studio',version:'6.8.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2560,6 +2568,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('navigate-selection',{direction:navDirection});
       return;
     }
+    if(modifier&&lower==='a'&&hasSelection){event.preventDefault();post('selection-related',{mode:event.shiftKey?'similar':'siblings'});return}
     if(modifier&&lower==='d'){event.preventDefault();post('selection-duplicate');return}
     if(modifier&&lower==='c'&&hasSelection){event.preventDefault();post('selection-copy');return}
     if(modifier&&lower==='v'){event.preventDefault();post('selection-paste');return}
@@ -2600,6 +2609,8 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Mode sélection rectangle',hint:'Ctrl+glisser',run:function(){setMarqueeModeHost(!marqueeModeActive)}},
     {label:'Isoler / quitter l’isolation',hint:'',run:function(){post('isolate-selection',{active:!isolationActiveHost})}},
     {label:'Créer un groupe avec la sélection',hint:'',run:function(){post('selection-group-create',{name:selectionGroupName.value})}},
+    {label:'Sélectionner tous les frères',hint:'Ctrl+A',run:function(){post('selection-related',{mode:'siblings'})}},
+    {label:'Sélectionner les éléments similaires',hint:'Ctrl+Maj+A',run:function(){post('selection-related',{mode:'similar'})}},
     {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
     {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
     {label:'Coller',hint:'Ctrl+V',run:function(){post('selection-paste')}},
@@ -2701,6 +2712,8 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='selection-pasted')setStatus((p.count||0)+' objet(s) collé(s).');
     if(data.type==='selection-duplicated')setStatus((p.count||0)+' objet(s) dupliqué(s).');
     if(data.type==='selection-z')setStatus((p.count||0)+' objet(s) déplacé(s) '+(p.mode==='back'?'à l’arrière-plan.':'au premier plan.'));
+    if(data.type==='selection-bulk')setStatus((p.count||0)+' objet(s) sélectionné(s) '+(p.mode==='similar'?'par similarité.':'dans le même conteneur.'));
+    if(data.type==='layers-bulk')setStatus((p.count||0)+' calque(s) mis à jour.');
     if(data.type==='canvas-pan-ready'){
       workspace.classList.toggle('canvas-pan-ready',!!p.active);
     }
@@ -2875,6 +2888,10 @@ body.desktop .desktop-badge{display:inline-flex}
   });
   selectionGroupName.addEventListener('keydown',function(e){
     if(e.key==='Enter'){e.preventDefault();post('selection-group-create',{name:selectionGroupName.value})}
+  });
+
+  document.querySelectorAll('[data-selection-related]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('selection-related',{mode:btn.dataset.selectionRelated})});
   });
 
   document.getElementById('duplicateSelectionBtn').addEventListener('click',function(){post('selection-duplicate')});
@@ -3184,6 +3201,8 @@ body.desktop .desktop-badge{display:inline-flex}
     function collect(nodes){(nodes||[]).forEach(function(node){if(node.children&&node.children.length)collapsedLayerSelectors.add(node.selector);collect(node.children)})}
     collect(lastLayerTree);renderLayers(lastLayerTree);
   });
+  document.getElementById('showAllLayersBtn').addEventListener('click',function(){post('layers-bulk',{action:'show-all'})});
+  document.getElementById('unlockAllLayersBtn').addEventListener('click',function(){post('layers-bulk',{action:'unlock-all'})});
   document.getElementById('isolateSelectionBtn').addEventListener('click',function(){
     post('isolate-selection',{active:!isolationActiveHost});
   });
