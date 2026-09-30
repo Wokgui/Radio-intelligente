@@ -2616,7 +2616,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(result&&result.ok){
       var parts=[];
       if(result.cssApplied&&result.cssPath)parts.push('CSS : '+result.cssPath);
-      if(result.structureApplied&&result.jsPath)parts.push('structure : '+result.jsPath+' · '+(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM');
+      if(result.structureApplied&&result.jsPath)parts.push('structure : '+result.jsPath+' · '+(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.locatorCount||0)+' cible(s) stabilisée(s)');
       parts.push('sauvegarde : '+result.backupPath);
       setStatus('Patch appliqué · '+parts.join(' · '));
     }else setStatus((result&&result.error)||'Application au code impossible.',true);
