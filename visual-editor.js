@@ -58,10 +58,12 @@
   altTargetOutline.className = 've-alt-target';
   const altMeasureLabel = document.createElement('div');
   altMeasureLabel.className = 've-alt-measure';
+  const dragMeasureLabel = document.createElement('div');
+  dragMeasureLabel.className = 've-drag-measure';
   const marqueeBox = document.createElement('div');
   marqueeBox.className = 've-marquee';
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, marqueeBox);
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
@@ -762,7 +764,7 @@
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
       node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
-      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === marqueeBox;
+      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox;
   }
 
   function alignmentCandidates(element) {
@@ -3034,6 +3036,7 @@
     outline.style.display = 'none';
     constraintBadge.style.display = 'none';
     clearAltMeasure();
+    hideDragMeasure();
     clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
@@ -3065,8 +3068,10 @@
       x: event.clientX,
       y: event.clientY,
       lastDx: 0,
-      lastDy: 0
+      lastDy: 0,
+      startBounds: selectionElements().length>1 ? selectionBounds() : selected.getBoundingClientRect()
     };
+    updateDragMeasure(event);
   }, true);
 
   window.addEventListener('pointermove', function (event) {
@@ -3098,12 +3103,31 @@
     }
     if (smartGuidesEnabled && !event.altKey) smartSnapSelection();
     else hideGuides();
+    updateDragMeasure(event);
     updateOverlay();
   }, true);
 
   function clearAltMeasure() {
     altTargetOutline.style.display = 'none';
     altMeasureLabel.style.display = 'none';
+  }
+
+  function hideDragMeasure() {
+    dragMeasureLabel.style.display='none';
+  }
+
+  function updateDragMeasure(event) {
+    if(!drag||!selected)return hideDragMeasure();
+    const r=selectionElements().length>1?selectionBounds():selected.getBoundingClientRect();
+    const start=drag.startBounds||r;
+    const dx=Math.round(r.left-start.left);
+    const dy=Math.round(r.top-start.top);
+    dragMeasureLabel.style.display='block';
+    dragMeasureLabel.style.left=Math.min(innerWidth-235,Math.max(6,(event&&event.clientX||r.right)+12))+'px';
+    dragMeasureLabel.style.top=Math.min(innerHeight-42,Math.max(6,(event&&event.clientY||r.bottom)+12))+'px';
+    dragMeasureLabel.textContent='ΔX '+(dx>=0?'+':'')+dx+' · ΔY '+(dy>=0?'+':'')+dy+
+      ' · X '+Math.round(r.left)+' · Y '+Math.round(r.top)+' · '+Math.round(r.width)+'×'+Math.round(r.height);
+    emit('drag-measure',{dx:dx,dy:dy,x:Math.round(r.left),y:Math.round(r.top),width:Math.round(r.width),height:Math.round(r.height)});
   }
 
   function showAltMeasure(event) {
@@ -3158,6 +3182,7 @@
     event.stopImmediatePropagation();
     drag = null;
     hideGuides();
+    hideDragMeasure();
     updateOverlay();
     commitHistory();
   }, true);
