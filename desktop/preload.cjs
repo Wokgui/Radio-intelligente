@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload),
   rollbackLastPatch: payload => ipcRenderer.invoke('source:rollback-last-patch', payload),
   listTransactions: source => ipcRenderer.invoke('source:list-transactions', { source }),
+  rollbackThroughTransaction: payload => ipcRenderer.invoke('source:rollback-through', payload),
   gitStatus: payload => ipcRenderer.invoke('source:git-status', payload),
   gitPublish: payload => ipcRenderer.invoke('source:git-publish', payload),
   captureBatch: payload => ipcRenderer.invoke('capture:batch', payload),
