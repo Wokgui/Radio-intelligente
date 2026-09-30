@@ -675,6 +675,38 @@ function removeGeneratedStructureTag(html){
   return html.replace(pattern,'\n');
 }
 
+function removeGeneratedCssTag(html){
+  const pattern=new RegExp('\\s*<link[^>]*data-app-interface-studio=["\\\']generated["\\\'][^>]*>\\s*','ig');
+  return html.replace(pattern,'\n');
+}
+
+function optionalFileBackup(file,stamp){
+  const existed=fs.existsSync(file);
+  if(!existed)return {existed:false,backupPath:null};
+  const backupPath=file+'.ais-backup-'+stamp;
+  fs.copyFileSync(file,backupPath);
+  return {existed:true,backupPath};
+}
+
+function cleanupOptionalBackup(info){
+  if(info&&info.backupPath&&fs.existsSync(info.backupPath)){
+    try{fs.unlinkSync(info.backupPath)}catch(_){}
+  }
+}
+
+function restoreOptionalFile(file,existed,backupPath){
+  if(existed){
+    if(!backupPath||!fs.existsSync(backupPath))throw new Error('Sauvegarde générée introuvable : '+file);
+    fs.copyFileSync(backupPath,file);
+  }else if(fs.existsSync(file)){
+    fs.unlinkSync(file);
+  }
+}
+
+function transactionFile(dir,stamp){
+  return path.join(dir,'app-interface-studio.transaction-'+stamp+'.json');
+}
+
 ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const source=payload&&payload.source;
   const css=String(payload&&payload.css||'').trim();
@@ -686,66 +718,159 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
   if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
 
+  const dir=path.dirname(local.html);
+  const cssPath=path.join(dir,'app-interface-studio.generated.css');
+  const jsPath=path.join(dir,'app-interface-studio.generated.js');
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const htmlBackupPath=path.join(dir,path.basename(local.html)+'.ais-backup-'+stamp);
+  const cssBackup=optionalFileBackup(cssPath,stamp);
+  const jsBackup=optionalFileBackup(jsPath,stamp);
+
   try{
-    const dir=path.dirname(local.html);
-    const cssPath=path.join(dir,'app-interface-studio.generated.css');
-    const jsPath=path.join(dir,'app-interface-studio.generated.js');
     const originalHtml=fs.readFileSync(local.html,'utf8');
-    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-    const backupPath=path.join(dir,path.basename(local.html)+'.ais-backup-'+stamp);
-    fs.copyFileSync(local.html,backupPath);
+    fs.copyFileSync(local.html,htmlBackupPath);
 
     let html=originalHtml;
     let cssApplied=false;
+    let cssRemoved=false;
     let structureApplied=false;
+    let structureRemoved=false;
+    let cssChanged=false;
+    let structureChanged=false;
+
     const sourceLocators=generatedNodes.length?buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks):[];
     const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
 
     if(stableCss&&stableCss!=='/* Aucun ajustement. */'){
-      fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\\n'+stableCss+'\\n','utf8');
+      const nextCss='/* Généré par App Interface Studio — patch réversible. */\n'+stableCss+'\n';
+      const previousCss=fs.existsSync(cssPath)?fs.readFileSync(cssPath,'utf8'):'';
+      if(previousCss!==nextCss){
+        fs.writeFileSync(cssPath,nextCss,'utf8');
+        cssChanged=true;
+      }
       const marker='data-app-interface-studio="generated"';
       if(!html.includes(marker)){
         const href='./'+path.basename(cssPath);
         const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
-        if(new RegExp('</head>','i').test(html))html=html.replace(new RegExp('</head>','i'),'  '+link+'\\n</head>');
-        else html=link+'\\n'+html;
+        if(new RegExp('</head>','i').test(html))html=html.replace(new RegExp('</head>','i'),'  '+link+'\n</head>');
+        else html=link+'\n'+html;
       }
       cssApplied=true;
+    }else{
+      const cleaned=removeGeneratedCssTag(html);
+      if(cleaned!==html){html=cleaned;cssChanged=true}
+      if(fs.existsSync(cssPath)){fs.unlinkSync(cssPath);cssChanged=true;cssRemoved=true}
     }
 
-    if(generatedNodes.length||domPatches.length||sourceLocators.length||Object.keys(prototypeLinks).length){
-      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks),'utf8');
+    const prototypeCount=Object.keys(prototypeLinks).length;
+    if(generatedNodes.length||domPatches.length||sourceLocators.length||prototypeCount){
+      const nextJs=generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks);
+      const previousJs=fs.existsSync(jsPath)?fs.readFileSync(jsPath,'utf8'):'';
+      if(previousJs!==nextJs){
+        fs.writeFileSync(jsPath,nextJs,'utf8');
+        structureChanged=true;
+      }
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
-      html=ensureGeneratedTag(html,tag,marker);
+      const nextHtml=ensureGeneratedTag(html,tag,marker);
+      if(nextHtml!==html){html=nextHtml;structureChanged=true}
       structureApplied=true;
     }else{
-      html=removeGeneratedStructureTag(html);
-      if(fs.existsSync(jsPath))fs.unlinkSync(jsPath);
+      const cleaned=removeGeneratedStructureTag(html);
+      if(cleaned!==html){html=cleaned;structureChanged=true}
+      if(fs.existsSync(jsPath)){fs.unlinkSync(jsPath);structureChanged=true;structureRemoved=true}
     }
 
-    if(html!==originalHtml)fs.writeFileSync(local.html,html,'utf8');
+    const htmlChanged=html!==originalHtml;
+    if(htmlChanged)fs.writeFileSync(local.html,html,'utf8');
 
-    if(!cssApplied&&!structureApplied&&html===originalHtml){
-      try{fs.unlinkSync(backupPath)}catch(_){}
-      return {ok:false,error:'Aucune modification CSS ou structurelle à appliquer.'};
+    if(!htmlChanged&&!cssChanged&&!structureChanged){
+      try{fs.unlinkSync(htmlBackupPath)}catch(_){}
+      cleanupOptionalBackup(cssBackup);
+      cleanupOptionalBackup(jsBackup);
+      return {ok:false,error:'Le code local est déjà synchronisé avec le projet.'};
     }
+
+    const transactionPath=transactionFile(dir,stamp);
+    const transaction={
+      version:1,
+      createdAt:new Date().toISOString(),
+      sourceHtml:path.resolve(local.html),
+      htmlBackupPath,
+      cssPath,
+      cssExisted:cssBackup.existed,
+      cssBackupPath:cssBackup.backupPath,
+      jsPath,
+      jsExisted:jsBackup.existed,
+      jsBackupPath:jsBackup.backupPath,
+      rolledBack:false
+    };
+    fs.writeFileSync(transactionPath,JSON.stringify(transaction,null,2)+'\n','utf8');
 
     return {
       ok:true,
       cssPath:cssApplied?cssPath:null,
       jsPath:structureApplied?jsPath:null,
       htmlPath:local.html,
-      backupPath,
+      backupPath:htmlBackupPath,
+      transactionPath,
       generatedCount:generatedNodes.length,
       domPatchCount:domPatches.length,
       locatorCount:sourceLocators.length,
-      prototypeCount:Object.keys(prototypeLinks).length,
+      prototypeCount,
       cssApplied,
-      structureApplied
+      cssRemoved,
+      structureApplied,
+      structureRemoved
     };
-  }catch(error){return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}}
+  }catch(error){
+    cleanupOptionalBackup(cssBackup);
+    cleanupOptionalBackup(jsBackup);
+    return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}
+  }
+});
+
+ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>{
+  const local=localSourceEntry(payload&&payload.source);
+  if(!local)return {ok:false,error:'Rollback disponible uniquement pour une source HTML locale.'};
+  const dir=path.dirname(local.html);
+  try{
+    const files=fs.readdirSync(dir)
+      .filter(name=>/^app-interface-studio\.transaction-.*\.json$/i.test(name))
+      .sort().reverse();
+
+    let chosen=null;
+    let chosenPath=null;
+    for(const name of files){
+      const candidatePath=path.join(dir,name);
+      try{
+        const tx=JSON.parse(fs.readFileSync(candidatePath,'utf8'));
+        if(tx&&path.resolve(tx.sourceHtml||'')===path.resolve(local.html)&&!tx.rolledBack){
+          chosen=tx;chosenPath=candidatePath;break;
+        }
+      }catch(_){}
+    }
+    if(!chosen)return {ok:false,error:'Aucun patch local à annuler pour cette source.'};
+    if(!chosen.htmlBackupPath||!fs.existsSync(chosen.htmlBackupPath))return {ok:false,error:'Sauvegarde HTML du dernier patch introuvable.'};
+
+    fs.copyFileSync(chosen.htmlBackupPath,local.html);
+    restoreOptionalFile(chosen.cssPath,!!chosen.cssExisted,chosen.cssBackupPath);
+    restoreOptionalFile(chosen.jsPath,!!chosen.jsExisted,chosen.jsBackupPath);
+
+    chosen.rolledBack=true;
+    chosen.rolledBackAt=new Date().toISOString();
+    fs.writeFileSync(chosenPath,JSON.stringify(chosen,null,2)+'\n','utf8');
+
+    return {
+      ok:true,
+      htmlPath:local.html,
+      transactionPath:chosenPath,
+      restoredAt:chosen.rolledBackAt
+    };
+  }catch(error){
+    return {ok:false,error:'Annulation du patch impossible : '+String(error&&error.message||error)};
+  }
 });
 
 function sourceRoot(source){
