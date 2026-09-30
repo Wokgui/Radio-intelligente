@@ -213,13 +213,23 @@
       return existing;
     }
     const original = {};
-    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform','padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','top','right','bottom','left','object-fit'].forEach(function (prop) {
+    ['translate','width','height','min-width','min-height','max-width','max-height','box-sizing','flex','display','flex-direction','justify-content','align-items','gap','row-gap','column-gap','grid-template-columns','grid-auto-rows','grid-auto-flow','place-items','font-size','font-family','font-weight','font-style','text-decoration','text-align','letter-spacing','line-height','visibility','pointer-events','color','background-color','border-color','border-radius','white-space','overflow','overflow-x','text-overflow','max-width','z-index','position','transition-property','transition-duration','transition-timing-function','transition-delay','opacity','transform','padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','top','right','bottom','left','object-fit','background-image','background-size','background-position','background-repeat'].forEach(function (prop) {
       original[prop] = {
         value: element.style.getPropertyValue(prop),
         priority: element.style.getPropertyPriority(prop)
       };
     });
-    const entry = { selector: selector, element: element, original: original, originalText: element.children.length === 0 ? element.textContent : null, originalAriaLabel: element.getAttribute('aria-label') };
+    const tag=String(element.tagName||'').toLowerCase();
+    const hrefValue=element.getAttribute('href')||element.getAttributeNS('http://www.w3.org/1999/xlink','href');
+    const entry = {
+      selector: selector, element: element, original: original,
+      originalText: element.children.length === 0 ? element.textContent : null,
+      originalAriaLabel: element.getAttribute('aria-label'),
+      originalSrc: element.getAttribute('src'),
+      originalHref: hrefValue,
+      originalSvgMarkup: tag==='svg'?element.innerHTML:null,
+      originalSvgViewBox: tag==='svg'?element.getAttribute('viewBox'):null
+    };
     registry.set(selector, entry);
     return entry;
   }
@@ -265,6 +275,12 @@
       advancedStyles: {},
       accessibilityAdjusted: false,
       accessibilityLabel: element.getAttribute('aria-label') || '',
+      mediaAdjusted: false,
+      mediaKind: '',
+      mediaSource: '',
+      mediaAssetPath: '',
+      mediaName: '',
+      mediaFit: 'contain',
       animationAdjusted: false,
       animation: {
         property: 'all',
@@ -721,6 +737,25 @@
     if (state.textAdjusted && state.textEditable) element.textContent = state.textContent;
     else if (reg && reg.originalText !== null && state.textEditable) element.textContent = reg.originalText;
 
+    if(state.mediaAdjusted&&state.mediaSource){
+      const kind=state.mediaKind||mediaKindForElement(element);
+      const fit=state.mediaFit||'contain';
+      if(kind==='img'){
+        element.setAttribute('src',state.mediaSource);setInline(element,'object-fit',fit);
+      }else if(kind==='svg-image'){
+        element.setAttribute('href',state.mediaSource);element.setAttributeNS('http://www.w3.org/1999/xlink','href',state.mediaSource);
+      }else if(kind==='svg'){
+        while(element.firstChild)element.removeChild(element.firstChild);
+        const image=document.createElementNS('http://www.w3.org/2000/svg','image');
+        image.setAttribute('href',state.mediaSource);image.setAttribute('x','0');image.setAttribute('y','0');image.setAttribute('width','100%');image.setAttribute('height','100%');
+        image.setAttribute('preserveAspectRatio',fit==='fill'?'none':fit==='cover'?'xMidYMid slice':'xMidYMid meet');element.appendChild(image);
+      }else{
+        setInline(element,'background-image','url("'+String(state.mediaSource).replace(/"/g,'%22')+'")');
+        setInline(element,'background-size',fit==='fill'?'100% 100%':fit==='none'?'auto':fit);
+        setInline(element,'background-position','center');setInline(element,'background-repeat','no-repeat');
+      }
+    }
+
     if (state.colorAdjusted) setInline(element, 'color', state.color);
     else restoreOriginalProp(state.selector, 'color');
     if (state.backgroundAdjusted) setInline(element, 'background-color', state.backgroundColor);
@@ -784,6 +819,18 @@
       else entry.element.style.removeProperty(prop);
     });
     if (entry.originalText !== null) entry.element.textContent = entry.originalText;
+    const tag=String(entry.element.tagName||'').toLowerCase();
+    if(tag==='img'){
+      if(entry.originalSrc!==null)entry.element.setAttribute('src',entry.originalSrc);else entry.element.removeAttribute('src');
+    }
+    if(tag==='image'){
+      if(entry.originalHref!==null){entry.element.setAttribute('href',entry.originalHref);entry.element.setAttributeNS('http://www.w3.org/1999/xlink','href',entry.originalHref);}
+      else{entry.element.removeAttribute('href');entry.element.removeAttributeNS('http://www.w3.org/1999/xlink','href');}
+    }
+    if(tag==='svg'&&entry.originalSvgMarkup!==null){
+      entry.element.innerHTML=entry.originalSvgMarkup;
+      if(entry.originalSvgViewBox!==null)entry.element.setAttribute('viewBox',entry.originalSvgViewBox);else entry.element.removeAttribute('viewBox');
+    }
     if (entry.originalAriaLabel !== null) entry.element.setAttribute('aria-label',entry.originalAriaLabel);
     else entry.element.removeAttribute('aria-label');
   }
@@ -1263,6 +1310,12 @@
         advancedStyles: Object.assign({}, state.advancedStyles || {}),
         accessibilityAdjusted: !!state.accessibilityAdjusted,
         accessibilityLabel: state.accessibilityLabel || '',
+        mediaAdjusted: !!state.mediaAdjusted,
+        mediaKind: state.mediaKind || '',
+        mediaSource: state.mediaSource || '',
+        mediaAssetPath: state.mediaAssetPath || '',
+        mediaName: state.mediaName || '',
+        mediaFit: state.mediaFit || 'contain',
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -1354,6 +1407,12 @@
         advancedStyles: Object.assign({}, saved.advancedStyles || {}),
         accessibilityAdjusted: !!saved.accessibilityAdjusted,
         accessibilityLabel: saved.accessibilityLabel || '',
+        mediaAdjusted: !!saved.mediaAdjusted,
+        mediaKind: saved.mediaKind || '',
+        mediaSource: saved.mediaSource || '',
+        mediaAssetPath: saved.mediaAssetPath || '',
+        mediaName: saved.mediaName || '',
+        mediaFit: saved.mediaFit || 'contain',
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -2701,6 +2760,10 @@
       environment: Object.assign({}, environment),
       advancedStyles: Object.assign({}, state.advancedStyles || {}),
       advancedAdjusted: !!state.advancedAdjusted,
+      mediaAdjusted: !!state.mediaAdjusted,
+      mediaKind: state.mediaKind || mediaKindForElement(selected),
+      mediaName: state.mediaName || '',
+      mediaFit: state.mediaFit || 'contain',
       boxModel: (function(){
         var cs=getComputedStyle(selected);
         return {
