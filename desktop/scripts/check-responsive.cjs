@@ -293,6 +293,18 @@ expect(engine,'data-handle="e"',"east resize handle");
 expect(engine,'data-handle="s"',"south resize handle");
 expect(engine,'data-handle="w"',"west resize handle");
 expect(html,"poignées des coins et des côtés","edge handle help");
+expect(engine,"let styleClipboard = null","style clipboard state");
+expect(engine,"function captureSelectionStyle(element)","style capture");
+expect(engine,"function copySelectionStyle()","style copy");
+expect(engine,"function pasteSelectionStyle()","style paste");
+expect(engine,"data.type === 'style-copy'","style copy command");
+expect(engine,"data.type === 'style-paste'","style paste command");
+expect(html,'id="copyStyleBtn"','copy style button');
+expect(html,'id="pasteStyleBtn"','paste style button');
+expect(html,"Ctrl+Alt+C","copy style shortcut");
+expect(html,"Ctrl+Alt+V","paste style shortcut");
+expect(html,"data.type==='style-copied'","style copy host feedback");
+expect(html,"data.type==='style-pasted'","style paste host feedback");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -300,4 +312,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.18 feature checks passed.');
+console.log('App Interface Studio 6.19 feature checks passed.');
