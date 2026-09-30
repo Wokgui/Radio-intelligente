@@ -357,7 +357,7 @@ body.desktop .desktop-badge{display:inline-flex}
 .modal-head strong{font-size:.94rem}.modal-head span{font-size:.7rem;color:#cfc4da}.modal-head .btn:first-of-type{margin-left:auto}
 .modal-body{min-height:0;overflow:auto;padding:14px}
 .diff-code{width:100%;min-height:60vh;white-space:pre;overflow:auto;padding:14px;border:1px solid #ffffff1f;border-radius:12px;background:#0f0d13;color:#ece6f3;font:600 11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
-.patch-diff-section{margin-bottom:16px}.patch-diff-section h3{display:flex;gap:8px;align-items:baseline;margin:0 0 6px}.patch-diff-section .diff-code{min-height:180px;max-height:38vh}.patch-diff-section small{color:#b8aac8}
+.patch-diff-section{margin-bottom:16px;transition:opacity .15s}.patch-diff-section.disabled{opacity:.42}.patch-diff-section h3{display:flex;gap:8px;align-items:baseline;margin:0 0 6px}.patch-diff-section .diff-code{min-height:180px;max-height:38vh}.patch-diff-section small{color:#b8aac8}
 .source-edit-status,.smart-status,.native-status,.consistency-status,.matrix-status{font-size:.68rem;line-height:1.42;color:var(--muted);margin-top:7px}
 .advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .smart-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
@@ -2665,6 +2665,34 @@ body.desktop .desktop-badge{display:inline-flex}
     return {source:currentSource,css:project&&project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches,sourceSelectors:sourceSelectors,prototypeLinks:prototypeLinks};
   }
 
+  function currentPatchParts(){
+    return {
+      css:document.getElementById('patchApplyCss').checked,
+      structure:document.getElementById('patchApplyStructure').checked
+    };
+  }
+
+  function syncPatchPreviewSections(){
+    var parts=currentPatchParts();
+    var cssSection=patchCssDiff.closest('.patch-diff-section');
+    var jsSection=patchJsDiff.closest('.patch-diff-section');
+    if(cssSection)cssSection.classList.toggle('disabled',!parts.css);
+    if(jsSection)jsSection.classList.toggle('disabled',!parts.structure);
+  }
+
+  async function refreshPatchPreviewSelection(){
+    if(!pendingPatchPayload||!desktop||!desktop.previewPatch)return;
+    var payload=Object.assign({},pendingPatchPayload,{applyParts:currentPatchParts()});
+    var result=await desktop.previewPatch(payload);
+    if(!result||!result.ok){
+      setStatus((result&&result.error)||'Recalcul du diff impossible.',true);
+      return;
+    }
+    pendingPatchPreview=result;
+    renderPatchPreview(result);
+    syncPatchPreviewSections();
+  }
+
   function renderPatchPreview(result){
     function fill(key,pre,statusId){
       var file=result&&result.files&&result.files[key]||{};
@@ -2675,6 +2703,7 @@ body.desktop .desktop-badge{display:inline-flex}
     fill('css',patchCssDiff,'patchCssStatus');
     fill('js',patchJsDiff,'patchJsStatus');
     patchPreviewSummary.textContent=(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.prototypeCount||0)+' lien(s) prototype · '+(result.locatorCount||0)+' cible(s) stable(s)';
+    syncPatchPreviewSections();
   }
 
   async function previewLocalPatch(){
@@ -3692,6 +3721,8 @@ body.desktop .desktop-badge{display:inline-flex}
     compareStatus.textContent='Comparaison retirée.';
   });
   document.getElementById('applySourceBtn').addEventListener('click',applyToLocalSource);
+  document.getElementById('patchApplyCss').addEventListener('change',refreshPatchPreviewSelection);
+  document.getElementById('patchApplyStructure').addEventListener('change',refreshPatchPreviewSelection);
   document.getElementById('applyPatchPreviewBtn').addEventListener('click',applyPreviewedLocalPatch);
   document.getElementById('closePatchPreviewBtn').addEventListener('click',function(){patchPreviewModal.classList.remove('visible')});
   document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
