@@ -1435,6 +1435,67 @@
     emitLayers();
   }
 
+  function selectRelated(mode) {
+    if(!active||!selected)return false;
+    const current=selected;
+    let candidates=[];
+    if(mode==='siblings'){
+      const parent=current.parentElement;
+      candidates=parent?Array.from(parent.children):[current];
+    }else if(mode==='similar'){
+      const tag=current.tagName;
+      const cls=Array.from(current.classList||[]).find(function(name){return !name.startsWith('ve-')});
+      const selector=cls?tag.toLowerCase()+'.'+cssEscape(cls):tag.toLowerCase();
+      try{candidates=Array.from(document.querySelectorAll(selector)).slice(0,250)}catch(_){candidates=[current]}
+    }else{
+      candidates=[current];
+    }
+    candidates=candidates.filter(function(el){
+      if(!el||isEditorNode(el)||/^SCRIPT|STYLE|LINK|META|NOSCRIPT$/i.test(el.tagName))return false;
+      const st=touched.get(el);
+      const cs=getComputedStyle(el);
+      const r=el.getBoundingClientRect();
+      return !(st&&st.deleted)&&cs.display!=='none'&&r.width>=1&&r.height>=1;
+    });
+    selectedSet.clear();
+    candidates.forEach(function(el){remember(el);selectedSet.add(el)});
+    selected=selectedSet.has(current)?current:(candidates[candidates.length-1]||null);
+    if(isolationActive)refreshIsolation();
+    updateOverlay();
+    emitLayers();
+    emit('selection-bulk',{mode:mode,count:selectedSet.size});
+    return selectedSet.size>0;
+  }
+
+  function bulkLayerAction(action) {
+    let count=0;
+    if(action==='show-all'){
+      touched.forEach(function(state,element){
+        if(state&&state.deleted){
+          state.deleted=false;
+          applyState(element,state,false);
+          count+=1;
+        }
+      });
+    }
+    if(action==='unlock-all'){
+      touched.forEach(function(state){
+        if(state&&state.locked){state.locked=false;count+=1}
+      });
+    }
+    if(action==='lock-selected'){
+      selectionElements().forEach(function(element){
+        const state=remember(element);
+        if(state&&!state.locked){state.locked=true;count+=1}
+      });
+    }
+    updateOverlay();
+    emitLayers();
+    if(count)commitHistory();
+    emit('layers-bulk',{action:action,count:count});
+    return count;
+  }
+
   function selectionGroupSummary() {
     return Object.keys(selectionGroups).sort().map(function(name){
       const selectors=Array.isArray(selectionGroups[name])?selectionGroups[name]:[];
@@ -3186,6 +3247,11 @@
       redo();
       return true;
     }
+    if (modifier && key.toLowerCase() === 'a') {
+      event.preventDefault();
+      selectRelated(event.shiftKey?'similar':'siblings');
+      return true;
+    }
     if (modifier && key.toLowerCase() === 'd') {
       event.preventDefault();
       duplicateSelection();
@@ -3310,6 +3376,8 @@
     if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
     if (data.type === 'navigate-selection') navigateSelection(String(payload.direction || ''));
     if (data.type === 'selection-copy') copySelection();
+    if (data.type === 'selection-related') selectRelated(String(payload.mode||'siblings'));
+    if (data.type === 'layers-bulk') bulkLayerAction(String(payload.action||''));
     if (data.type === 'selection-paste') pasteSelection();
     if (data.type === 'selection-duplicate') duplicateSelection();
     if (data.type === 'selection-z') setSelectionZ(String(payload.mode || 'front'));
@@ -3405,6 +3473,8 @@
     emitLayers: emitLayers,
     navigateSelection: navigateSelection,
     copySelection: copySelection,
+    selectRelated: selectRelated,
+    bulkLayerAction: bulkLayerAction,
     pasteSelection: pasteSelection,
     duplicateSelection: duplicateSelection,
     setSelectionZ: setSelectionZ,
