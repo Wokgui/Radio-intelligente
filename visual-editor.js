@@ -787,6 +787,7 @@
     });
     const advancedProps=['padding','padding-left','padding-right','padding-top','padding-bottom','margin','margin-left','margin-right','margin-top','margin-bottom','box-shadow','filter','aspect-ratio','opacity','transform','position','top','right','bottom','left','object-fit'];
     advancedProps.forEach(function(prop){
+      if(prop==='object-fit'&&state.mediaAdjusted)return;
       if(state.advancedAdjusted&&state.advancedStyles&&Object.prototype.hasOwnProperty.call(state.advancedStyles,prop))setInline(element,prop,state.advancedStyles[prop]);
       else if(!(prop==='position'&&state.zAdjusted))restoreOriginalProp(state.selector,prop);
     });
