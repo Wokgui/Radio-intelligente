@@ -2290,8 +2290,8 @@ body.desktop .desktop-badge{display:inline-flex}
     mediaPositionY.disabled=!mediaEditable||!p.mediaAdjusted;
     resetMediaBtn.disabled=!mediaEditable||!p.mediaAdjusted;
     if(p.mediaFit&&Array.from(mediaFit.options).some(function(o){return o.value===p.mediaFit}))mediaFit.value=p.mediaFit;
-    mediaPositionX.value=String(Math.max(0,Math.min(100,Number(p.mediaPositionX)||50)));
-    mediaPositionY.value=String(Math.max(0,Math.min(100,Number(p.mediaPositionY)||50)));
+    mediaPositionX.value=String(Math.max(0,Math.min(100,Number.isFinite(Number(p.mediaPositionX))?Number(p.mediaPositionX):50)));
+    mediaPositionY.value=String(Math.max(0,Math.min(100,Number.isFinite(Number(p.mediaPositionY))?Number(p.mediaPositionY):50)));
     mediaPositionXValue.textContent=mediaPositionX.value+' %';
     mediaPositionYValue.textContent=mediaPositionY.value+' %';
     renderMediaAssetLibrary(p.mediaAssets||[]);
@@ -2798,7 +2798,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!result.ok){setStatus(result.error||'Image impossible à ouvrir.',true);return}
     post('media-set',{
       source:result.dataUrl,path:result.path,name:result.name||'image',fit:mediaFit.value||'contain',
-      positionX:Number(mediaPositionX.value)||50,positionY:Number(mediaPositionY.value)||50
+      positionX:Number(mediaPositionX.value),positionY:Number(mediaPositionY.value)
     });
     mediaStatus.textContent='Chargement de '+(result.name||'image')+'…';
   }
@@ -2811,8 +2811,8 @@ body.desktop .desktop-badge{display:inline-flex}
     post('media-set',{
       source:result.dataUrl,path:result.path,name:result.name||item.name||'asset',
       fit:mediaFit.value||'contain',
-      positionX:Number(mediaPositionX.value)||50,
-      positionY:Number(mediaPositionY.value)||50
+      positionX:Number(mediaPositionX.value),
+      positionY:Number(mediaPositionY.value)
     });
   }
 
@@ -2837,8 +2837,8 @@ body.desktop .desktop-badge{display:inline-flex}
         mediaAssetPath:item.mediaAssetPath||'',
         mediaName:item.mediaName||'',
         mediaFit:item.mediaFit||'contain',
-        mediaPositionX:Math.max(0,Math.min(100,Number(item.mediaPositionX)||50)),
-        mediaPositionY:Math.max(0,Math.min(100,Number(item.mediaPositionY)||50))
+        mediaPositionX:Math.max(0,Math.min(100,Number.isFinite(Number(item.mediaPositionX))?Number(item.mediaPositionX):50)),
+        mediaPositionY:Math.max(0,Math.min(100,Number.isFinite(Number(item.mediaPositionY))?Number(item.mediaPositionY):50))
       };
     });
   }
