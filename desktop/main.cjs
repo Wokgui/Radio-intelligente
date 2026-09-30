@@ -337,7 +337,7 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
-            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','appFrame'];
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
             if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
