@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.6.0",
+  "version": "6.7.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec groupes de travail persistants, duplication/coller, sélection rectangulaire, pan/zoom, guides intelligents et hiérarchie de sélection",
+  "description": "Éditeur visuel universel Windows avec isolation temporaire, filtres et repli des calques, groupes persistants, duplication, pan/zoom et guides intelligents",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
