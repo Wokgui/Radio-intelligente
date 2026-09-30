@@ -19,6 +19,9 @@ body.ve-active {
   cursor: crosshair !important;
   touch-action: none;
 }
+body.ve-active.ve-space-pan{cursor:grab!important}
+body.ve-active.ve-canvas-panning{cursor:grabbing!important}
+
 
 body.ve-active .ve-toolbar {
   position: fixed;
