@@ -118,6 +118,7 @@
   let grid = 1;
   let smartGuidesEnabled = true;
   let customGuides = {x:[],y:[]};
+  let layoutGuidesX = [];
   let nudgeStep = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
@@ -808,6 +809,10 @@
     const y = [{ value: window.innerHeight / 2, label: 'Milieu écran' }];
     (customGuides.x||[]).forEach(function(value){x.push({value:Number(value)||0,label:'Repère vertical '+Math.round(Number(value)||0)+' px'})});
     (customGuides.y||[]).forEach(function(value){y.push({value:Number(value)||0,label:'Repère horizontal '+Math.round(Number(value)||0)+' px'})});
+    (layoutGuidesX||[]).forEach(function(item){
+      if(!item||!Number.isFinite(Number(item.value)))return;
+      x.push({value:Number(item.value),label:String(item.label||'Grille de colonnes')});
+    });
     const candidates = [];
     const parent = element.parentElement;
 
@@ -3921,6 +3926,13 @@
         y:Array.isArray(payload.y)?payload.y.map(Number).filter(Number.isFinite):[]
       };
       emit('custom-guides',{x:customGuides.x.slice(),y:customGuides.y.slice()});
+    }
+    if (data.type === 'layout-guides') {
+      layoutGuidesX=(Array.isArray(payload.x)?payload.x:[]).map(function(item){
+        if(typeof item==='number')return {value:item,label:'Grille de colonnes'};
+        return {value:Number(item&&item.value),label:String(item&&item.label||'Grille de colonnes')};
+      }).filter(function(item){return Number.isFinite(item.value)});
+      emit('layout-guides',{count:layoutGuidesX.length});
     }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
