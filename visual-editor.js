@@ -1472,6 +1472,7 @@
     }
     if (selected && !selectedSet.has(selected)) selectedSet.add(selected);
     applyingHistory = false;
+    buildForcedStateStyle();
     hideGuides();
     updateOverlay();
     emitHistory();
@@ -1493,6 +1494,7 @@
     registry.forEach(restoreEntry);
     clearGeneratedNodes();
     touched.clear();
+    buildForcedStateStyle();
     selected = null;
     selectedSet.clear();
     isolationActive=false;
@@ -1603,16 +1605,20 @@
         }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
-      const pseudoMap={hover:':hover',active:':active',focus:':focus-visible',disabled:':disabled'};
+      const pseudoMap={hover:':hover',active:':active'};
       const stateStyles=state.stateStyles||{};
-      Object.keys(pseudoMap).forEach(function(name){
+      ['hover','active','focus','disabled'].forEach(function(name){
         const styles=stateStyles[name]||{};
         const stateDecl=[];
         if(styles.color)stateDecl.push('  color: '+styles.color+' !important;');
         if(styles.backgroundColor)stateDecl.push('  background-color: '+styles.backgroundColor+' !important;');
         if(styles.borderColor)stateDecl.push('  border-color: '+styles.borderColor+' !important;');
         if(styles.opacity!==undefined&&styles.opacity!=='')stateDecl.push('  opacity: '+Math.max(0,Math.min(1,Number(styles.opacity)))+' !important;');
-        if(stateDecl.length)rules.push(state.selector+pseudoMap[name]+' {\n'+stateDecl.join('\n')+'\n}');
+        if(!stateDecl.length)return;
+        let selector=state.selector+(pseudoMap[name]||'');
+        if(name==='focus')selector=state.selector+':focus-visible, '+state.selector+':focus';
+        if(name==='disabled')selector=state.selector+':disabled, '+state.selector+'[aria-disabled="true"]';
+        rules.push(selector+' {\n'+stateDecl.join('\n')+'\n}');
       });
     });
     const mediaMap = {
