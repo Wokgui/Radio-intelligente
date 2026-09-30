@@ -133,6 +133,7 @@
   let layoutGuidesX = [];
   let boxModelVisible = true;
   let boxDrag = null;
+  let inlineTextEdit = null;
   let nudgeStep = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
@@ -3251,6 +3252,59 @@
     commitHistory();
   }
 
+  function finishInlineTextEdit(commit) {
+    if(!inlineTextEdit)return false;
+    const edit=inlineTextEdit;
+    inlineTextEdit=null;
+    const element=edit.element;
+    if(commit){
+      const state=remember(element);
+      if(state&&state.textEditable&&!state.locked){
+        state.textContent=String(element.textContent||'');
+        state.textAdjusted=true;
+        applyState(element,state,false);
+        commitHistory();
+        emit('inline-text-edit',{active:false,committed:true,text:state.textContent,selector:state.selector});
+      }
+    }else{
+      element.textContent=edit.originalText;
+      emit('inline-text-edit',{active:false,committed:false,selector:selectorFor(element)});
+    }
+    if(edit.hadContentEditable===null)element.removeAttribute('contenteditable');
+    else element.setAttribute('contenteditable',edit.hadContentEditable);
+    element.removeAttribute('data-ais-inline-editing');
+    document.body.classList.remove('ve-inline-text-editing');
+    updateOverlay();
+    return true;
+  }
+
+  function beginInlineTextEdit(element) {
+    if(!active||!element||isEditorNode(element))return false;
+    if(inlineTextEdit&&inlineTextEdit.element===element)return true;
+    if(inlineTextEdit)finishInlineTextEdit(true);
+    const state=remember(element);
+    if(!state||state.locked||!state.textEditable)return false;
+    select(element,false);
+    inlineTextEdit={
+      element:element,
+      originalText:String(element.textContent||''),
+      hadContentEditable:element.getAttribute('contenteditable')
+    };
+    element.setAttribute('contenteditable','true');
+    element.setAttribute('data-ais-inline-editing','1');
+    document.body.classList.add('ve-inline-text-editing');
+    element.focus({preventScroll:true});
+    try{
+      const range=document.createRange();
+      range.selectNodeContents(element);
+      const sel=window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }catch(_){}
+    emit('inline-text-edit',{active:true,selector:state.selector,text:inlineTextEdit.originalText});
+    return true;
+  }
+
   function setTextContent(value) {
     if (!active || !selected) return;
     const state = remember(selected);
@@ -3548,6 +3602,7 @@
     constraintBadge.style.display = 'none';
     hideConstraintLines();
     hideBoxModelVisuals();
+    if(inlineTextEdit)finishInlineTextEdit(true);
     clearAltMeasure();
     hideDragMeasure();
     clearSpacingVisuals();
@@ -3562,6 +3617,12 @@
 
   window.addEventListener('pointerdown', function (event) {
     if (!active || isEditorNode(event.target)) return;
+    if(inlineTextEdit&&inlineTextEdit.element&&(event.target===inlineTextEdit.element||inlineTextEdit.element.contains(event.target)))return;
+    if(event.detail>=2){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if(beginInlineTextEdit(event.target))return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
     if (spaceHeld) {
@@ -3853,6 +3914,7 @@
 
   window.addEventListener('click', function (event) {
     if (!active || isEditorNode(event.target)) return;
+    if(inlineTextEdit&&inlineTextEdit.element&&(event.target===inlineTextEdit.element||inlineTextEdit.element.contains(event.target)))return;
     event.preventDefault();
     event.stopImmediatePropagation();
   }, true);
@@ -3875,6 +3937,19 @@
     if (!active) return false;
 
     const key = event.key;
+    if(inlineTextEdit){
+      if(key==='Escape'){
+        event.preventDefault();
+        finishInlineTextEdit(false);
+        return true;
+      }
+      if(key==='Enter'&&!event.shiftKey){
+        event.preventDefault();
+        finishInlineTextEdit(true);
+        return true;
+      }
+      return false;
+    }
     const modifier = event.ctrlKey || event.metaKey;
 
     if (key === ' ' && !modifier && !event.altKey) {
@@ -4064,6 +4139,10 @@
     if (data.type === 'align') alignSelected(String(payload.mode || ''));
     if (data.type === 'text-style') setTextProperty(String(payload.kind || ''), payload.value);
     if (data.type === 'text-content') setTextContent(payload.value);
+    if (data.type === 'inline-text-edit') {
+      if(payload.active===false)finishInlineTextEdit(payload.commit!==false);
+      else if(selected)beginInlineTextEdit(selected);
+    }
     if (data.type === 'lock') toggleLock(payload.value);
     if (data.type === 'measure-spacing') measureSpacing();
     if (data.type === 'get-layers') emitLayers();
@@ -4175,6 +4254,8 @@
     cancelActiveInteraction: cancelActiveInteraction,
     setResponsiveConfig: setResponsiveConfig,
     setBoxModel: setBoxModel,
+    beginInlineTextEdit: beginInlineTextEdit,
+    finishInlineTextEdit: finishInlineTextEdit,
     copySelection: copySelection,
     copySelectionStyle: copySelectionStyle,
     pasteSelectionStyle: pasteSelectionStyle,
