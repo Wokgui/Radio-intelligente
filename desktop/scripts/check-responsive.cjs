@@ -410,6 +410,18 @@ expect(html,"function previewLocalPatch()","complete patch preview host flow");
 expect(html,"function applyPreviewedLocalPatch()","selected patch apply flow");
 expect(main,"applyParts:plan.parts","transaction selected parts");
 expect(main,"source:rollback-last-patch","transactional rollback");
+expect(engine,"window.addEventListener('dblclick'","explicit inline text double-click");
+expect(engine,"finishInlineTextEdit(true);","inline text outside-click commit");
+expect(css,"box-sizing:border-box","box model ring geometry");
+expect(html,"function currentPatchParts()","interactive patch part selection");
+expect(html,"function refreshPatchPreviewSelection()","interactive patch preview refresh");
+expect(main,"const requested=payload&&payload.applyParts","preview respects selected patch parts");
+const syncAnchorStart=engine.indexOf("function syncAnchorPins(cfg,count)");
+const syncAnchorEnd=engine.indexOf("function hideConstraintLines()",syncAnchorStart);
+if(syncAnchorStart<0||syncAnchorEnd<0)throw new Error("syncAnchorPins block missing");
+const syncAnchorBlock=engine.slice(syncAnchorStart,syncAnchorEnd);
+if(syncAnchorBlock.includes("addEventListener"))throw new Error("Box model listeners must not be registered inside syncAnchorPins");
+
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -417,4 +429,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.31 feature checks passed.');
+console.log('App Interface Studio 6.32 feature checks passed.');
