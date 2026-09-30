@@ -331,14 +331,16 @@ function createWindow(){
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
             const shot=await api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'});
             const captureOk=!!(shot&&shot.ok&&typeof shot.dataUrl==='string'&&shot.dataUrl.indexOf('data:image/png')===0);
+            const roundtrip=await api.smokeTransactionRoundtrip();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&captureOk),
+              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&roundtrip&&roundtrip.ok),
               version:info&&info.version,
               bridge:true,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
-              captureSize:shot&&shot.width+'x'+shot.height
+              captureSize:shot&&shot.width+'x'+shot.height,
+              transactionRoundtrip:roundtrip
             };
           })()
         `,true);
