@@ -1039,7 +1039,7 @@ async function applyLocalPatch(payload){
 
     const transactionPath=transactionFile(plan.dir,stamp);
     const transaction={
-      version:3,
+      version:4,
       createdAt:new Date().toISOString(),
       sourceHtml:path.resolve(plan.local.html),
       htmlBackupPath,
@@ -1051,6 +1051,14 @@ async function applyLocalPatch(payload){
       jsBackupPath:jsBackup.backupPath,
       createdAssets,
       applyParts:plan.parts,
+      generatedCount:plan.generatedCount,
+      domPatchCount:plan.domPatchCount,
+      locatorCount:plan.locatorCount,
+      prototypeCount:plan.prototypeCount,
+      assetCount:plan.assetCount,
+      htmlChanged:!!plan.changed.html,
+      cssChanged:!!plan.changed.css,
+      structureChanged:!!plan.changed.structure,
       rolledBack:false
     };
     fs.writeFileSync(transactionPath,JSON.stringify(transaction,null,2)+'\n','utf8');
@@ -1129,6 +1137,48 @@ async function rollbackLocalPatch(payload){
 
 ipcMain.handle('source:apply-css',async (_event,payload)=>applyLocalPatch(payload));
 ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>rollbackLocalPatch(payload));
+
+function listLocalTransactions(payload){
+  const local=localSourceEntry(payload&&payload.source);
+  if(!local)return {ok:false,error:'Historique disponible uniquement pour une source HTML locale.',transactions:[]};
+  const dir=path.dirname(local.html);
+  const sourceHtml=path.resolve(local.html);
+  try{
+    const transactions=fs.readdirSync(dir)
+      .filter(name=>/^app-interface-studio\.transaction-.*\.json$/i.test(name))
+      .map(name=>{
+        const transactionPath=path.join(dir,name);
+        try{
+          const tx=JSON.parse(fs.readFileSync(transactionPath,'utf8'));
+          if(!tx||path.resolve(tx.sourceHtml||'')!==sourceHtml)return null;
+          return {
+            path:transactionPath,
+            version:Number(tx.version)||1,
+            createdAt:tx.createdAt||'',
+            rolledBack:!!tx.rolledBack,
+            rolledBackAt:tx.rolledBackAt||'',
+            applyParts:tx.applyParts&&typeof tx.applyParts==='object'?tx.applyParts:{css:true,structure:true},
+            generatedCount:Number(tx.generatedCount)||0,
+            domPatchCount:Number(tx.domPatchCount)||0,
+            locatorCount:Number(tx.locatorCount)||0,
+            prototypeCount:Number(tx.prototypeCount)||0,
+            assetCount:Number.isFinite(Number(tx.assetCount))?Number(tx.assetCount):(Array.isArray(tx.createdAssets)?tx.createdAssets.length:0),
+            htmlChanged:tx.htmlChanged!==undefined?!!tx.htmlChanged:true,
+            cssChanged:tx.cssChanged!==undefined?!!tx.cssChanged:!!(tx.applyParts&&tx.applyParts.css),
+            structureChanged:tx.structureChanged!==undefined?!!tx.structureChanged:!!(tx.applyParts&&tx.applyParts.structure)
+          };
+        }catch(_){return null}
+      })
+      .filter(Boolean)
+      .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))||String(b.path).localeCompare(String(a.path)));
+    const nextRollback=transactions.find(item=>!item.rolledBack)||null;
+    return {ok:true,transactions:transactions.slice(0,50),nextRollbackPath:nextRollback&&nextRollback.path||''};
+  }catch(error){
+    return {ok:false,error:'Lecture de l’historique impossible : '+String(error&&error.message||error),transactions:[]};
+  }
+}
+
+ipcMain.handle('source:list-transactions',async (_event,payload)=>listLocalTransactions(payload));
 
 async function inspectSmokeFixture(url){
   const win=new BrowserWindow({
