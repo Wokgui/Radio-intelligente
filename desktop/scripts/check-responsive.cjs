@@ -230,6 +230,19 @@ expect(html,"rulerY.style.height=(h*z)+'px'","vertical ruler zoom sync");
 expect(html,"event.offsetX/currentZoomScale()","scaled ruler horizontal coordinate");
 expect(html,"event.offsetY/currentZoomScale()","scaled ruler vertical coordinate");
 expect(html,"Mesurer et afficher autour de la sélection","visual spacing button label");
+expect(engine,"let nudgeStep = 1","keyboard nudge step state");
+expect(engine,"payload.nudgeStep !== undefined","keyboard nudge preference");
+expect(engine,"const moveStep = Math.max(1,Number(nudgeStep)||1)","keyboard nudge step usage");
+expect(engine,"setSelectionZ('front')","keyboard bring-to-front");
+expect(engine,"setSelectionZ('back')","keyboard send-to-back");
+expect(html,"nudgeStep:1","host nudge preference");
+expect(html,"function zoomToSelection()","zoom to selection");
+expect(html,"lower==='1'","100 percent zoom shortcut");
+expect(html,"lower==='2'","selection zoom shortcut");
+expect(html,"key==='+'||key==='='","zoom in keyboard shortcut");
+expect(html,"key==='-'","zoom out keyboard shortcut");
+expect(html,"var amount=baseStep*(modifier?10:1)","host keyboard nudge step");
+expect(html,"prefs.nudgeStep=Number(step.value)||1","nudge step persistence");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -237,4 +250,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.11 feature checks passed.');
+console.log('App Interface Studio 6.12 feature checks passed.');
