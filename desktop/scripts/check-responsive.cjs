@@ -164,6 +164,17 @@ expect(engine,"data.type === 'selection-duplicate'","duplicate engine command");
 expect(engine,"data.type === 'selection-z'","z-order engine command");
 expect(html,"duplication(s) structurelle(s)","direct CSS structural warning");
 expect(html,"snapshot.generatedNodes","generated nodes export guidance");
+expect(html,'id="selectionGroupName"','selection group name input');
+expect(html,'id="selectionGroupList"','selection group list');
+expect(html,'id="createSelectionGroupBtn"','selection group create button');
+expect(html,"function renderSelectionGroups","selection group rendering");
+expect(engine,"let selectionGroups = {}","selection group state");
+expect(engine,"function createSelectionGroup(name)","selection group creation");
+expect(engine,"function selectSelectionGroup(name)","selection group recall");
+expect(engine,"function deleteSelectionGroup(name)","selection group deletion");
+expect(engine,"selectionGroups: JSON.parse(JSON.stringify(selectionGroups))","selection groups project persistence");
+expect(engine,"data.type === 'selection-group-create'","selection group create command");
+expect(engine,"data.type === 'get-selection-groups'","selection group listing command");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -171,4 +182,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.5 feature checks passed.');
+console.log('App Interface Studio 6.6 feature checks passed.');
