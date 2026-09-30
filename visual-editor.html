@@ -1354,7 +1354,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.12.0'};
+      project.studio={name:'App Interface Studio',version:'6.13.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1424,11 +1424,20 @@ body.desktop .desktop-badge{display:inline-flex}
       });
       var actions=document.createElement('div');
       actions.className='mini-actions';
+      var valueInput=document.createElement('input');
+      valueInput.type='number';
+      valueInput.min='0';
+      valueInput.step='1';
+      valueInput.value=String(Math.round(value));
+      valueInput.title='Position du repère en pixels';
+      valueInput.style.cssText='width:68px;height:28px;border:1px solid var(--line);border-radius:7px;padding:0 6px;font-size:.65rem;font-weight:800';
+      valueInput.addEventListener('change',function(){updateCustomGuide(axis,index,Number(valueInput.value))});
+      valueInput.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();valueInput.blur()}});
       var del=document.createElement('button');
       del.textContent='×';
       del.title='Supprimer ce repère';
       del.addEventListener('click',function(){removeCustomGuide(axis,index)});
-      actions.appendChild(del);
+      actions.append(valueInput,del);
       row.append(main,actions);
       guideList.appendChild(row);
     }
@@ -1474,6 +1483,27 @@ body.desktop .desktop-badge{display:inline-flex}
     prefs[key]=list;
     syncCustomGuides();
     setStatus('Repère supprimé.');
+  }
+
+  function updateCustomGuide(axis,index,value){
+    var key=axis==='x'?'customGuidesX':'customGuidesY';
+    var size=currentDeviceSize();
+    var max=axis==='x'?size.width:size.height;
+    value=Math.max(0,Math.min(max,Math.round(Number(value)||0)));
+    var list=Array.isArray(prefs[key])?prefs[key].slice():[];
+    if(index<0||index>=list.length)return;
+    list[index]=value;
+    prefs[key]=list;
+    syncCustomGuides();
+    setStatus('Repère déplacé à '+value+' px.');
+  }
+
+  function addGuideAtSelection(axis){
+    if(!lastState||!lastState.selected){setStatus('Sélectionne un objet avant de créer un repère.',true);return}
+    var value=axis==='x'
+      ? (Number(lastState.x)||0)+(Number(lastState.width)||0)/2
+      : (Number(lastState.y)||0)+(Number(lastState.height)||0)/2;
+    addCustomGuide(axis,value);
   }
 
   function guideValueFromClient(axis,clientX,clientY){
@@ -2611,7 +2641,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.12.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.13.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2656,7 +2686,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.12.0'};
+    project.studio={name:'App Interface Studio',version:'6.13.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2714,7 +2744,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.12.0'};
+    project.studio={name:'App Interface Studio',version:'6.13.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2757,6 +2787,9 @@ body.desktop .desktop-badge{display:inline-flex}
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
     if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
+    if(event.altKey&&lower==='m'){event.preventDefault();post('measure-spacing');return}
+    if(event.altKey&&event.shiftKey&&lower==='v'){event.preventDefault();addGuideAtSelection('x');return}
+    if(event.altKey&&event.shiftKey&&lower==='h'){event.preventDefault();addGuideAtSelection('y');return}
     if(!modifier&&(key==='+'||key==='=')){event.preventDefault();setRuntimeZoom(currentZoomScale()+.1);return}
     if(!modifier&&key==='-'){event.preventDefault();setRuntimeZoom(currentZoomScale()-.1);return}
     if(modifier&&key===']'){event.preventDefault();post('selection-z',{mode:'front'});return}
@@ -2800,6 +2833,9 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Zoom avant',hint:'+ / Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
     {label:'Zoom arrière',hint:'Ctrl+molette ↓',run:function(){setRuntimeZoom(currentZoomScale()-.1)}},
     {label:'Recentrer le canevas',hint:'',run:resetCanvasPosition},
+    {label:'Mesurer les espacements autour de la sélection',hint:'Alt+M',run:function(){post('measure-spacing')}},
+    {label:'Ajouter un repère vertical au centre de la sélection',hint:'Alt+Maj+V',run:function(){addGuideAtSelection('x')}},
+    {label:'Ajouter un repère horizontal au centre de la sélection',hint:'Alt+Maj+H',run:function(){addGuideAtSelection('y')}},
     {label:'Mode Édition',hint:'',run:function(){setPreviewMode('edit')}},
     {label:'Aperçu plein écran',hint:'',run:function(){setPreviewMode('preview')}},
     {label:'Android exact',hint:'',run:function(){setPreviewMode('android')}},
