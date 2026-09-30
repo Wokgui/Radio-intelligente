@@ -356,6 +356,18 @@ body.desktop .desktop-badge{display:inline-flex}
 .layout-diagnostic-item span{font-size:.63rem;color:var(--muted);line-height:1.35}
 .layout-diagnostic-cause{padding:6px 7px;border-radius:7px;background:#f7f4fa;color:#5d5068!important}
 .layout-diagnostic-actions{display:flex;gap:5px;flex-wrap:wrap}
+.cascade-summary{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.cascade-list{display:grid;gap:7px;max-height:360px;overflow:auto;margin-top:8px}
+.cascade-item{display:grid;gap:5px;padding:9px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.cascade-item.winner{border-color:#a98eea;box-shadow:inset 3px 0 #6f49f5}
+.cascade-item b{font-size:.69rem;overflow-wrap:anywhere}
+.cascade-meta{font-size:.61rem;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.cascade-decls{display:grid;gap:3px;padding:7px;border-radius:7px;background:#f7f4fa;font:600 .61rem/1.35 ui-monospace,SFMono-Regular,Consolas,monospace}
+.cascade-decl{display:flex;gap:6px;align-items:flex-start}
+.cascade-decl.win{color:#4d2ca0;font-weight:850}
+.cascade-decl.lose{opacity:.55;text-decoration:line-through}
+.cascade-computed{max-height:170px;overflow:auto;display:grid;grid-template-columns:minmax(110px,.8fr) 1fr;gap:3px 8px;margin-top:8px;padding:8px;border-radius:8px;background:#f8f6fa;font-size:.61rem}
+.cascade-computed b{font-weight:850}.cascade-computed span{overflow-wrap:anywhere}
 
 .layer-search{width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);outline:none}
 .layer-search:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
@@ -1288,6 +1300,17 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
 
+    <section class="card">
+      <h2>Cascade CSS <small>règle gagnante et source</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="inspectCascadeBtn">Inspecter la sélection</button>
+      </div>
+      <div class="cascade-summary" id="cascadeSummary"></div>
+      <div class="cascade-computed" id="cascadeComputed"><b>Valeurs calculées</b><span>Sélectionne un objet puis lance l’inspection.</span></div>
+      <div class="cascade-list" id="cascadeList"><div class="hint">Aucune cascade inspectée.</div></div>
+      <p>Les déclarations gagnantes sont mises en évidence. La spécificité est affichée sous la forme ID / classes-attributs-pseudo-classes / éléments.</p>
+    </section>
+
     <section class="card desktop-only">
       <h2>Code source direct <small>diff avant validation</small></h2>
       <div class="source-edit-status" id="directSourceStatus">Pour un dossier HTML local, Studio cherche la vraie règle CSS correspondant à l’objet sélectionné.</div>
@@ -1519,6 +1542,10 @@ body.desktop .desktop-badge{display:inline-flex}
   var nativeStatus=document.getElementById('nativeStatus');
   var nativeList=document.getElementById('nativeList');
   var directSourceStatus=document.getElementById('directSourceStatus');
+  var cascadeSummary=document.getElementById('cascadeSummary');
+  var cascadeComputed=document.getElementById('cascadeComputed');
+  var cascadeList=document.getElementById('cascadeList');
+  var lastCascadePayload=null;
   var consistencyStatus=document.getElementById('consistencyStatus');
   var consistencyList=document.getElementById('consistencyList');
   var autoLayoutStatus=document.getElementById('autoLayoutStatus');
@@ -1637,7 +1664,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.51.0'};
+      project.studio={name:'App Interface Studio',version:'6.52.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2563,6 +2590,58 @@ body.desktop .desktop-badge{display:inline-flex}
     else layerTree.appendChild(frag);
   }
 
+  function cascadeFileLabel(href){
+    if(!href)return 'style interne';
+    if(href==='inline')return 'attribut style';
+    try{
+      var url=new URL(href,location.href);
+      var parts=url.pathname.split('/').filter(Boolean);
+      return parts.slice(-2).join('/')||href;
+    }catch(_){return href}
+  }
+
+  function renderCssCascade(payload){
+    payload=payload||{};
+    lastCascadePayload=payload;
+    cascadeList.innerHTML='';
+    cascadeSummary.innerHTML='';
+    cascadeComputed.innerHTML='';
+    if(!payload.selected){
+      cascadeList.innerHTML='<div class="hint">Aucun objet sélectionné.</div>';
+      cascadeComputed.innerHTML='<b>Valeurs calculées</b><span>—</span>';
+      return;
+    }
+    var rules=payload.rules||[];
+    var winningRules=rules.filter(function(r){return (r.winningProperties||[]).length>0}).length;
+    cascadeSummary.innerHTML='<span class="audit-chip">'+rules.length+' règle(s)</span><span class="audit-chip">'+winningRules+' contributive(s)</span><span class="audit-chip">Sélecteur : '+String(payload.selector||'')+'</span>';
+    var computed=payload.computed||{};
+    Object.keys(computed).forEach(function(prop){
+      var b=document.createElement('b');b.textContent=prop;
+      var v=document.createElement('span');v.textContent=computed[prop]||'';
+      cascadeComputed.append(b,v);
+    });
+    if(!rules.length){cascadeList.innerHTML='<div class="hint">Aucune règle CSS accessible ne correspond à cet objet.</div>';return}
+    rules.forEach(function(rule){
+      var row=document.createElement('div');row.className='cascade-item '+((rule.winningProperties||[]).length?'winner':'');
+      var title=document.createElement('b');title.textContent=rule.selectorText||rule.selector||'règle';
+      var meta=document.createElement('div');meta.className='cascade-meta';
+      meta.textContent='Spécificité '+(rule.specificity||[]).join(' / ')+' · ordre '+(rule.order||0)+' · '+cascadeFileLabel(rule.href)+(rule.context?' · '+rule.context:'');
+      var decls=document.createElement('div');decls.className='cascade-decls';
+      (rule.declarations||[]).forEach(function(dec){
+        var line=document.createElement('div');line.className='cascade-decl '+(dec.winner?'win':'lose');
+        line.textContent=dec.property+': '+dec.value+(dec.important?' !important':'')+(dec.winner?'  ← gagne':'');
+        decls.appendChild(line);
+      });
+      var actions=document.createElement('div');actions.className='layout-diagnostic-actions';
+      if(rule.href&&rule.href!=='inline'&&desktop&&desktop.prepareDirectEdit){
+        var edit=document.createElement('button');edit.className='btn';edit.textContent='Modifier cette règle dans la source';
+        edit.addEventListener('click',function(){prepareDirectSourceEdit(rule)});
+        actions.appendChild(edit);
+      }
+      row.append(title,meta,decls,actions);cascadeList.appendChild(row);
+    });
+  }
+
   function renderLayoutDiagnostic(payload){
     payload=payload||{};
     var summary=payload.summary||{};
@@ -2666,12 +2745,19 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
-  async function prepareDirectSourceEdit(){
+  async function prepareDirectSourceEdit(cascadeRule){
     if(!desktop||!desktop.prepareDirectEdit){directSourceStatus.textContent='Fonction disponible dans l’application Windows.';return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){directSourceStatus.textContent='Ouvre une application HTML/PWA depuis un dossier local.';return}
     if(!lastState||!lastState.selected){directSourceStatus.textContent='Sélectionne d’abord un objet.';return}
-    directSourceStatus.textContent='Recherche de la vraie règle CSS…';
-    var result=await desktop.prepareDirectEdit({source:currentSource,selector:lastState.selector,css:lastState.css||cssOut.value});
+    cascadeRule=cascadeRule&&cascadeRule.selector?cascadeRule:null;
+    directSourceStatus.textContent=cascadeRule?'Préparation du diff sur la règle gagnante…':'Recherche de la vraie règle CSS…';
+    var result=await desktop.prepareDirectEdit({
+      source:currentSource,
+      selector:cascadeRule?cascadeRule.selector:lastState.selector,
+      sourceSelector:lastState.selector,
+      preferredHref:cascadeRule?cascadeRule.href:'',
+      css:lastState.css||cssOut.value
+    });
     if(!result||!result.ok){directSourceStatus.textContent=result&&result.error||'Diff impossible.';return}
     pendingDirectDiff=result;pendingNativeDiff=null;pendingDiffKind='direct';
     sourceDiffFile.textContent=result.relativePath||result.file;
@@ -3616,7 +3702,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.51.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.52.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3669,7 +3755,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.51.0'};
+    project.studio={name:'App Interface Studio',version:'6.52.0'};
     return project;
   }
 
@@ -3766,7 +3852,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.51.0'};
+    project.studio={name:'App Interface Studio',version:'6.52.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4149,6 +4235,7 @@ body.desktop .desktop-badge{display:inline-flex}
       setStatus('Ancrage '+axisLabel+' : '+(names[p.value]||p.value)+'.');
     }
     if(data.type==='design-consistency')renderConsistency(p);
+    if(data.type==='css-cascade')renderCssCascade(p);
     if(data.type==='layout-diagnostic')renderLayoutDiagnostic(p);
     if(data.type==='layout-diagnostic-applied'){setStatus('Correction structurelle appliquée à '+(p.selector||'l’objet')+'.');post('get-css')}
     if(data.type==='repair-suggestions')renderRepairSuggestions(p.items||[]);
@@ -4521,6 +4608,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
   document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
+  document.getElementById('inspectCascadeBtn').addEventListener('click',function(){post('get-css-cascade')});
   document.getElementById('layoutDiagnosticBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'screen'})});
   document.getElementById('layoutDiagnosticSelectionBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'selection'})});
   document.getElementById('layoutDiagnosticClearBtn').addEventListener('click',function(){post('layout-diagnostic-clear')});
@@ -4571,7 +4659,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('closePatchPreviewBtn').addEventListener('click',function(){patchPreviewModal.classList.remove('visible')});
   document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
   document.getElementById('refreshTransactionsBtn').addEventListener('click',refreshLocalTransactions);
-  document.getElementById('prepareDirectEditBtn').addEventListener('click',prepareDirectSourceEdit);
+  document.getElementById('prepareDirectEditBtn').addEventListener('click',function(){prepareDirectSourceEdit(null)});
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
