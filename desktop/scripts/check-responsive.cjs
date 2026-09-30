@@ -305,6 +305,14 @@ expect(html,"Ctrl+Alt+C","copy style shortcut");
 expect(html,"Ctrl+Alt+V","paste style shortcut");
 expect(html,"data.type==='style-copied'","style copy host feedback");
 expect(html,"data.type==='style-pasted'","style paste host feedback");
+expect(engine,"function overlapCandidatesAt(x,y)","overlap candidate detection");
+expect(engine,"function cycleOverlapSelection(direction)","overlap selection cycling");
+expect(engine,"document.elementsFromPoint","under-pointer element stack");
+expect(engine,"data.type === 'cycle-selection'","cycle selection command");
+expect(html,'data-cycle-selection="-1"','previous under-pointer button');
+expect(html,'data-cycle-selection="1"','next under-pointer button');
+expect(html,"key==='Tab'","under-pointer tab shortcut");
+expect(html,"data.type==='selection-cycle'","under-pointer selection feedback");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -312,4 +320,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.19 feature checks passed.');
+console.log('App Interface Studio 6.20 feature checks passed.');
