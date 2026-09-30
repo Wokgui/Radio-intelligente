@@ -821,6 +821,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <label class="color-control">Fond<input id="colorBg" type="color" value="#ffffff"></label>
         <label class="color-control">Bordure<input id="colorBorder" type="color" value="#dddddd"></label>
       </div>
+      <div class="layout-note" id="selectedContrastStatus" style="margin-top:8px">Contraste : sélectionne un texte pour mesurer AA / AAA.</div>
       <div class="fields" style="margin-top:8px">
         <div class="field"><label>Plan (z-index)</label><input id="zIndex" type="number" value="0"></div>
         <div class="field"><label>Ajustement rapide</label><div class="toolbar">
@@ -1314,6 +1315,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var colorText=document.getElementById('colorText');
   var colorBg=document.getElementById('colorBg');
   var colorBorder=document.getElementById('colorBorder');
+  var selectedContrastStatus=document.getElementById('selectedContrastStatus');
   var textCard=document.getElementById('textCard');
   var mediaCard=document.getElementById('mediaCard');
   var mediaFit=document.getElementById('mediaFit');
@@ -2309,6 +2311,20 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function renderSelectedContrast(contrast){
+    contrast=contrast||{};
+    if(!contrast.available){
+      selectedContrastStatus.textContent='Contraste : sélectionne un texte sans sous-éléments pour mesurer AA / AAA.';
+      return;
+    }
+    if(contrast.uncertain){
+      selectedContrastStatus.textContent='Contraste : mesure automatique incertaine, car le fond contient une image ou un dégradé · seuil AA '+Number(contrast.aaMinimum||4.5).toFixed(1)+':1.';
+      return;
+    }
+    var ratio=Number(contrast.ratio)||0;
+    selectedContrastStatus.textContent='Contraste '+ratio.toFixed(2)+':1 · AA '+(contrast.passesAA?'✓':'✗')+' (≥ '+Number(contrast.aaMinimum||4.5).toFixed(1)+':1) · AAA '+(contrast.passesAAA?'✓':'✗')+' (≥ '+Number(contrast.aaaMinimum||7).toFixed(1)+':1) · '+(contrast.largeText?'grand texte':'texte normal')+'.';
+  }
+
   function updateState(p){
     lastState=p;
     hasSelection=!!p.selected;
@@ -2319,6 +2335,7 @@ body.desktop .desktop-badge{display:inline-flex}
     metrics.y.textContent=p.selected?p.y:'—';
     metrics.w.textContent=p.selected?p.width:'—';
     metrics.h.textContent=p.selected?p.height:'—';
+    renderSelectedContrast(p.selected?p.contrast:null);
 
     var responsiveActive=!!(p.selected&&p.responsive&&p.responsive.enabled);
     [sizeW,sizeH,zIndex].forEach(function(el){el.disabled=!p.selected||selectionCount>1});
