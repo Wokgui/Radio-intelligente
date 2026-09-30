@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.26.0",
+  "version": "6.27.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec patch DOM réversible pour duplications, textes et accessibilité, grille de colonnes magnétique, ancrages directs et outils de précision",
+  "description": "Éditeur visuel universel Windows avec sélecteurs source stables malgré les duplications, patch DOM réversible, grille de colonnes magnétique, ancrages directs et outils de précision",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
