@@ -754,7 +754,7 @@ function mediaAssetPlan(item,dir){
   const bytes=fs.readFileSync(sourcePath);
   const hash=crypto.createHash('sha1').update(bytes).digest('hex').slice(0,12);
   const rawExt=path.extname(sourcePath).toLowerCase();
-  const ext=/^\\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)?rawExt:'.bin';
+  const ext=/^\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)?rawExt:'.bin';
   const base=path.basename(sourcePath,rawExt).replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48)||'asset';
   const assetDir=path.join(dir,'app-interface-studio-assets');
   const filename=base+'-'+hash+ext;
