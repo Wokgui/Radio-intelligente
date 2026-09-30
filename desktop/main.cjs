@@ -656,8 +656,11 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     mediaSource:String(item&&item.mediaSource||''),
     mediaFit:String(item&&item.mediaFit||'contain'),
     mediaPositionX:Number.isFinite(Number(item&&item.mediaPositionX))?Math.max(0,Math.min(100,Number(item.mediaPositionX))):50,
-    mediaPositionY:Number.isFinite(Number(item&&item.mediaPositionY))?Math.max(0,Math.min(100,Number(item.mediaPositionY))):50
-  })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted));
+    mediaPositionY:Number.isFinite(Number(item&&item.mediaPositionY))?Math.max(0,Math.min(100,Number(item.mediaPositionY))):50,
+    svgTintAdjusted:!!(item&&item.svgTintAdjusted),
+    svgTintColor:String(item&&item.svgTintColor||'#000000'),
+    svgTintMode:['fill','stroke','both'].includes(String(item&&item.svgTintMode))?String(item.svgTintMode):'both'
+  })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted||item.svgTintAdjusted));
 
   const cleanPrototypeLinks=Object.keys(prototypeLinks&&typeof prototypeLinks==='object'?prototypeLinks:{}).map(sourceSelector=>{
     const link=prototypeLinks[sourceSelector]||{};
@@ -737,6 +740,17 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     '          element.style.setProperty("background-size",fit==="fill"?"100% 100%":fit==="none"?"auto":fit,"important");',
     '          element.style.setProperty("background-position",px+"% "+py+"%","important");element.style.setProperty("background-repeat","no-repeat","important");',
     '        }',
+    '      }',
+    '      if(item.svgTintAdjusted&&String(element.tagName||"").toLowerCase()==="svg"){',
+    '        const color=item.svgTintColor||"#000000";const mode=["fill","stroke","both"].includes(item.svgTintMode)?item.svgTintMode:"both";',
+    '        element.style.setProperty("color",color,"important");',
+    '        Array.from(element.querySelectorAll("path,rect,circle,ellipse,polygon,polyline,line,text")).forEach(function(node){',
+    '          const computed=getComputedStyle(node);const fill=String(computed.fill||"").toLowerCase();const stroke=String(computed.stroke||"").toLowerCase();',
+    '          const fillVisible=fill&&fill!=="none"&&fill!=="transparent"&&fill!=="rgba(0, 0, 0, 0)"&&fill!=="rgba(0,0,0,0)";',
+    '          const strokeVisible=stroke&&stroke!=="none"&&stroke!=="transparent"&&stroke!=="rgba(0, 0, 0, 0)"&&stroke!=="rgba(0,0,0,0)";',
+    '          if((mode==="fill"||mode==="both")&&fillVisible)node.style.setProperty("fill",color,"important");',
+    '          if((mode==="stroke"||mode==="both")&&strokeVisible)node.style.setProperty("stroke",color,"important");',
+    '        });',
     '      }',
     '    });',
     '  }',
