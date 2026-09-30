@@ -2723,41 +2723,7 @@
 
   function syncAnchorPins(cfg,count) {
     outline.classList.toggle('ve-single-selection',count===1);
-    outline.querySelectorAll('.ve-box-handle').forEach(function(handle){
-    handle.addEventListener('pointerdown',function(event){
-      if(!active||!selected||selectionElements().length!==1)return;
-      event.preventDefault();event.stopPropagation();
-      const kind=handle.dataset.boxKind,side=handle.dataset.side;
-      const values=boxValues(selected);
-      boxDrag={pointerId:event.pointerId,kind:kind,side:side,startX:event.clientX,startY:event.clientY,startValue:values[kind][side],startSnapshot:snapshot()};
-      handle.setPointerCapture&&handle.setPointerCapture(event.pointerId);
-    });
-    handle.addEventListener('pointermove',function(event){
-      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
-      event.preventDefault();event.stopPropagation();
-      const dx=event.clientX-boxDrag.startX,dy=event.clientY-boxDrag.startY;
-      let delta=0;
-      if(boxDrag.kind==='margin'){
-        if(boxDrag.side==='left')delta=-dx;
-        if(boxDrag.side==='right')delta=dx;
-        if(boxDrag.side==='top')delta=-dy;
-        if(boxDrag.side==='bottom')delta=dy;
-      }else{
-        if(boxDrag.side==='left')delta=dx;
-        if(boxDrag.side==='right')delta=-dx;
-        if(boxDrag.side==='top')delta=dy;
-        if(boxDrag.side==='bottom')delta=-dy;
-      }
-      setBoxModel({kind:boxDrag.kind,side:boxDrag.side,value:Math.max(0,boxDrag.startValue+delta),commit:false});
-    });
-    handle.addEventListener('pointerup',function(event){
-      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
-      event.preventDefault();event.stopPropagation();
-      boxDrag=null;commitHistory();updateOverlay();
-    });
-  });
-
-  outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
+    outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
       const axis=pin.dataset.anchorAxis;
       const value=pin.dataset.anchorValue;
       const activeValue=axis==='h'?(cfg&&cfg.hAnchor):(cfg&&cfg.vAnchor);
@@ -3777,6 +3743,50 @@
     updateOverlay();
     commitHistory();
   }, true);
+
+  outline.querySelectorAll('.ve-box-handle').forEach(function(handle){
+    handle.addEventListener('pointerdown',function(event){
+      if(!active||!selected||selectionElements().length!==1)return;
+      event.preventDefault();event.stopPropagation();
+      const kind=handle.dataset.boxKind,side=handle.dataset.side;
+      const values=boxValues(selected);
+      boxDrag={
+        pointerId:event.pointerId,
+        kind:kind,
+        side:side,
+        startX:event.clientX,
+        startY:event.clientY,
+        startValue:values[kind][side],
+        startSnapshot:snapshot()
+      };
+      handle.setPointerCapture&&handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener('pointermove',function(event){
+      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
+      event.preventDefault();event.stopPropagation();
+      const dx=event.clientX-boxDrag.startX,dy=event.clientY-boxDrag.startY;
+      let delta=0;
+      if(boxDrag.kind==='margin'){
+        if(boxDrag.side==='left')delta=-dx;
+        if(boxDrag.side==='right')delta=dx;
+        if(boxDrag.side==='top')delta=-dy;
+        if(boxDrag.side==='bottom')delta=dy;
+      }else{
+        if(boxDrag.side==='left')delta=dx;
+        if(boxDrag.side==='right')delta=-dx;
+        if(boxDrag.side==='top')delta=dy;
+        if(boxDrag.side==='bottom')delta=-dy;
+      }
+      setBoxModel({kind:boxDrag.kind,side:boxDrag.side,value:Math.max(0,boxDrag.startValue+delta),commit:false});
+    });
+    handle.addEventListener('pointerup',function(event){
+      if(!boxDrag||event.pointerId!==boxDrag.pointerId)return;
+      event.preventDefault();event.stopPropagation();
+      boxDrag=null;
+      commitHistory();
+      updateOverlay();
+    });
+  });
 
   outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
     pin.addEventListener('pointerdown',function(event){
