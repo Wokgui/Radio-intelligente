@@ -87,11 +87,12 @@ main{
 .ruler-y{left:0;top:31px;width:25px;background-image:repeating-linear-gradient(#91889d 0 1px,transparent 1px 10px);background-size:7px 10px;background-repeat:repeat-y;background-position:right top}
 .ruler-corner{position:absolute;left:0;top:0;width:25px;height:25px;border:1px solid #d8d2df;background:#fbfafc}
 .device{
-  position:relative;border:10px solid #211e26;border-radius:34px;background:#111;
-  box-shadow:0 30px 76px rgba(31,22,45,.28),0 1px 0 rgba(255,255,255,.25) inset;
-  overflow:hidden;transform-origin:top left;transition:border-radius .2s,border-width .2s
+  --frame-size:10px;
+  position:relative;border:0;border-radius:34px;background:#111;
+  box-shadow:0 0 0 var(--frame-size) #211e26,0 30px 76px rgba(31,22,45,.28),0 1px 0 rgba(255,255,255,.25) inset;
+  overflow:hidden;transform-origin:top left;transition:border-radius .2s,box-shadow .2s
 }
-.device.wide{border-width:7px;border-radius:18px}
+.device.wide{--frame-size:7px;border-radius:18px}
 .device:before{content:"";display:none;position:absolute;z-index:5;pointer-events:none;background:#161319}
 .device.notch-hole:before{display:block;top:8px;left:50%;width:10px;height:10px;transform:translateX(-50%);border-radius:50%}
 .device.notch-island:before{display:block;top:7px;left:50%;width:94px;height:28px;transform:translateX(-50%);border-radius:999px}
