@@ -4797,6 +4797,9 @@
     if (data.type === 'animation-set') setAnimation(payload);
     if (data.type === 'interactive-state') setInteractiveState(payload.state);
     if (data.type === 'interactive-state-style') setInteractiveStateStyle(payload);
+    if (data.type === 'contrast-preview') previewContrastFix(payload.level);
+    if (data.type === 'contrast-preview-clear') clearContrastPreview();
+    if (data.type === 'contrast-fix-apply') applyContrastFix();
     if (data.type === 'stress-test') stressTest(payload.mode);
     if (data.type === 'component-create') createComponent(payload.name);
     if (data.type === 'component-link') linkComponentInstance(payload.name);
@@ -4908,6 +4911,9 @@
     setAnimation: setAnimation,
     setInteractiveState: setInteractiveState,
     setInteractiveStateStyle: setInteractiveStateStyle,
+    previewContrastFix: previewContrastFix,
+    clearContrastPreview: clearContrastPreview,
+    applyContrastFix: applyContrastFix,
     stressTest: stressTest,
     createComponent: createComponent,
     linkComponentInstance: linkComponentInstance,
