@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.33.0",
+  "version": "6.34.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec comparaison pixel à pixel, volet de référence, alignement de capture, box model manipulable, édition directe du texte et diff interactif HTML/CSS/JS",
+  "description": "Éditeur visuel universel Windows avec comparaison pixel à pixel, rotation portrait/paysage, alignement de capture, box model manipulable, édition directe du texte et diff interactif HTML/CSS/JS",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
