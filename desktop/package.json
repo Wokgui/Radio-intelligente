@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.46.0",
+  "version": "6.47.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec rollback ciblé depuis l’historique, transactions uniques, test multi-patches appliquer/rendre/rollback, smoke test Electron réel, édition SVG inline et audit des assets",
+  "description": "Éditeur visuel universel Windows avec audit de contraste WCAG AA/AAA, rollback ciblé depuis l’historique, test multi-patches réel, édition SVG inline, audit des assets et comparaison visuelle",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
