@@ -2010,16 +2010,26 @@ function mergeCssRule(content,selector,properties){
   return {content:content+'\n\n'+selector+' {\n'+declarationBlock('')+'\n}\n',created:true};
 }
 
-function directSourceCandidate(source,selector,css){
+function directSourceCandidate(source,selector,css,sourceSelector,preferredHref){
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Édition source directe disponible uniquement pour une application locale.'};
-  const props=cssDeclarationsFromRule(css,selector);
+  const props=cssDeclarationsFromRule(css,String(sourceSelector||selector));
   if(!props||!Object.keys(props).length)return {ok:false,error:'Aucune propriété exploitable pour la sélection actuelle.'};
   const files=walkFiles(local.root,['.css'],350).filter(file=>!file.endsWith('app-interface-studio.generated.css'));
   let chosen=null,bestScore=-1;
+  let preferredPath='';
+  if(preferredHref){
+    try{
+      const hrefUrl=new URL(String(preferredHref),source&&source.url||'http://127.0.0.1/');
+      const pathname=decodeURIComponent(hrefUrl.pathname||'').replace(/^\\/+/, '');
+      const candidate=path.join(local.root,pathname);
+      if(isPathInside(local.root,candidate)&&fs.existsSync(candidate))preferredPath=candidate;
+    }catch(_){}
+  }
   for(const file of files){
     let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){continue}
-    const score=new RegExp(escapeRegex(selector)+'\\s*\\{').test(text)?100:(text.includes(selector)?20:0);
+    let score=new RegExp(escapeRegex(selector)+'\\s*\\{').test(text)?100:(text.includes(selector)?20:0);
+    if(preferredPath&&path.resolve(file)===path.resolve(preferredPath))score+=1000;
     if(score>bestScore){bestScore=score;chosen={file,text}}
   }
   if(!chosen){
@@ -2043,7 +2053,7 @@ function directSourceCandidate(source,selector,css){
 }
 
 ipcMain.handle('source:prepare-direct-edit',async (_event,payload)=>{
-  try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''))}
+  try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''),String(payload&&payload.sourceSelector||''),String(payload&&payload.preferredHref||''))}
   catch(error){return {ok:false,error:'Préparation du diff impossible : '+String(error&&error.message||error)}}
 });
 
