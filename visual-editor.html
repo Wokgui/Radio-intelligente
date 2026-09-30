@@ -605,6 +605,7 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="iphone-island">iPhone · Dynamic Island</option>
         </select></div>
       </div>
+      <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre et bords des objets proches</label>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
         <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
@@ -629,12 +630,18 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <label class="checkline"><input id="keepRatio" type="checkbox"> Conserver les proportions</label>
       <div class="toolbar" style="margin-top:8px">
+        <button class="tool" data-selection-nav="parent" title="Sélectionner le parent · Alt+↑">↑ Parent</button>
+        <button class="tool" data-selection-nav="prev" title="Élément frère précédent · Alt+←">← Frère</button>
+        <button class="tool" data-selection-nav="next" title="Élément frère suivant · Alt+→">Frère →</button>
+        <button class="tool" data-selection-nav="child" title="Premier enfant · Alt+↓">Enfant ↓</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
         <button class="tool" id="undoEdit" disabled>↶</button>
         <button class="tool" id="redoEdit" disabled>↷</button>
         <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
         <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
-      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets à la sélection. <kbd>←↑↓→</kbd> déplace relativement aux ancrages · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Suppr</kbd> masque · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>. Les X/Y sont seulement des coordonnées d’aperçu lorsque l’adaptatif est actif.</div>
+      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets à la sélection. <kbd>←↑↓→</kbd> déplace relativement aux ancrages · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue parent/enfant/frères · <kbd>Alt</kbd> pendant un glisser désactive temporairement l’accrochage · <kbd>Suppr</kbd> masque · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>. Les X/Y sont seulement des coordonnées d’aperçu lorsque l’adaptatif est actif.</div>
     </section>
 
     <section class="card" id="textCard">
@@ -1195,7 +1202,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   var PREF_KEY='app-interface-studio.preferences.v1';
   var RECOVERY_KEY='app-interface-studio.recovery.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true};
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1217,7 +1224,8 @@ body.desktop .desktop-badge{display:inline-flex}
     defaultResponsivePref.checked=prefs.defaultResponsive!==false;
     rememberPanels.checked=!!prefs.rememberPanels;
     autoRecovery.checked=prefs.autoRecovery!==false;
-    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
+    smartGuidesPref.checked=prefs.smartGuides!==false;
+    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false});
   }
 
   function recoveryPreview(project){
@@ -1247,7 +1255,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.0.0'};
+      project.studio={name:'App Interface Studio',version:'6.1.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2221,7 +2229,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.1.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2266,7 +2274,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.0.0'};
+    project.studio={name:'App Interface Studio',version:'6.1.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2324,7 +2332,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.0.0'};
+    project.studio={name:'App Interface Studio',version:'6.1.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2361,6 +2369,12 @@ body.desktop .desktop-badge{display:inline-flex}
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
     if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
+    if(event.altKey&&key.indexOf('Arrow')===0){
+      event.preventDefault();
+      var navDirection=key==='ArrowUp'?'parent':key==='ArrowDown'?'child':key==='ArrowLeft'?'prev':'next';
+      post('navigate-selection',{direction:navDirection});
+      return;
+    }
     var relevant=key.indexOf('Arrow')===0||key==='Delete'||key==='Backspace'||(modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
     if(!relevant)return;
     event.preventDefault();
@@ -2392,6 +2406,10 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Réparer avec aperçu',hint:'',run:function(){post('repair-suggest');repairModal.classList.add('visible')}},
     {label:'Flow de navigation',hint:'',run:openFlow},
     {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
+    {label:'Sélectionner le parent',hint:'Alt+↑',run:function(){post('navigate-selection',{direction:'parent'})}},
+    {label:'Sélectionner le premier enfant',hint:'Alt+↓',run:function(){post('navigate-selection',{direction:'child'})}},
+    {label:'Sélectionner le frère précédent',hint:'Alt+←',run:function(){post('navigate-selection',{direction:'prev'})}},
+    {label:'Sélectionner le frère suivant',hint:'Alt+→',run:function(){post('navigate-selection',{direction:'next'})}},
     {label:'Raccourcis clavier : flèches déplacer · Maj+flèches redimensionner',hint:'?',run:function(){}}
   ];
 
@@ -2446,7 +2464,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
-      post('preferences',{defaultResponsive:prefs.defaultResponsive!==false});
+      post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false});
       applySafeArea();
       post(currentPreviewMode==='edit'?'enable':'disable');
       post('environment-set',{
@@ -2467,6 +2485,10 @@ body.desktop .desktop-badge{display:inline-flex}
       redoBtn.disabled=!p.canRedo;
     }
     if(data.type==='state'){updateState(p);scheduleMultiSync();scheduleRecovery()}
+    if(data.type==='selection-navigation'){
+      if(p.ok)setStatus('Sélection : '+(p.title||p.selector||'élément')+'.');
+      else setStatus('Aucun élément dans cette direction.',true);
+    }
     if(data.type==='spacing'){
       document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
       document.getElementById('spaceR').textContent=p.right?Math.round(p.right.gap)+' px':'—';
@@ -2590,6 +2612,10 @@ body.desktop .desktop-badge{display:inline-flex}
     btn.addEventListener('click',function(){post('align',{mode:btn.dataset.align})});
   });
   document.getElementById('measureBtn').addEventListener('click',function(){post('measure-spacing')});
+
+  document.querySelectorAll('[data-selection-nav]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('navigate-selection',{direction:btn.dataset.selectionNav})});
+  });
 
   document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
   document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
@@ -2885,6 +2911,7 @@ body.desktop .desktop-badge{display:inline-flex}
   uiDensity.addEventListener('change',function(){prefs.density=uiDensity.value;applyPrefs();savePrefs()});
   uiAnimations.addEventListener('change',function(){prefs.animations=uiAnimations.checked;applyPrefs();savePrefs()});
   defaultResponsivePref.addEventListener('change',function(){prefs.defaultResponsive=defaultResponsivePref.checked;applyPrefs();savePrefs()});
+  smartGuidesPref.addEventListener('change',function(){prefs.smartGuides=smartGuidesPref.checked;applyPrefs();savePrefs()});
   rememberPanels.addEventListener('change',function(){
     prefs.rememberPanels=rememberPanels.checked;
     if(!prefs.rememberPanels)prefs.openPanels=[];
