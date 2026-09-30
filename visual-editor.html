@@ -1545,7 +1545,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var option=Array.from(zoom.options).find(function(o){
       var n=Number(o.value);return Number.isFinite(n)&&Math.abs(n-next)<.005;
     });
-    var custom=document.getElementById('runtimeZoomOption');
+    var custom=zoom.querySelector('#runtimeZoomOption');
     if(!option){
       if(!custom){
         custom=document.createElement('option');
