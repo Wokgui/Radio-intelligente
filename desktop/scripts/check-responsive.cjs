@@ -286,6 +286,13 @@ expect(engine,"setResponsiveConfig(payload)","direct responsive anchor applicati
 expect(engine,"emit('constraint-direct'","direct anchor event");
 expect(html,"les lignes violettes montrent la relation avec le parent","direct anchor help");
 expect(html,"data.type==='constraint-direct'","direct anchor host status");
+expect(css,".ve-handle-n,.ve-handle-s","horizontal edge resize handles");
+expect(css,".ve-handle-w,.ve-handle-e","vertical edge resize handles");
+expect(engine,'data-handle="n"',"north resize handle");
+expect(engine,'data-handle="e"',"east resize handle");
+expect(engine,'data-handle="s"',"south resize handle");
+expect(engine,'data-handle="w"',"west resize handle");
+expect(html,"poignées des coins et des côtés","edge handle help");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -293,4 +300,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.17 feature checks passed.');
+console.log('App Interface Studio 6.18 feature checks passed.');
