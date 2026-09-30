@@ -521,6 +521,28 @@ ipcMain.handle('asset:pick-image',async ()=>{
   }catch(error){return {ok:false,error:'Lecture de l’image impossible : '+String(error&&error.message||error)}}
 });
 
+function mediaMime(file){
+  const ext=path.extname(file).toLowerCase();
+  return ext==='.jpg'||ext==='.jpeg'?'image/jpeg':
+    ext==='.webp'?'image/webp':
+    ext==='.gif'?'image/gif':
+    ext==='.svg'?'image/svg+xml':
+    ext==='.avif'?'image/avif':'image/png';
+}
+
+ipcMain.handle('asset:load-image',async (_event,payload)=>{
+  const file=path.resolve(String(payload&&payload.path||''));
+  if(!file||!fs.existsSync(file))return {ok:false,error:'Asset introuvable.'};
+  try{
+    const stat=fs.statSync(file);
+    if(!stat.isFile())return {ok:false,error:'Asset invalide.'};
+    if(stat.size>24*1024*1024)return {ok:false,error:'Image trop volumineuse (24 Mo maximum).'};
+    const ext=path.extname(file).toLowerCase();
+    if(!/^\.(png|jpe?g|webp|gif|svg|avif)$/i.test(ext))return {ok:false,error:'Format d’image non pris en charge.'};
+    return {ok:true,path:file,name:path.basename(file),size:stat.size,mime:mediaMime(file),dataUrl:'data:'+mediaMime(file)+';base64,'+fs.readFileSync(file).toString('base64')};
+  }catch(error){return {ok:false,error:'Lecture de l’asset impossible : '+String(error&&error.message||error)}}
+});
+
 function localSourceEntry(source){
   if(!source)return null;
   if(source.type==='folder'&&source.path){
@@ -590,7 +612,9 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     mediaAdjusted:!!(item&&item.mediaAdjusted),
     mediaKind:String(item&&item.mediaKind||''),
     mediaSource:String(item&&item.mediaSource||''),
-    mediaFit:String(item&&item.mediaFit||'contain')
+    mediaFit:String(item&&item.mediaFit||'contain'),
+    mediaPositionX:Math.max(0,Math.min(100,Number(item&&item.mediaPositionX)||50)),
+    mediaPositionY:Math.max(0,Math.min(100,Number(item&&item.mediaPositionY)||50))
   })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted));
 
   const cleanPrototypeLinks=Object.keys(prototypeLinks&&typeof prototypeLinks==='object'?prototypeLinks:{}).map(sourceSelector=>{
@@ -657,17 +681,19 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     '      }',
     '      if(item.mediaAdjusted&&item.mediaSource){',
     '        const fit=item.mediaFit||"contain";',
-    '        if(item.mediaKind==="img"){element.setAttribute("src",item.mediaSource);element.style.objectFit=fit;}',
-    '        else if(item.mediaKind==="svg-image"){element.setAttribute("href",item.mediaSource);element.setAttributeNS("http://www.w3.org/1999/xlink","href",item.mediaSource);}',
+    '        const px=Math.max(0,Math.min(100,Number(item.mediaPositionX)||50));const py=Math.max(0,Math.min(100,Number(item.mediaPositionY)||50));',
+    '        const ax=px<34?"xMin":px>66?"xMax":"xMid";const ay=py<34?"YMin":py>66?"YMax":"YMid";',
+    '        if(item.mediaKind==="img"){element.setAttribute("src",item.mediaSource);element.style.objectFit=fit;element.style.objectPosition=px+"% "+py+"%";}',
+    '        else if(item.mediaKind==="svg-image"){element.setAttribute("href",item.mediaSource);element.setAttributeNS("http://www.w3.org/1999/xlink","href",item.mediaSource);element.setAttribute("preserveAspectRatio",fit==="fill"?"none":ax+ay+(fit==="cover"?" slice":" meet"));}',
     '        else if(item.mediaKind==="svg"){',
     '          while(element.firstChild)element.removeChild(element.firstChild);',
     '          const image=document.createElementNS("http://www.w3.org/2000/svg","image");',
     '          image.setAttribute("href",item.mediaSource);image.setAttribute("x","0");image.setAttribute("y","0");image.setAttribute("width","100%");image.setAttribute("height","100%");',
-    '          image.setAttribute("preserveAspectRatio",fit==="fill"?"none":fit==="cover"?"xMidYMid slice":"xMidYMid meet");element.appendChild(image);',
+    '          image.setAttribute("preserveAspectRatio",fit==="fill"?"none":ax+ay+(fit==="cover"?" slice":" meet"));element.appendChild(image);',
     '        }else{',
     '          element.style.setProperty("background-image","url(\\\""+String(item.mediaSource).replace(/\\\"/g,"%22")+"\\\")","important");',
     '          element.style.setProperty("background-size",fit==="fill"?"100% 100%":fit==="none"?"auto":fit,"important");',
-    '          element.style.setProperty("background-position","center","important");element.style.setProperty("background-repeat","no-repeat","important");',
+    '          element.style.setProperty("background-position",px+"% "+py+"%","important");element.style.setProperty("background-repeat","no-repeat","important");',
     '        }',
     '      }',
     '    });',
