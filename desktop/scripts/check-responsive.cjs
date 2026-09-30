@@ -175,6 +175,17 @@ expect(engine,"function deleteSelectionGroup(name)","selection group deletion");
 expect(engine,"selectionGroups: JSON.parse(JSON.stringify(selectionGroups))","selection groups project persistence");
 expect(engine,"data.type === 'selection-group-create'","selection group create command");
 expect(engine,"data.type === 'get-selection-groups'","selection group listing command");
+expect(html,'id="layerFilter"','layer filter');
+expect(html,'id="expandLayersBtn"','expand layers button');
+expect(html,'id="collapseLayersBtn"','collapse layers button');
+expect(html,'id="isolateSelectionBtn"','isolate selection button');
+expect(html,"collapsedLayerSelectors=new Set()","layer collapse state");
+expect(html,"function branchMatch(node)","layer branch filtering");
+expect(engine,"let isolationActive = false","isolation engine state");
+expect(engine,"function isolateSelection(value)","selection isolation");
+expect(engine,"data-ais-isolation-hidden","isolation hidden marker");
+expect(engine,"data.type === 'isolate-selection'","isolation command");
+expect(css,"[data-ais-isolation-hidden=\"1\"]","isolation CSS");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -182,4 +193,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.6 feature checks passed.');
+console.log('App Interface Studio 6.7 feature checks passed.');
