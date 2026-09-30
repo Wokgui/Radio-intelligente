@@ -111,6 +111,7 @@
   let spaceHeld = false;
   let canvasPan = null;
   let clipboardNodes = [];
+  let styleClipboard = null;
   let cloneSequence = 0;
   let pasteSequence = 0;
   let grid = 1;
@@ -1033,6 +1034,76 @@
         index: element.parentElement ? Array.from(element.parentElement.children).indexOf(element) + 1 : -1
       };
     });
+  }
+
+  function captureSelectionStyle(element) {
+    if(!element)return null;
+    const cs=getComputedStyle(element);
+    return {
+      fontSize:parseFloat(cs.fontSize)||16,
+      fontFamily:cs.fontFamily||'system-ui',
+      fontWeight:cs.fontWeight||'400',
+      fontStyle:cs.fontStyle||'normal',
+      textDecoration:cs.textDecorationLine||'none',
+      textAlign:cs.textAlign||'left',
+      letterSpacing:cs.letterSpacing||'normal',
+      lineHeight:cs.lineHeight||'normal',
+      color:cs.color||'rgb(0, 0, 0)',
+      backgroundColor:cs.backgroundColor||'rgba(0, 0, 0, 0)',
+      borderColor:cs.borderColor||'rgba(0, 0, 0, 0)',
+      advancedStyles:{
+        'border-radius':cs.borderRadius||'0px',
+        'box-shadow':cs.boxShadow||'none',
+        'filter':cs.filter||'none',
+        'opacity':cs.opacity||'1',
+        'object-fit':cs.objectFit||'fill'
+      }
+    };
+  }
+
+  function copySelectionStyle() {
+    if(!active||!selected)return false;
+    styleClipboard=captureSelectionStyle(selected);
+    if(!styleClipboard)return false;
+    emit('style-copied',{selector:selectorFor(selected)});
+    return true;
+  }
+
+  function pasteSelectionStyle() {
+    if(!active||!selected||!styleClipboard)return false;
+    let count=0;
+    selectionElements().forEach(function(element){
+      const state=remember(element);
+      if(!state||state.locked)return;
+
+      state.fontAdjusted=true;
+      state.fontSize=styleClipboard.fontSize;
+      state.fontFamily=styleClipboard.fontFamily;
+      state.fontWeight=styleClipboard.fontWeight;
+      state.fontStyle=styleClipboard.fontStyle;
+      state.textDecoration=styleClipboard.textDecoration;
+      state.textAlign=styleClipboard.textAlign;
+      state.letterSpacing=styleClipboard.letterSpacing;
+      state.lineHeight=styleClipboard.lineHeight;
+
+      state.color=styleClipboard.color;
+      state.backgroundColor=styleClipboard.backgroundColor;
+      state.borderColor=styleClipboard.borderColor;
+      state.colorAdjusted=true;
+      state.backgroundAdjusted=true;
+      state.borderAdjusted=true;
+
+      state.advancedAdjusted=true;
+      state.advancedStyles=Object.assign({},state.advancedStyles||{},styleClipboard.advancedStyles||{});
+
+      applyState(element,state,false);
+      count+=1;
+    });
+    if(!count)return false;
+    updateOverlay();
+    commitHistory();
+    emit('style-pasted',{count:count});
+    return true;
   }
 
   function copySelection() {
@@ -3612,6 +3683,16 @@
       setSelectionZ('back');
       return true;
     }
+    if (modifier && event.altKey && key.toLowerCase() === 'c' && selected) {
+      event.preventDefault();
+      copySelectionStyle();
+      return true;
+    }
+    if (modifier && event.altKey && key.toLowerCase() === 'v' && styleClipboard) {
+      event.preventDefault();
+      pasteSelectionStyle();
+      return true;
+    }
     if (modifier && key.toLowerCase() === 'd') {
       event.preventDefault();
       duplicateSelection();
@@ -3744,6 +3825,8 @@
     if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
     if (data.type === 'navigate-selection') navigateSelection(String(payload.direction || ''));
     if (data.type === 'selection-copy') copySelection();
+    if (data.type === 'style-copy') copySelectionStyle();
+    if (data.type === 'style-paste') pasteSelectionStyle();
     if (data.type === 'selection-related') selectRelated(String(payload.mode||'siblings'));
     if (data.type === 'layers-bulk') bulkLayerAction(String(payload.action||''));
     if (data.type === 'selection-paste') pasteSelection();
@@ -3842,6 +3925,8 @@
     navigateSelection: navigateSelection,
     setResponsiveConfig: setResponsiveConfig,
     copySelection: copySelection,
+    copySelectionStyle: copySelectionStyle,
+    pasteSelectionStyle: pasteSelectionStyle,
     selectRelated: selectRelated,
     bulkLayerAction: bulkLayerAction,
     pasteSelection: pasteSelection,
