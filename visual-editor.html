@@ -1256,7 +1256,10 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn primary wide" id="layoutDiagnosticBtn">Analyser l’écran</button>
         <button class="btn wide" id="layoutDiagnosticSelectionBtn">Analyser la sélection</button>
       </div>
-      <button class="btn" id="layoutDiagnosticClearBtn" style="width:100%;margin-top:7px">Effacer les surlignages</button>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="layoutDiagnosticApplyAllBtn">Appliquer les corrections sûres</button>
+        <button class="btn wide" id="layoutDiagnosticClearBtn">Effacer les surlignages</button>
+      </div>
       <div class="layout-diagnostic-summary" id="layoutDiagnosticSummary"></div>
       <div class="layout-diagnostic-list" id="layoutDiagnosticList"><div class="hint">Aucun diagnostic lancé.</div></div>
       <p>Repère les débordements, pistes Grid trop rigides, Flex qui ne peut pas rétrécir, objets hors flux et chevauchements. Les corrections proposées modifient les propriétés structurelles et restent annulables avec Undo.</p>
@@ -1307,6 +1310,7 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <div class="cascade-summary" id="cascadeSummary"></div>
       <div class="cascade-computed" id="cascadeComputed"><b>Valeurs calculées</b><span>Sélectionne un objet puis lance l’inspection.</span></div>
+      <div class="cascade-computed" id="cascadeVariables"><b>Variables CSS</b><span>Aucune variable inspectée.</span></div>
       <div class="cascade-list" id="cascadeList"><div class="hint">Aucune cascade inspectée.</div></div>
       <p>Les déclarations gagnantes sont mises en évidence. La spécificité est affichée sous la forme ID / classes-attributs-pseudo-classes / éléments.</p>
     </section>
@@ -1559,6 +1563,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var lastOverrideItems=[];
   var cascadeSummary=document.getElementById('cascadeSummary');
   var cascadeComputed=document.getElementById('cascadeComputed');
+  var cascadeVariables=document.getElementById('cascadeVariables');
   var cascadeList=document.getElementById('cascadeList');
   var lastCascadePayload=null;
   var consistencyStatus=document.getElementById('consistencyStatus');
@@ -1679,7 +1684,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.53.0'};
+      project.studio={name:'App Interface Studio',version:'6.54.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2621,9 +2626,11 @@ body.desktop .desktop-badge{display:inline-flex}
     cascadeList.innerHTML='';
     cascadeSummary.innerHTML='';
     cascadeComputed.innerHTML='';
+    cascadeVariables.innerHTML='';
     if(!payload.selected){
       cascadeList.innerHTML='<div class="hint">Aucun objet sélectionné.</div>';
       cascadeComputed.innerHTML='<b>Valeurs calculées</b><span>—</span>';
+      cascadeVariables.innerHTML='<b>Variables CSS</b><span>—</span>';
       return;
     }
     var rules=payload.rules||[];
@@ -2635,6 +2642,16 @@ body.desktop .desktop-badge{display:inline-flex}
       var v=document.createElement('span');v.textContent=computed[prop]||'';
       cascadeComputed.append(b,v);
     });
+    var variables=payload.variables||[];
+    if(!variables.length){
+      cascadeVariables.innerHTML='<b>Variables CSS</b><span>Aucune variable utilisée par les règles correspondantes.</span>';
+    }else{
+      variables.forEach(function(item){
+        var b=document.createElement('b');b.textContent=item.name;
+        var v=document.createElement('span');v.textContent=item.value||'(non définie)';
+        cascadeVariables.append(b,v);
+      });
+    }
     if(!rules.length){cascadeList.innerHTML='<div class="hint">Aucune règle CSS accessible ne correspond à cet objet.</div>';return}
     rules.forEach(function(rule){
       var row=document.createElement('div');row.className='cascade-item '+((rule.winningProperties||[]).length?'winner':'');
@@ -3791,7 +3808,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.53.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.54.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3844,7 +3861,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.53.0'};
+    project.studio={name:'App Interface Studio',version:'6.54.0'};
     return project;
   }
 
@@ -3941,7 +3958,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.53.0'};
+    project.studio={name:'App Interface Studio',version:'6.54.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4327,6 +4344,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='css-cascade')renderCssCascade(p);
     if(data.type==='layout-diagnostic')renderLayoutDiagnostic(p);
     if(data.type==='layout-diagnostic-applied'){setStatus('Correction structurelle appliquée à '+(p.selector||'l’objet')+'.');post('get-css')}
+    if(data.type==='layout-diagnostic-batch'){setStatus((p.count||0)+' correction(s) structurelle(s) appliquée(s) dans une seule étape Undo.');post('get-css')}
     if(data.type==='repair-suggestions')renderRepairSuggestions(p.items||[]);
     if(data.type==='repair-preview')setStatus('Aperçu de correction actif. Utilise Annuler l’aperçu ou Appliquer.');
     if(data.type==='repair-preview-cleared')setStatus('Aperçu de correction annulé.');
@@ -4700,6 +4718,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('inspectCascadeBtn').addEventListener('click',function(){post('get-css-cascade')});
   document.getElementById('layoutDiagnosticBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'screen'})});
   document.getElementById('layoutDiagnosticSelectionBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'selection'})});
+  document.getElementById('layoutDiagnosticApplyAllBtn').addEventListener('click',function(){post('layout-diagnostic-apply-all')});
   document.getElementById('layoutDiagnosticClearBtn').addEventListener('click',function(){post('layout-diagnostic-clear')});
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
   document.getElementById('auditFixBtn').addEventListener('click',function(){post('audit-fix')});
