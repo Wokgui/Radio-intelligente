@@ -4067,6 +4067,7 @@
     mediaFocalHandle.addEventListener('pointermove',function(event){
       if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId||!selected)return;
       event.preventDefault();
+      event.stopPropagation();
       const state=remember(selected);
       if(!state||state.locked||!state.mediaAdjusted)return;
       const rect=outline.getBoundingClientRect();
@@ -4080,11 +4081,13 @@
     mediaFocalHandle.addEventListener('pointerup',function(event){
       if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId)return;
       event.preventDefault();
+      event.stopPropagation();
       mediaFocalDrag=null;
       commitHistory();
     });
     mediaFocalHandle.addEventListener('pointercancel',function(event){
       if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId)return;
+      event.stopPropagation();
       const snap=mediaFocalDrag.startSnapshot;
       mediaFocalDrag=null;
       if(snap)loadSnapshot(snap);
