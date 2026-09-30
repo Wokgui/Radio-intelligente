@@ -817,7 +817,19 @@ body.desktop .desktop-badge{display:inline-flex}
       <p>Pour un SVG ou une icône indépendante, clique directement dessus : largeur/hauteur agissent alors sur l’icône elle-même.</p>
     </section>
 
-
+    <section class="card" id="mediaCard">
+      <h2>Image / icône <small>remplacement direct</small></h2>
+      <button class="btn primary desktop-only" id="replaceMediaBtn" type="button" style="width:100%">Choisir une image ou un SVG</button>
+      <div class="field" style="margin-top:8px"><label>Ajustement</label><select id="mediaFit">
+        <option value="contain">Contenir sans rogner</option>
+        <option value="cover">Couvrir et rogner</option>
+        <option value="fill">Étirer</option>
+        <option value="none">Taille naturelle</option>
+      </select></div>
+      <button class="btn" id="resetMediaBtn" type="button" style="width:100%;margin-top:8px">Rétablir le visuel d’origine</button>
+      <div class="hint" id="mediaStatus" style="margin-top:8px">Sélectionne un objet. Une image remplace directement un &lt;img&gt;, un SVG ou le fond du bloc sélectionné.</div>
+      <p>Pour une source HTML locale, l’asset est copié dans <code>app-interface-studio-assets</code> lors de l’application du patch et suit le rollback.</p>
+    </section>
 
     <section class="card" id="boxModelCard">
       <h2>Box model <small>marges / padding</small></h2>
@@ -1252,6 +1264,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var colorBg=document.getElementById('colorBg');
   var colorBorder=document.getElementById('colorBorder');
   var textCard=document.getElementById('textCard');
+  var mediaCard=document.getElementById('mediaCard');
+  var mediaFit=document.getElementById('mediaFit');
+  var mediaStatus=document.getElementById('mediaStatus');
+  var replaceMediaBtn=document.getElementById('replaceMediaBtn');
+  var resetMediaBtn=document.getElementById('resetMediaBtn');
   var textContent=document.getElementById('textContent');
   var fontFamily=document.getElementById('fontFamily');
   var fontSize=document.getElementById('fontSize');
@@ -2233,6 +2250,16 @@ body.desktop .desktop-badge{display:inline-flex}
       [posX,posY,sizeW,sizeH,zIndex].forEach(function(el){el.value=''});
     }
 
+    var mediaEditable=!!p.selected&&selectionCount===1;
+    mediaCard.classList.toggle('disabled',!mediaEditable);
+    replaceMediaBtn.disabled=!mediaEditable||!desktop||!desktop.pickAssetImage;
+    mediaFit.disabled=!mediaEditable||!p.mediaAdjusted;
+    resetMediaBtn.disabled=!mediaEditable||!p.mediaAdjusted;
+    if(p.mediaFit&&Array.from(mediaFit.options).some(function(o){return o.value===p.mediaFit}))mediaFit.value=p.mediaFit;
+    if(!mediaEditable)mediaStatus.textContent='Sélectionne un seul objet pour remplacer son image ou son icône.';
+    else if(p.mediaAdjusted)mediaStatus.textContent='Visuel remplacé : '+(p.mediaName||'asset')+' · '+(p.mediaKind||'image')+'.';
+    else mediaStatus.textContent='Objet prêt : le remplacement utilisera '+(p.mediaKind==='background'?'une image de fond':p.mediaKind==='svg'?'le SVG sélectionné':p.mediaKind==='svg-image'?'l’image SVG sélectionnée':'la source de l’image')+'.';
+
     updateResponsiveControls(p);
     updateLayoutControls(p.parentLayout);
     syncBoxModelControls(p);
@@ -2724,15 +2751,31 @@ body.desktop .desktop-badge{display:inline-flex}
     setReferenceImage(result.dataUrl,'Capture de référence chargée : '+(result.path||'image'));
   }
 
+  async function replaceSelectedMedia(){
+    if(!hasSelection||!lastState||Number(lastState.selectionCount)!==1){setStatus('Sélectionne un seul objet.',true);return}
+    if(!desktop||!desktop.pickAssetImage){setStatus('Sélection d’asset disponible dans l’application Windows.',true);return}
+    var result=await desktop.pickAssetImage();
+    if(!result||result.canceled)return;
+    if(!result.ok){setStatus(result.error||'Image impossible à ouvrir.',true);return}
+    post('media-set',{source:result.dataUrl,path:result.path,name:result.name||'image',fit:mediaFit.value||'contain'});
+    mediaStatus.textContent='Chargement de '+(result.name||'image')+'…';
+  }
+
   function projectDomPatches(project){
     var items=project&&project.snapshot&&Array.isArray(project.snapshot.items)?project.snapshot.items:[];
-    return items.filter(function(item){return item&&item.selector&&(item.textAdjusted||item.accessibilityAdjusted)}).map(function(item){
+    return items.filter(function(item){return item&&item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted)}).map(function(item){
       return {
         selector:item.selector,
         textAdjusted:!!item.textAdjusted,
         textContent:item.textContent!==undefined?String(item.textContent):'',
         accessibilityAdjusted:!!item.accessibilityAdjusted,
-        accessibilityLabel:item.accessibilityLabel||''
+        accessibilityLabel:item.accessibilityLabel||'',
+        mediaAdjusted:!!item.mediaAdjusted,
+        mediaKind:item.mediaKind||'',
+        mediaSource:item.mediaSource||'',
+        mediaAssetPath:item.mediaAssetPath||'',
+        mediaName:item.mediaName||'',
+        mediaFit:item.mediaFit||'contain'
       };
     });
   }
@@ -2802,7 +2845,7 @@ body.desktop .desktop-badge{display:inline-flex}
     fill('html',patchHtmlDiff,'patchHtmlStatus');
     fill('css',patchCssDiff,'patchCssStatus');
     fill('js',patchJsDiff,'patchJsStatus');
-    patchPreviewSummary.textContent=(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.prototypeCount||0)+' lien(s) prototype · '+(result.locatorCount||0)+' cible(s) stable(s)';
+    patchPreviewSummary.textContent=(result.generatedCount||0)+' duplication(s) · '+(result.domPatchCount||0)+' modification(s) DOM · '+(result.assetCount||0)+' asset(s) · '+(result.prototypeCount||0)+' lien(s) prototype · '+(result.locatorCount||0)+' cible(s) stable(s)';
     syncPatchPreviewSections();
   }
 
@@ -2834,7 +2877,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var parts=[];
     if(result.cssApplied||result.cssRemoved)parts.push('CSS');
     if(result.structureApplied||result.structureRemoved)parts.push('structure/DOM');
-    setStatus('Patch appliqué : '+parts.join(' + ')+' · sauvegarde transactionnelle créée.');
+    setStatus('Patch appliqué : '+parts.join(' + ')+(result.assetCount?' · '+result.assetCount+' asset(s) copié(s)':'')+' · sauvegarde transactionnelle créée.');
     try{frame.contentWindow.location.reload()}catch(_){}
   }
 
@@ -3385,6 +3428,11 @@ body.desktop .desktop-badge{display:inline-flex}
       if(p.active)setStatus('Édition directe : saisis le texte dans l’aperçu · Entrée valide · Échap annule.');
       else setStatus(p.committed?'Texte modifié directement dans l’aperçu.':'Modification du texte annulée.');
     }
+    if(data.type==='media-updated'){
+      if(p.reset){mediaStatus.textContent='Visuel d’origine restauré.';setStatus('Image / icône d’origine restaurée.');}
+      else{mediaStatus.textContent='Visuel remplacé : '+(p.name||'asset')+' · '+(p.kind||'image')+'.';setStatus('Image / icône remplacée dans l’aperçu.');}
+    }
+    if(data.type==='media-error')setStatus(p.message||'Remplacement du visuel impossible.',true);
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
       var marqueeButton=document.getElementById('marqueeModeBtn');
@@ -3571,6 +3619,9 @@ body.desktop .desktop-badge{display:inline-flex}
 
   textContent.addEventListener('change',function(){post('text-content',{value:textContent.value})});
   document.getElementById('editTextInlineBtn').addEventListener('click',function(){post('inline-text-edit',{active:true})});
+  replaceMediaBtn.addEventListener('click',replaceSelectedMedia);
+  mediaFit.addEventListener('change',function(){if(hasSelection)post('media-fit',{value:mediaFit.value})});
+  resetMediaBtn.addEventListener('click',function(){post('media-reset')});
   fontFamily.addEventListener('change',function(){post('text-style',{kind:'family',value:fontFamily.value})});
   fontSize.addEventListener('change',function(){post('text-style',{kind:'size',value:Number(fontSize.value)})});
   boldBtn.addEventListener('click',function(){post('text-style',{kind:'weight',value:(lastState&&(Number(lastState.fontWeight)>=600||String(lastState.fontWeight).toLowerCase()==='bold'))?'400':'700'})});
