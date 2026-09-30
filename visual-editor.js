@@ -833,6 +833,52 @@
     return { x: x, y: y };
   }
 
+  function equalSpacingSnap(rect) {
+    const candidates=measurementCandidates();
+    let left=null,right=null,top=null,bottom=null;
+    const crossLimit=Math.max(12,guideThreshold*2);
+
+    candidates.forEach(function(el){
+      const r=el.getBoundingClientRect();
+      const verticalGap=intervalGap(rect.top,rect.bottom,r.top,r.bottom);
+      const horizontalGap=intervalGap(rect.left,rect.right,r.left,r.right);
+
+      if(r.right<=rect.left&&verticalGap<=crossLimit){
+        if(!left||r.right>left.rect.right)left={element:el,rect:r};
+      }
+      if(r.left>=rect.right&&verticalGap<=crossLimit){
+        if(!right||r.left<right.rect.left)right={element:el,rect:r};
+      }
+      if(r.bottom<=rect.top&&horizontalGap<=crossLimit){
+        if(!top||r.bottom>top.rect.bottom)top={element:el,rect:r};
+      }
+      if(r.top>=rect.bottom&&horizontalGap<=crossLimit){
+        if(!bottom||r.top<bottom.rect.top)bottom={element:el,rect:r};
+      }
+    });
+
+    let x=null,y=null;
+    if(left&&right){
+      const available=right.rect.left-left.rect.right-rect.width;
+      if(available>=0){
+        const gap=available/2;
+        const targetLeft=left.rect.right+gap;
+        const diff=targetLeft-rect.left;
+        if(Math.abs(diff)<=guideThreshold)x={diff:diff,gap:gap,left:left,right:right};
+      }
+    }
+    if(top&&bottom){
+      const available=bottom.rect.top-top.rect.bottom-rect.height;
+      if(available>=0){
+        const gap=available/2;
+        const targetTop=top.rect.bottom+gap;
+        const diff=targetTop-rect.top;
+        if(Math.abs(diff)<=guideThreshold)y={diff:diff,gap:gap,top:top,bottom:bottom};
+      }
+    }
+    return {x:x,y:y};
+  }
+
   function smartSnapSelection() {
     hideGuides();
     if (!smartGuidesEnabled || !selected) return;
@@ -849,6 +895,7 @@
     const anchorsX = [rect.left, rect.left + rect.width / 2, rect.right];
     const anchorsY = [rect.top, rect.top + rect.height / 2, rect.bottom];
     const candidates = alignmentCandidates(items[0]);
+    const spacingSnap = equalSpacingSnap(rect);
     let bestX = null;
     let bestY = null;
 
@@ -872,8 +919,8 @@
       });
     });
 
-    const dx = bestX ? bestX.diff : 0;
-    const dy = bestY ? bestY.diff : 0;
+    const dx = bestX ? bestX.diff : (spacingSnap.x ? spacingSnap.x.diff : 0);
+    const dy = bestY ? bestY.diff : (spacingSnap.y ? spacingSnap.y.diff : 0);
     if (dx || dy) {
       items.forEach(function (element) {
         const state = remember(element);
@@ -887,6 +934,23 @@
 
     if (bestY) showHorizontalGuide(bestY.value, bestY.label);
     else if (rect && Math.abs((rect.top + rect.height / 2) - innerHeight / 2) < 0.75) showHorizontalGuide(innerHeight / 2, 'Milieu écran');
+
+    if((!bestX&&spacingSnap.x)||(!bestY&&spacingSnap.y)){
+      const visual={left:null,right:null,top:null,bottom:null};
+      if(!bestX&&spacingSnap.x){
+        visual.left={gap:spacingSnap.x.gap};
+        visual.right={gap:spacingSnap.x.gap};
+      }
+      if(!bestY&&spacingSnap.y){
+        visual.top={gap:spacingSnap.y.gap};
+        visual.bottom={gap:spacingSnap.y.gap};
+      }
+      showSpacingVisuals(rect,visual);
+      emit('equal-spacing',{
+        horizontal:!bestX&&spacingSnap.x?Math.round(spacingSnap.x.gap):null,
+        vertical:!bestY&&spacingSnap.y?Math.round(spacingSnap.y.gap):null
+      });
+    }
   }
 
   function nextCloneId() {
