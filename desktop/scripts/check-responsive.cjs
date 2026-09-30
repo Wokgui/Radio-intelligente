@@ -112,6 +112,15 @@ expect(html,"RECOVERY_KEY='app-interface-studio.recovery.v1'","automatic recover
 expect(html,'id="restoreRecoveryBtn"','recovery restore button');
 expect(html,"projectResolver||prefs.autoRecovery===false","recovery/manual-save collision guard");
 expect(html,"openCommandPalette","command palette logic");
+expect(html,'id="smartGuidesPref"','smart guides preference');
+expect(html,'data-selection-nav="parent"','selection parent navigation button');
+expect(html,'data-selection-nav="child"','selection child navigation button');
+expect(html,"post('navigate-selection'","selection navigation host command");
+expect(engine,"function smartSnapSelection()","active smart guides");
+expect(engine,"function navigateSelection(direction)","structural selection navigation");
+expect(engine,"data.type === 'navigate-selection'","selection navigation engine command");
+expect(engine,"smartGuidesEnabled && !event.altKey","smart guide drag integration");
+expect(engine,"applyState(element, state, false);","non-responsive move application");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -119,4 +128,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.0 feature checks passed.');
+console.log('App Interface Studio 6.1 feature checks passed.');
