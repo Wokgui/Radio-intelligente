@@ -262,6 +262,14 @@ expect(html,"if(e.key==='ArrowDown')","command palette down key");
 expect(html,"if(e.key==='ArrowUp')","command palette up key");
 expect(html,"if(e.key==='Enter')","command palette enter key");
 expect(html,".command-item.active","command palette active styling");
+expect(engine,"function resizeSnapshots(items)","resize selection snapshots");
+expect(engine,"function scaleSelectionToRect(snapshots,startBounds,targetBounds)","geometric selection scaling");
+expect(engine,"const groupRect = count > 1 ? selectionBounds() : rect","group selection outline");
+expect(engine,"outline.style.left = groupRect.left + 'px'","group outline left");
+expect(engine,"resizeDrag.snapshots","group resize snapshots");
+expect(engine,"event.shiftKey||resizeDrag.preserveRatio","proportional group resize");
+expect(engine,"emit('resize-measure'","resize measurement event");
+expect(html,"les poignées redimensionnent toute la sélection","group resize help");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -269,4 +277,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.14 feature checks passed.');
+console.log('App Interface Studio 6.15 feature checks passed.');
