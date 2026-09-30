@@ -511,36 +511,121 @@ function localSourceEntry(source){
   return null;
 }
 
+function generatedStructureScript(nodes){
+  const clean=(Array.isArray(nodes)?nodes:[]).map(item=>({
+    cloneId:String(item&&item.cloneId||''),
+    parentSelector:String(item&&item.parentSelector||''),
+    index:Number.isInteger(item&&item.index)?item.index:-1,
+    html:String(item&&item.html||'')
+  })).filter(item=>item.cloneId&&item.parentSelector&&item.html);
+
+  return [
+    '/* Généré par App Interface Studio — structure réversible. */',
+    '(function(){',
+    '  const nodes='+JSON.stringify(clean)+';',
+    '  function existingClone(id){',
+    '    return Array.from(document.querySelectorAll("[data-ais-clone-id]")).find(function(el){return el.getAttribute("data-ais-clone-id")===id})||null;',
+    '  }',
+    '  function createNode(html){',
+    '    const template=document.createElement("template");',
+    '    template.innerHTML=String(html||"").trim();',
+    '    return template.content.firstElementChild;',
+    '  }',
+    '  function apply(){',
+    '    nodes.forEach(function(item){',
+    '      let parent=null;',
+    '      try{parent=document.querySelector(item.parentSelector)}catch(_){return}',
+    '      if(!parent)return;',
+    '      const node=createNode(item.html);',
+    '      if(!node)return;',
+    '      const previous=existingClone(item.cloneId);',
+    '      if(previous){previous.replaceWith(node);return}',
+    '      const children=Array.from(parent.children);',
+    '      const before=item.index>=0&&item.index<children.length?children[item.index]:null;',
+    '      parent.insertBefore(node,before);',
+    '    });',
+    '  }',
+    '  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});',
+    '  else apply();',
+    '})();',
+    ''
+  ].join('\\n');
+}
+
+function ensureGeneratedTag(html,tag,marker){
+  if(html.includes(marker))return html;
+  if(/<\\/body>/i.test(html))return html.replace(/<\\/body>/i,'  '+tag+'\\n</body>');
+  return html+'\\n'+tag+'\\n';
+}
+
+function removeGeneratedStructureTag(html){
+  return html.replace(/\\s*<script[^>]*data-app-interface-studio=["']generated-structure["'][^>]*><\\/script>\\s*/ig,'\\n');
+}
+
 ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const source=payload&&payload.source;
   const css=String(payload&&payload.css||'').trim();
+  const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
-  if(!css||css==='/* Aucun ajustement. */')return {ok:false,error:'Aucune modification CSS à appliquer.'};
   if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
 
   try{
     const dir=path.dirname(local.html);
     const cssPath=path.join(dir,'app-interface-studio.generated.css');
+    const jsPath=path.join(dir,'app-interface-studio.generated.js');
     const originalHtml=fs.readFileSync(local.html,'utf8');
     const stamp=new Date().toISOString().replace(/[:.]/g,'-');
     const backupPath=path.join(dir,path.basename(local.html)+'.ais-backup-'+stamp);
     fs.copyFileSync(local.html,backupPath);
-    fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\n'+css+'\n','utf8');
 
     let html=originalHtml;
-    const marker='data-app-interface-studio="generated"';
-    if(!html.includes(marker)){
-      const href='./'+path.basename(cssPath);
-      const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
-      if(/<\/head>/i.test(html))html=html.replace(/<\/head>/i,'  '+link+'\n</head>');
-      else html=link+'\n'+html;
-      fs.writeFileSync(local.html,html,'utf8');
+    let cssApplied=false;
+    let structureApplied=false;
+
+    if(css&&css!=='/* Aucun ajustement. */'){
+      fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\\n'+css+'\\n','utf8');
+      const marker='data-app-interface-studio="generated"';
+      if(!html.includes(marker)){
+        const href='./'+path.basename(cssPath);
+        const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
+        if(/<\\/head>/i.test(html))html=html.replace(/<\\/head>/i,'  '+link+'\\n</head>');
+        else html=link+'\\n'+html;
+      }
+      cssApplied=true;
     }
-    return {ok:true,cssPath,htmlPath:local.html,backupPath};
+
+    if(generatedNodes.length){
+      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes),'utf8');
+      const marker='data-app-interface-studio="generated-structure"';
+      const src='./'+path.basename(jsPath);
+      const tag='<script src="'+src+'" '+marker+'></script>';
+      html=ensureGeneratedTag(html,tag,marker);
+      structureApplied=true;
+    }else{
+      html=removeGeneratedStructureTag(html);
+      if(fs.existsSync(jsPath))fs.unlinkSync(jsPath);
+    }
+
+    if(html!==originalHtml)fs.writeFileSync(local.html,html,'utf8');
+
+    if(!cssApplied&&!structureApplied&&html===originalHtml){
+      try{fs.unlinkSync(backupPath)}catch(_){}
+      return {ok:false,error:'Aucune modification CSS ou structurelle à appliquer.'};
+    }
+
+    return {
+      ok:true,
+      cssPath:cssApplied?cssPath:null,
+      jsPath:structureApplied?jsPath:null,
+      htmlPath:local.html,
+      backupPath,
+      generatedCount:generatedNodes.length,
+      cssApplied,
+      structureApplied
+    };
   }catch(error){return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}}
 });
-
 
 function sourceRoot(source){
   const local=localSourceEntry(source);
@@ -587,6 +672,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     const files=[path.relative(root,local.html)];
     const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
     if(fs.existsSync(generated))files.push(path.relative(root,generated));
+    const generatedStructure=path.join(path.dirname(local.html),'app-interface-studio.generated.js');
+    if(fs.existsSync(generatedStructure))files.push(path.relative(root,generatedStructure));
     execFileSync('git',['-C',root,'add','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
