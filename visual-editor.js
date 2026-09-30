@@ -98,6 +98,8 @@
   let components = {};
   let prototypeLinks = {};
   let selectionGroups = {};
+  let isolationActive = false;
+  let isolatedNodes = [];
   let activeInteractiveState = 'normal';
   let lastAuditIssues = [];
   let lastConsistency = null;
@@ -1207,10 +1209,13 @@
     touched.clear();
     selected = null;
     selectedSet.clear();
+    isolationActive=false;
+    clearIsolation();
     clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
     commitHistory();
+    emit('isolation',{active:false,count:0});
   }
 
   function responsiveCssDeclarations(cfg, label) {
@@ -1483,6 +1488,55 @@
     emitSelectionGroups();
     emit('selection-group-deleted',{name:name});
     return true;
+  }
+
+  function clearIsolation() {
+    isolatedNodes.forEach(function(node){
+      if(node&&node.removeAttribute)node.removeAttribute('data-ais-isolation-hidden');
+    });
+    isolatedNodes=[];
+  }
+
+  function refreshIsolation() {
+    clearIsolation();
+    if(!isolationActive||!selected)return;
+    const items=selectionElements();
+    if(!items.length)return;
+
+    function relation(node){
+      let selectedSubtree=false;
+      let ancestorOfSelection=false;
+      items.forEach(function(sel){
+        if(node===sel||sel.contains(node))selectedSubtree=true;
+        else if(node.contains(sel))ancestorOfSelection=true;
+      });
+      return {selectedSubtree:selectedSubtree,ancestorOfSelection:ancestorOfSelection};
+    }
+
+    function walk(parent){
+      Array.from(parent.children||[]).forEach(function(child){
+        if(isEditorNode(child)||/^SCRIPT|STYLE|LINK|META|NOSCRIPT$/i.test(child.tagName))return;
+        const rel=relation(child);
+        if(rel.selectedSubtree)return;
+        if(rel.ancestorOfSelection){walk(child);return}
+        child.setAttribute('data-ais-isolation-hidden','1');
+        isolatedNodes.push(child);
+      });
+    }
+    walk(document.body);
+  }
+
+  function isolateSelection(value) {
+    isolationActive=value===undefined?!isolationActive:!!value;
+    if(isolationActive&&!selected){
+      isolationActive=false;
+      emit('isolation',{active:false,error:'Sélectionne un objet à isoler.'});
+      return false;
+    }
+    refreshIsolation();
+    updateOverlay();
+    emit('isolation',{active:isolationActive,count:selectionElements().length});
+    return isolationActive;
   }
 
   function navigateSelection(direction) {
@@ -2516,6 +2570,7 @@
     }
 
     hideGuides();
+    if(isolationActive)refreshIsolation();
     updateOverlay();
     emitLayers();
   }
@@ -2809,6 +2864,11 @@
     });
     selected = null;
     selectedSet.clear();
+    if(isolationActive){
+      isolationActive=false;
+      clearIsolation();
+      emit('isolation',{active:false,count:0});
+    }
     clearSecondaryOutlines();
     hideGuides();
     updateOverlay();
@@ -3285,6 +3345,7 @@
     if (data.type === 'selection-group-create') createSelectionGroup(payload.name);
     if (data.type === 'selection-group-select') selectSelectionGroup(payload.name);
     if (data.type === 'selection-group-delete') deleteSelectionGroup(payload.name);
+    if (data.type === 'isolate-selection') isolateSelection(payload.active);
     if (data.type === 'prototype-set') setPrototypeLink(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
@@ -3375,6 +3436,7 @@
     createSelectionGroup: createSelectionGroup,
     selectSelectionGroup: selectSelectionGroup,
     deleteSelectionGroup: deleteSelectionGroup,
+    isolateSelection: isolateSelection,
     setPrototypeLink: setPrototypeLink,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
