@@ -3334,6 +3334,78 @@
     return true;
   }
 
+  function mediaKindForElement(element){
+    const tag=String(element&&element.tagName||'').toLowerCase();
+    if(tag==='img')return 'img';
+    if(tag==='image')return 'svg-image';
+    if(tag==='svg')return 'svg';
+    return 'background';
+  }
+
+  function restoreMediaOriginal(element,state){
+    if(!element||!state)return;
+    const reg=registry.get(state.selector);
+    if(!reg)return;
+    const tag=String(element.tagName||'').toLowerCase();
+    ['background-image','background-size','background-position','background-repeat','object-fit'].forEach(function(prop){restoreOriginalProp(state.selector,prop)});
+    if(tag==='img'){
+      if(reg.originalSrc!==null)element.setAttribute('src',reg.originalSrc);else element.removeAttribute('src');
+    }else if(tag==='image'){
+      if(reg.originalHref!==null){element.setAttribute('href',reg.originalHref);element.setAttributeNS('http://www.w3.org/1999/xlink','href',reg.originalHref);}
+      else{element.removeAttribute('href');element.removeAttributeNS('http://www.w3.org/1999/xlink','href');}
+    }else if(tag==='svg'&&reg.originalSvgMarkup!==null){
+      element.innerHTML=reg.originalSvgMarkup;
+      if(reg.originalSvgViewBox!==null)element.setAttribute('viewBox',reg.originalSvgViewBox);else element.removeAttribute('viewBox');
+    }
+  }
+
+  function setMediaAsset(payload){
+    if(!active||!selected||selectionElements().length!==1){emit('media-error',{message:'Sélectionne un seul objet.'});return}
+    const source=String(payload&&payload.source||'');
+    if(!source){emit('media-error',{message:'Image invalide.'});return}
+    const state=remember(selected);
+    if(!state||state.locked)return;
+    state.mediaAdjusted=true;
+    state.mediaKind=mediaKindForElement(selected);
+    state.mediaSource=source;
+    state.mediaAssetPath=String(payload&&payload.path||'');
+    state.mediaName=String(payload&&payload.name||'image');
+    state.mediaFit=['contain','cover','fill','none'].indexOf(String(payload&&payload.fit||''))>=0?String(payload.fit):state.mediaFit||'contain';
+    applyState(selected,state,false);
+    updateOverlay();
+    commitHistory();
+    emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:state.mediaFit});
+  }
+
+  function setMediaFit(value){
+    if(!active||!selected)return;
+    const state=remember(selected);
+    if(!state||!state.mediaAdjusted)return;
+    const fit=['contain','cover','fill','none'].indexOf(String(value))>=0?String(value):'contain';
+    state.mediaFit=fit;
+    applyState(selected,state,false);
+    updateOverlay();
+    commitHistory();
+    emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:fit});
+  }
+
+  function resetMediaAsset(){
+    if(!active||!selected)return;
+    const state=remember(selected);
+    if(!state||!state.mediaAdjusted)return;
+    restoreMediaOriginal(selected,state);
+    state.mediaAdjusted=false;
+    state.mediaKind='';
+    state.mediaSource='';
+    state.mediaAssetPath='';
+    state.mediaName='';
+    state.mediaFit='contain';
+    applyState(selected,state,false);
+    updateOverlay();
+    commitHistory();
+    emit('media-updated',{reset:true});
+  }
+
   function setTextContent(value) {
     if (!active || !selected) return;
     const state = remember(selected);
@@ -4226,6 +4298,9 @@
     if (data.type === 'align') alignSelected(String(payload.mode || ''));
     if (data.type === 'text-style') setTextProperty(String(payload.kind || ''), payload.value);
     if (data.type === 'text-content') setTextContent(payload.value);
+    if (data.type === 'media-set') setMediaAsset(payload);
+    if (data.type === 'media-fit') setMediaFit(payload.value);
+    if (data.type === 'media-reset') resetMediaAsset();
     if (data.type === 'inline-text-edit') {
       if(payload.active===false)finishInlineTextEdit(payload.commit!==false);
       else if(selected)beginInlineTextEdit(selected);
