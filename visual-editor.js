@@ -2592,14 +2592,41 @@
     return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
   }
 
-  function solidBackground(element) {
-    let node = element;
-    while (node && node.nodeType === 1) {
-      const bg = parseRgb(getComputedStyle(node).backgroundColor);
-      if (bg && bg.a > .85) return bg;
-      node = node.parentElement;
-    }
-    return {r:255,g:255,b:255,a:1};
+  function compositeRgb(top,bottom) {
+    if(!top)return bottom;
+    if(!bottom)return top;
+    const ta=Math.max(0,Math.min(1,Number(top.a)));
+    const ba=Math.max(0,Math.min(1,Number(bottom.a)));
+    const outA=ta+ba*(1-ta);
+    if(outA<=0)return {r:255,g:255,b:255,a:0};
+    return {
+      r:(top.r*ta+bottom.r*ba*(1-ta))/outA,
+      g:(top.g*ta+bottom.g*ba*(1-ta))/outA,
+      b:(top.b*ta+bottom.b*ba*(1-ta))/outA,
+      a:outA
+    };
+  }
+
+  function resolvedBackground(element) {
+    const chain=[];
+    let node=element;
+    while(node&&node.nodeType===1){chain.unshift(node);node=node.parentElement}
+    let color={r:255,g:255,b:255,a:1};
+    let complex=false;
+    chain.forEach(function(item){
+      const cs=getComputedStyle(item);
+      if(cs.backgroundImage&&cs.backgroundImage!=='none')complex=true;
+      const bg=parseRgb(cs.backgroundColor);
+      if(bg&&bg.a>0)color=compositeRgb(bg,color);
+    });
+    return {color:color,complex:complex};
+  }
+
+  function wcagTextThreshold(fontSize,fontWeight) {
+    const size=Math.max(0,Number(fontSize)||0);
+    const weight=String(fontWeight||'').toLowerCase()==='bold'?700:(parseInt(fontWeight,10)||400);
+    const large=size>=24||(size>=18.6667&&weight>=700);
+    return {large:large,aa:large?3:4.5,aaa:large?4.5:7};
   }
 
   function auditInterface() {
@@ -2617,6 +2644,7 @@
 
     const interactive = [];
     const focusable=[];
+    const contrastStats={tested:0,aaFailures:0,aaaFailures:0,uncertain:0};
     nodes.forEach(function (el) {
       const r=el.getBoundingClientRect();
       const cs=getComputedStyle(el);
@@ -2631,11 +2659,27 @@
           (/(hidden|clip)/.test(cs.overflow+cs.overflowX+cs.overflowY)||cs.whiteSpace==='nowrap');
         if(clipped)issues.push({severity:'error',type:'text-clipped',selector:selector,message:'Texte potentiellement coupé dans '+selector+'.',fixable:true});
 
-        const fg=parseRgb(cs.color),bg=solidBackground(el);
-        if(fg&&bg&&fg.a>.8){
-          const ratio=contrastRatio(fg,bg);
-          const min=parseFloat(cs.fontSize)>=18?3:4.5;
-          if(ratio<min)issues.push({severity:'warning',type:'contrast',selector:selector,message:'Contraste faible ('+ratio.toFixed(1)+':1).',fixable:false});
+        const fg=parseRgb(cs.color),bgInfo=resolvedBackground(el);
+        if(fg&&bgInfo&&bgInfo.color){
+          if(bgInfo.complex){
+            contrastStats.uncertain+=1;
+            issues.push({severity:'info',type:'contrast-complex-bg',selector:selector,message:'Contraste à vérifier manuellement : le texte repose sur une image ou un dégradé.',fixable:false});
+          }else{
+            contrastStats.tested+=1;
+            const bg=bgInfo.color;
+            const effectiveFg=fg.a<1?compositeRgb(fg,bg):fg;
+            const ratio=contrastRatio(effectiveFg,bg);
+            const threshold=wcagTextThreshold(parseFloat(cs.fontSize),cs.fontWeight);
+            if(ratio<threshold.aaa)contrastStats.aaaFailures+=1;
+            if(ratio<threshold.aa){
+              contrastStats.aaFailures+=1;
+              issues.push({
+                severity:'warning',type:'contrast',selector:selector,
+                message:'Contraste '+ratio.toFixed(2)+':1 · WCAG AA exige '+threshold.aa.toFixed(1)+':1'+(threshold.large?' pour ce grand texte':'')+' · AAA '+threshold.aaa.toFixed(1)+':1.',
+                fixable:false,ratio:Math.round(ratio*100)/100,aaMinimum:threshold.aa,aaaMinimum:threshold.aaa,largeText:threshold.large
+              });
+            }
+          }
         }
       }
 
@@ -2690,7 +2734,11 @@
       errors:lastAuditIssues.filter(function(i){return i.severity==='error'}).length,
       warnings:lastAuditIssues.filter(function(i){return i.severity==='warning'}).length,
       info:lastAuditIssues.filter(function(i){return i.severity==='info'}).length,
-      fixable:lastAuditIssues.filter(function(i){return i.fixable}).length
+      fixable:lastAuditIssues.filter(function(i){return i.fixable}).length,
+      contrastTested:contrastStats.tested,
+      contrastAaFailures:contrastStats.aaFailures,
+      contrastAaaFailures:contrastStats.aaaFailures,
+      contrastUncertain:contrastStats.uncertain
     }});
     makeRepairSuggestions();
   }
