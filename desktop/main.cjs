@@ -1101,7 +1101,17 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
 });
 
-async function captureSourceAtSize(source,width,height,css){
+function captureStructureScript(payload){
+  const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
+  const domPatches=Array.isArray(payload&&payload.domPatches)?payload.domPatches:[];
+  const sourceSelectors=Array.isArray(payload&&payload.sourceSelectors)?payload.sourceSelectors:[];
+  const prototypeLinks=payload&&payload.prototypeLinks&&typeof payload.prototypeLinks==='object'?payload.prototypeLinks:{};
+  if(!generatedNodes.length&&!domPatches.length&&!sourceSelectors.length&&!Object.keys(prototypeLinks).length)return '';
+  const locators=buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks);
+  return generatedStructureScript(generatedNodes,domPatches,locators,prototypeLinks);
+}
+
+async function captureSourceAtSize(source,width,height,css,structurePayload){
   const target=normalizeUrl(source&&source.url);
   if(!target)throw new Error('Source invalide.');
   const win=new BrowserWindow({
@@ -1119,6 +1129,11 @@ async function captureSourceAtSize(source,width,height,css){
       await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
       await new Promise(resolve=>setTimeout(resolve,120));
     }
+    const structureScript=captureStructureScript(structurePayload);
+    if(structureScript){
+      await win.webContents.executeJavaScript(structureScript,true);
+      await new Promise(resolve=>setTimeout(resolve,150));
+    }
     const image=await win.webContents.capturePage({x:0,y:0,width:Math.round(width),height:Math.round(height)});
     return image;
   }finally{if(!win.isDestroyed())win.destroy()}
@@ -1135,7 +1150,7 @@ ipcMain.handle('capture:batch',async (_event,payload)=>{
   try{
     for(const cfg of configs){
       const width=Math.max(240,Number(cfg.width)||412),height=Math.max(240,Number(cfg.height)||915);
-      const image=await captureSourceAtSize(source,width,height,payload.css);
+      const image=await captureSourceAtSize(source,width,height,payload.css,payload);
       const safeName=String(cfg.name||width+'x'+height).replace(/[^a-zA-Z0-9_-]+/g,'-');
       const file=path.join(dir,safeName+'-'+width+'x'+height+'.png');
       fs.writeFileSync(file,image.toPNG());
@@ -1181,7 +1196,7 @@ ipcMain.handle('regression:compare',async (_event,payload)=>{
 ipcMain.handle('capture:current-source',async (_event,payload)=>{
   try{
     const width=Math.max(240,Number(payload&&payload.width)||412),height=Math.max(240,Number(payload&&payload.height)||915);
-    const image=await captureSourceAtSize(payload&&payload.source,width,height,payload&&payload.css);
+    const image=await captureSourceAtSize(payload&&payload.source,width,height,payload&&payload.css,payload);
     return {ok:true,dataUrl:image.toDataURL(),width,height};
   }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
