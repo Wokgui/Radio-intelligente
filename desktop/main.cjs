@@ -511,16 +511,51 @@ function localSourceEntry(source){
   return null;
 }
 
-function generatedStructureScript(nodes,patches){
+function sourceLocatorKey(selector){
+  return 's-'+crypto.createHash('sha1').update(String(selector||'')).digest('hex').slice(0,14);
+}
+
+function buildSourceLocators(selectors,nodes,patches){
+  const all=[];
+  (Array.isArray(selectors)?selectors:[]).forEach(selector=>all.push(String(selector||'')));
+  (Array.isArray(nodes)?nodes:[]).forEach(item=>{if(item&&item.parentSelector)all.push(String(item.parentSelector))});
+  (Array.isArray(patches)?patches:[]).forEach(item=>{if(item&&item.selector)all.push(String(item.selector))});
+  return Array.from(new Set(all.filter(selector=>
+    selector&&selector!==':root'&&!selector.startsWith('[data-ais-clone-id=')
+  ))).map(selector=>({selector,key:sourceLocatorKey(selector)}));
+}
+
+function rewriteGeneratedCss(css,locators){
+  let output=String(css||'');
+  const sorted=(Array.isArray(locators)?locators:[]).slice().sort((a,b)=>b.selector.length-a.selector.length);
+  sorted.forEach(item=>{
+    const source=item.selector+' {';
+    const target='[data-ais-source-key="'+item.key+'"] {';
+    output=output.split(source).join(target);
+  });
+  return output;
+}
+
+function generatedStructureScript(nodes,patches,locators){
+  const locatorList=Array.isArray(locators)?locators:[];
+  const keyBySelector=new Map(locatorList.map(item=>[String(item.selector||''),String(item.key||'')]));
+
+  const cleanLocators=locatorList.map(item=>({
+    selector:String(item&&item.selector||''),
+    key:String(item&&item.key||'')
+  })).filter(item=>item.selector&&item.key);
+
   const cleanNodes=(Array.isArray(nodes)?nodes:[]).map(item=>({
     cloneId:String(item&&item.cloneId||''),
     parentSelector:String(item&&item.parentSelector||''),
+    parentKey:keyBySelector.get(String(item&&item.parentSelector||''))||'',
     index:Number.isInteger(item&&item.index)?item.index:-1,
     html:String(item&&item.html||'')
   })).filter(item=>item.cloneId&&item.parentSelector&&item.html);
 
   const cleanPatches=(Array.isArray(patches)?patches:[]).map(item=>({
     selector:String(item&&item.selector||''),
+    sourceKey:keyBySelector.get(String(item&&item.selector||''))||'',
     textAdjusted:!!(item&&item.textAdjusted),
     textContent:String(item&&item.textContent!==undefined?item.textContent:''),
     accessibilityAdjusted:!!(item&&item.accessibilityAdjusted),
@@ -530,8 +565,21 @@ function generatedStructureScript(nodes,patches){
   return [
     '/* Généré par App Interface Studio — structure réversible. */',
     '(function(){',
+    '  const locators='+JSON.stringify(cleanLocators)+';',
     '  const nodes='+JSON.stringify(cleanNodes)+';',
     '  const patches='+JSON.stringify(cleanPatches)+';',
+    '  function sourceByKey(key){',
+    '    if(!key)return null;',
+    '    return document.querySelector("[data-ais-source-key=\\\""+key+"\\\"]");',
+    '  }',
+    '  function prepareSources(){',
+    '    locators.forEach(function(item){',
+    '      if(sourceByKey(item.key))return;',
+    '      let element=null;',
+    '      try{element=document.querySelector(item.selector)}catch(_){return}',
+    '      if(element)element.setAttribute("data-ais-source-key",item.key);',
+    '    });',
+    '  }',
     '  function existingClone(id){',
     '    return Array.from(document.querySelectorAll("[data-ais-clone-id]")).find(function(el){return el.getAttribute("data-ais-clone-id")===id})||null;',
     '  }',
@@ -541,9 +589,10 @@ function generatedStructureScript(nodes,patches){
     '    return template.content.firstElementChild;',
     '  }',
     '  function apply(){',
+    '    prepareSources();',
     '    nodes.forEach(function(item){',
-    '      let parent=null;',
-    '      try{parent=document.querySelector(item.parentSelector)}catch(_){return}',
+    '      let parent=sourceByKey(item.parentKey);',
+    '      if(!parent){try{parent=document.querySelector(item.parentSelector)}catch(_){return}}',
     '      if(!parent)return;',
     '      const node=createNode(item.html);',
     '      if(!node)return;',
@@ -554,8 +603,8 @@ function generatedStructureScript(nodes,patches){
     '      parent.insertBefore(node,before);',
     '    });',
     '    patches.forEach(function(item){',
-    '      let element=null;',
-    '      try{element=document.querySelector(item.selector)}catch(_){return}',
+    '      let element=sourceByKey(item.sourceKey);',
+    '      if(!element){try{element=document.querySelector(item.selector)}catch(_){return}}',
     '      if(!element)return;',
     '      if(item.textAdjusted)element.textContent=item.textContent;',
     '      if(item.accessibilityAdjusted){',
@@ -589,6 +638,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const css=String(payload&&payload.css||'').trim();
   const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
   const domPatches=Array.isArray(payload&&payload.domPatches)?payload.domPatches:[];
+  const sourceSelectors=Array.isArray(payload&&payload.sourceSelectors)?payload.sourceSelectors:[];
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
   if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
@@ -605,9 +655,11 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
     let html=originalHtml;
     let cssApplied=false;
     let structureApplied=false;
+    const sourceLocators=generatedNodes.length?buildSourceLocators(sourceSelectors,generatedNodes,domPatches):[];
+    const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
 
-    if(css&&css!=='/* Aucun ajustement. */'){
-      fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\\n'+css+'\\n','utf8');
+    if(stableCss&&stableCss!=='/* Aucun ajustement. */'){
+      fs.writeFileSync(cssPath,'/* Généré par App Interface Studio — patch réversible. */\\n'+stableCss+'\\n','utf8');
       const marker='data-app-interface-studio="generated"';
       if(!html.includes(marker)){
         const href='./'+path.basename(cssPath);
@@ -618,8 +670,8 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       cssApplied=true;
     }
 
-    if(generatedNodes.length||domPatches.length){
-      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches),'utf8');
+    if(generatedNodes.length||domPatches.length||sourceLocators.length){
+      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches,sourceLocators),'utf8');
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
@@ -645,6 +697,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       backupPath,
       generatedCount:generatedNodes.length,
       domPatchCount:domPatches.length,
+      locatorCount:sourceLocators.length,
       cssApplied,
       structureApplied
     };
