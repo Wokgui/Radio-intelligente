@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.23.0",
+  "version": "6.24.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec grille visuelle persistante liée à l’accrochage, redimensionnement depuis le centre, verrouillage d’axe, annulation Échap et navigation sous le pointeur",
+  "description": "Éditeur visuel universel Windows avec grille de colonnes configurable et magnétique, grille 4/8 px visible, redimensionnement depuis le centre, ancrages directs et mesures visuelles",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
