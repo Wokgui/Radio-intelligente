@@ -97,6 +97,7 @@
   };
   let components = {};
   let prototypeLinks = {};
+  let selectionGroups = {};
   let activeInteractiveState = 'normal';
   let lastAuditIssues = [];
   let lastConsistency = null;
@@ -1427,6 +1428,61 @@
     if (!el) return;
     select(el, !!additive);
     emitLayers();
+  }
+
+  function selectionGroupSummary() {
+    return Object.keys(selectionGroups).sort().map(function(name){
+      const selectors=Array.isArray(selectionGroups[name])?selectionGroups[name]:[];
+      return {name:name,count:selectors.length,selectors:selectors.slice()};
+    });
+  }
+
+  function emitSelectionGroups() {
+    emit('selection-groups',{items:selectionGroupSummary()});
+  }
+
+  function createSelectionGroup(name) {
+    const selectors=selectionElements().map(selectorFor).filter(Boolean);
+    if(selectors.length<2){
+      emit('selection-group-error',{message:'Sélectionne au moins deux objets pour créer un groupe.'});
+      return false;
+    }
+    let base=String(name||'').trim()||('Groupe '+(Object.keys(selectionGroups).length+1));
+    let finalName=base;
+    let index=2;
+    while(selectionGroups[finalName]&&JSON.stringify(selectionGroups[finalName])!==JSON.stringify(selectors)){
+      finalName=base+' '+index;
+      index+=1;
+    }
+    selectionGroups[finalName]=selectors;
+    emitSelectionGroups();
+    emit('selection-group-created',{name:finalName,count:selectors.length});
+    return true;
+  }
+
+  function selectSelectionGroup(name) {
+    const selectors=selectionGroups[String(name||'')]||[];
+    selectedSet.clear();
+    selectors.forEach(function(sel){
+      let el=null;
+      try{el=document.querySelector(sel)}catch(_){}
+      const st=el?touched.get(el):null;
+      if(el&&!(st&&st.deleted))selectedSet.add(el);
+    });
+    selected=Array.from(selectedSet).pop()||null;
+    updateOverlay();
+    emitLayers();
+    emit('selection-group-selected',{name:String(name||''),count:selectedSet.size});
+    return selectedSet.size>0;
+  }
+
+  function deleteSelectionGroup(name) {
+    name=String(name||'');
+    if(!selectionGroups[name])return false;
+    delete selectionGroups[name];
+    emitSelectionGroups();
+    emit('selection-group-deleted',{name:name});
+    return true;
   }
 
   function navigateSelection(direction) {
@@ -2771,6 +2827,7 @@
       designTokens: Object.assign({}, designTokens),
       components: JSON.parse(JSON.stringify(components)),
       prototypeLinks: JSON.parse(JSON.stringify(prototypeLinks)),
+      selectionGroups: JSON.parse(JSON.stringify(selectionGroups)),
       snapshot: snapshot(),
       css: cssText()
     };
@@ -2784,8 +2841,10 @@
     if (project.designTokens) applyDesignTokens(project.designTokens);
     components = project.components ? JSON.parse(JSON.stringify(project.components)) : {};
     prototypeLinks = project.prototypeLinks ? JSON.parse(JSON.stringify(project.prototypeLinks)) : {};
+    selectionGroups = project.selectionGroups ? JSON.parse(JSON.stringify(project.selectionGroups)) : {};
     emitComponents();
     emit('prototype',{links:Object.assign({},prototypeLinks)});
+    emitSelectionGroups();
     const snap = project.snapshot || project;
     if (!snap || !Array.isArray(snap.items)) return false;
     loadSnapshot(snap);
@@ -3222,6 +3281,10 @@
     if (data.type === 'component-variant-save') saveComponentVariant(payload.name,payload.variant);
     if (data.type === 'component-variant-apply') applyComponentVariant(payload.name,payload.variant,!!payload.allInstances);
     if (data.type === 'get-components') emitComponents();
+    if (data.type === 'get-selection-groups') emitSelectionGroups();
+    if (data.type === 'selection-group-create') createSelectionGroup(payload.name);
+    if (data.type === 'selection-group-select') selectSelectionGroup(payload.name);
+    if (data.type === 'selection-group-delete') deleteSelectionGroup(payload.name);
     if (data.type === 'prototype-set') setPrototypeLink(payload);
     if (data.type === 'style') setVisualStyle(String(payload.kind || ''), payload.value);
     if (data.type === 'z-change') adjustZ(Number(payload.delta) || 0);
@@ -3309,6 +3372,9 @@
     updateComponentFromSelection: updateComponentFromSelection,
     saveComponentVariant: saveComponentVariant,
     applyComponentVariant: applyComponentVariant,
+    createSelectionGroup: createSelectionGroup,
+    selectSelectionGroup: selectSelectionGroup,
+    deleteSelectionGroup: deleteSelectionGroup,
     setPrototypeLink: setPrototypeLink,
     setVisualStyle: setVisualStyle,
     adjustZ: adjustZ,
