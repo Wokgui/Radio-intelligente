@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.50.0",
+  "version": "6.51.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec états interactifs, contraste WCAG auto, projets portables, rollback transactionnel et quality gate de régression visuelle multi-écrans",
+  "description": "Éditeur visuel universel Windows avec diagnostic structurel Flex/Grid, surlignage des causes de débordement, corrections annulables, contraste WCAG auto, projets portables et quality gate visuel multi-écrans",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
