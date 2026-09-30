@@ -346,16 +346,24 @@ function createWindow(){
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
             const shot=await api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'});
             const captureOk=!!(shot&&shot.ok&&typeof shot.dataUrl==='string'&&shot.dataUrl.indexOf('data:image/png')===0);
+            const regression=await api.compareRegression({baseline:shot&&shot.dataUrl,current:shot&&shot.dataUrl});
+            const regressionOk=!!(regression&&regression.ok&&regression.changedPixels===0&&regression.differencePercent===0&&typeof regression.diffDataUrl==='string'&&regression.diffDataUrl.indexOf('data:image/png')===0);
+            const matrix=await api.runTestMatrix({source:demo.source,css:'/* smoke test */'});
+            const matrixOk=!!(matrix&&matrix.ok&&matrix.summary&&matrix.summary.tested===12&&Array.isArray(matrix.results)&&matrix.results.length===12);
             const roundtrip=await api.smokeTransactionRoundtrip();
             const portableRoundtrip=await api.smokePortableRoundtrip();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&regressionOk&&matrixOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok),
               version:info&&info.version,
               bridge:true,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
               captureSize:shot&&shot.width+'x'+shot.height,
+              regressionOk:regressionOk,
+              regressionDifferencePercent:regression&&regression.differencePercent,
+              matrixOk:matrixOk,
+              matrixSummary:matrix&&matrix.summary,
               transactionRoundtrip:roundtrip,
               portableRoundtrip:portableRoundtrip
             };
