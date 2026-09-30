@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.36.0",
+  "version": "6.37.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec bibliothèque d’assets, point focal des images, remplacement direct d’images et icônes, assets transactionnels, comparaison pixel à pixel, rotation portrait/paysage, box model manipulable et diff interactif HTML/CSS/JS",
+  "description": "Éditeur visuel universel Windows avec historique visuel comparable, captures DOM complètes, bibliothèque d’assets, point focal des images, remplacement direct d’images et icônes, comparaison pixel à pixel, rotation portrait/paysage et diff interactif HTML/CSS/JS",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
