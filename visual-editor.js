@@ -113,6 +113,7 @@
   const mediaFocalHandle = outline.querySelector('.ve-media-focal');
   const registry = new Map();
   const touched = new Map();
+  const svgTintOriginals = new WeakMap();
 
   let active = false;
   let selected = null;
@@ -286,6 +287,9 @@
       mediaFit: 'contain',
       mediaPositionX: 50,
       mediaPositionY: 50,
+      svgTintAdjusted: false,
+      svgTintColor: '#000000',
+      svgTintMode: 'both',
       animationAdjusted: false,
       animation: {
         property: 'all',
@@ -766,6 +770,8 @@
       }
     }
 
+    applySvgTint(element,state);
+
     if (state.colorAdjusted) setInline(element, 'color', state.color);
     else restoreOriginalProp(state.selector, 'color');
     if (state.backgroundAdjusted) setInline(element, 'background-color', state.backgroundColor);
@@ -824,6 +830,7 @@
 
   function restoreEntry(entry) {
     if (!entry || !entry.element) return;
+    clearSvgTint(entry.element);
     Object.keys(entry.original).forEach(function (prop) {
       const item = entry.original[prop];
       if (item.value) entry.element.style.setProperty(prop, item.value, item.priority);
@@ -1329,6 +1336,9 @@
         mediaFit: state.mediaFit || 'contain',
         mediaPositionX: mediaPercent(state.mediaPositionX,50),
         mediaPositionY: mediaPercent(state.mediaPositionY,50),
+        svgTintAdjusted: !!state.svgTintAdjusted,
+        svgTintColor: state.svgTintColor || '#000000',
+        svgTintMode: state.svgTintMode || 'both',
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -1428,6 +1438,9 @@
         mediaFit: saved.mediaFit || 'contain',
         mediaPositionX: mediaPercent(saved.mediaPositionX,50),
         mediaPositionY: mediaPercent(saved.mediaPositionY,50),
+        svgTintAdjusted: !!saved.svgTintAdjusted,
+        svgTintColor: saved.svgTintColor || '#000000',
+        svgTintMode: ['fill','stroke','both'].indexOf(saved.svgTintMode)>=0?saved.svgTintMode:'both',
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -2793,6 +2806,10 @@
       mediaPositionX: mediaPercent(state.mediaPositionX,50),
       mediaPositionY: mediaPercent(state.mediaPositionY,50),
       mediaAssets: mediaAssetSummary(),
+      svgEditable: mediaKindForElement(selected)==='svg'&&!state.mediaAdjusted,
+      svgTintAdjusted: !!state.svgTintAdjusted,
+      svgTintColor: state.svgTintColor || '#000000',
+      svgTintMode: state.svgTintMode || 'both',
       boxModel: (function(){
         var cs=getComputedStyle(selected);
         return {
@@ -3378,6 +3395,55 @@
     return Math.max(0,Math.min(100,Number.isFinite(n)?n:(fallback===undefined?50:fallback)));
   }
 
+  function rememberSvgTintStyle(node,prop){
+    if(!node||!node.style)return;
+    let record=svgTintOriginals.get(node);
+    if(!record){record={};svgTintOriginals.set(node,record)}
+    if(Object.prototype.hasOwnProperty.call(record,prop))return;
+    record[prop]={value:node.style.getPropertyValue(prop),priority:node.style.getPropertyPriority(prop)};
+  }
+
+  function clearSvgTint(element){
+    if(!element)return;
+    [element].concat(Array.from(element.querySelectorAll?element.querySelectorAll('*'):[])).forEach(function(node){
+      const record=svgTintOriginals.get(node);
+      if(!record||!node.style)return;
+      Object.keys(record).forEach(function(prop){
+        const saved=record[prop]||{};
+        if(saved.value)node.style.setProperty(prop,saved.value,saved.priority||'');
+        else node.style.removeProperty(prop);
+      });
+      svgTintOriginals.delete(node);
+    });
+  }
+
+  function svgPaintVisible(value){
+    value=String(value||'').trim().toLowerCase();
+    return value&&value!=='none'&&value!=='transparent'&&value!=='rgba(0, 0, 0, 0)'&&value!=='rgba(0,0,0,0)';
+  }
+
+  function applySvgTint(element,state){
+    if(!element||String(element.tagName||'').toLowerCase()!=='svg')return;
+    clearSvgTint(element);
+    if(!state||!state.svgTintAdjusted)return;
+    const color=String(state.svgTintColor||'#000000');
+    const mode=['fill','stroke','both'].indexOf(state.svgTintMode)>=0?state.svgTintMode:'both';
+    rememberSvgTintStyle(element,'color');
+    element.style.setProperty('color',color,'important');
+    const shapes=Array.from(element.querySelectorAll('path,rect,circle,ellipse,polygon,polyline,line,text'));
+    shapes.forEach(function(node){
+      const computed=getComputedStyle(node);
+      if((mode==='fill'||mode==='both')&&svgPaintVisible(computed.fill)){
+        rememberSvgTintStyle(node,'fill');
+        node.style.setProperty('fill',color,'important');
+      }
+      if((mode==='stroke'||mode==='both')&&svgPaintVisible(computed.stroke)){
+        rememberSvgTintStyle(node,'stroke');
+        node.style.setProperty('stroke',color,'important');
+      }
+    });
+  }
+
   function mediaKindForElement(element){
     const tag=String(element&&element.tagName||'').toLowerCase();
     if(tag==='img')return 'img';
@@ -3445,6 +3511,22 @@
     updateOverlay();
     commitHistory();
     emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:state.mediaFit,positionX:state.mediaPositionX,positionY:state.mediaPositionY});
+  }
+
+  function setSvgTint(payload){
+    if(!active||!selected||selectionElements().length!==1)return;
+    const state=remember(selected);
+    if(!state||state.locked||mediaKindForElement(selected)!=='svg'||state.mediaAdjusted){
+      emit('svg-tint-error',{message:'Sélectionne un SVG inline non remplacé.'});return
+    }
+    const enabled=payload&&payload.enabled!==false;
+    state.svgTintAdjusted=enabled;
+    if(payload&&payload.color)state.svgTintColor=String(payload.color);
+    if(payload&&['fill','stroke','both'].indexOf(payload.mode)>=0)state.svgTintMode=payload.mode;
+    applyState(selected,state,false);
+    updateOverlay();
+    commitHistory();
+    emit('svg-tint-updated',{enabled:state.svgTintAdjusted,color:state.svgTintColor,mode:state.svgTintMode});
   }
 
   function resetMediaAsset(){
@@ -4444,6 +4526,7 @@
     if (data.type === 'media-fit') setMediaFit(payload.value);
     if (data.type === 'media-position') setMediaPosition(payload);
     if (data.type === 'media-reset') resetMediaAsset();
+    if (data.type === 'svg-tint') setSvgTint(payload);
     if (data.type === 'inline-text-edit') {
       if(payload.active===false)finishInlineTextEdit(payload.commit!==false);
       else if(selected)beginInlineTextEdit(selected);
@@ -4552,6 +4635,7 @@
     setTextProperty: setTextProperty,
     setTextContent: setTextContent,
     setMediaPosition: setMediaPosition,
+    setSvgTint: setSvgTint,
     toggleLock: toggleLock,
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
