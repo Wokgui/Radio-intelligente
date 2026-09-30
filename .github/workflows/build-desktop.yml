@@ -35,6 +35,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: app-interface-studio-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     runs-on: windows-latest
