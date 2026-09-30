@@ -128,6 +128,16 @@ expect(engine,"let guideThreshold = 5","configurable guide threshold");
 expect(engine,"Zone sûre gauche","safe-area snapping");
 expect(engine,"Centre parent","parent snapping");
 expect(engine,"selectionPath: selectionPath(selected)","selection path payload");
+expect(html,'id="marqueeModeBtn"','marquee selection button');
+expect(html,"function setMarqueeModeHost","marquee host mode");
+expect(engine,"function setMarqueeMode(value)","marquee engine mode");
+expect(engine,"function marqueeCandidates(rect)","marquee candidate detection");
+expect(engine,"function startMarquee(event)","marquee pointer start");
+expect(engine,"function finishMarquee(event)","marquee pointer finish");
+expect(engine,"data.type === 'marquee-mode'","marquee engine command");
+expect(engine,"emit('marquee-selection'","marquee selection event");
+expect(engine,"node === marqueeBox","marquee editor-node exclusion");
+expect(html,"Ctrl</kbd> + glisser","marquee shortcut help");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -135,4 +145,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.2 feature checks passed.');
+console.log('App Interface Studio 6.3 feature checks passed.');
