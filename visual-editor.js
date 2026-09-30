@@ -2656,6 +2656,55 @@
     applyState(element,state,false);
   }
 
+  function testComponentIntegrity() {
+    const results=[];
+    Object.keys(components).sort().forEach(function(name){
+      const component=components[name]||{};
+      const instances=Array.isArray(component.instances)?component.instances:[];
+      const variants=component.variants||{};
+      const issues=[];
+      if(!Array.isArray(component.states)||!component.states.length)issues.push('Aucun état de base enregistré.');
+      if(!instances.length)issues.push('Aucune instance liée.');
+      instances.forEach(function(selectors,groupIndex){
+        if(!Array.isArray(selectors)||selectors.length!==component.states.length){
+          issues.push('Instance '+(groupIndex+1)+' : nombre d’objets différent de la définition.');
+        }
+        (selectors||[]).forEach(function(sel,index){
+          let el=null;try{el=document.querySelector(sel)}catch(_){}
+          if(!el)issues.push('Instance '+(groupIndex+1)+' : cible introuvable '+sel+'.');
+          else{
+            const r=el.getBoundingClientRect();
+            if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)&&(r.width<44||r.height<44)){
+              issues.push('Instance '+(groupIndex+1)+' : cible interactive < 44 px ('+Math.round(r.width)+'×'+Math.round(r.height)+').');
+            }
+          }
+          if(component.states[index]&&component.states[index].componentDetached)issues.push('Instance '+(groupIndex+1)+' : élément détaché inattendu.');
+        });
+      });
+      Object.keys(variants).forEach(function(variantName){
+        const variant=variants[variantName];
+        if(!Array.isArray(variant)||variant.length!==component.states.length){
+          issues.push('Variante "'+variantName+'" incomplète : '+(Array.isArray(variant)?variant.length:0)+' / '+component.states.length+' états.');
+        }
+      });
+      results.push({
+        name:name,
+        instances:instances.length,
+        variants:Object.keys(variants).length,
+        ok:issues.length===0,
+        issues:issues
+      });
+    });
+    emit('component-tests',{
+      results:results,
+      summary:{
+        tested:results.length,
+        failed:results.filter(function(x){return !x.ok}).length,
+        issues:results.reduce(function(n,x){return n+x.issues.length},0)
+      }
+    });
+  }
+
   function componentSummary() {
     return Object.keys(components).sort().map(function(name){
       const item=components[name];
@@ -5164,6 +5213,7 @@
     if (data.type === 'component-variant-save') saveComponentVariant(payload.name,payload.variant);
     if (data.type === 'component-variant-apply') applyComponentVariant(payload.name,payload.variant,!!payload.allInstances);
     if (data.type === 'get-components') emitComponents();
+    if (data.type === 'test-components') testComponentIntegrity();
     if (data.type === 'get-css-cascade') inspectCssCascade();
     if (data.type === 'get-selection-groups') emitSelectionGroups();
     if (data.type === 'selection-group-create') createSelectionGroup(payload.name);
