@@ -428,6 +428,10 @@ expect(html,"mixBlendMode=mode==='difference'?'difference':'normal'","pixel diff
 expect(html,"clipPath=mode==='wipe'","reference wipe clipping");
 expect(html,"Alt+R","reference comparison shortcut");
 expect(html,"referenceMode:'overlay'","reference comparison preferences");
+expect(html,'id="rotateDeviceBtn"',"device rotation control");
+expect(html,"function rotateDevice()","device rotation function");
+expect(html,"preset.value='custom'","rotation switches to custom viewport");
+expect(html,"Pivoter l’écran portrait / paysage","device rotation command");
 const syncAnchorStart=engine.indexOf("function syncAnchorPins(cfg,count)");
 const syncAnchorEnd=engine.indexOf("function hideConstraintLines()",syncAnchorStart);
 if(syncAnchorStart<0||syncAnchorEnd<0)throw new Error("syncAnchorPins block missing");
@@ -441,4 +445,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.33 feature checks passed.');
+console.log('App Interface Studio 6.34 feature checks passed.');
