@@ -270,7 +270,7 @@ body.desktop .desktop-badge{display:inline-flex}
 .pro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .pro-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .layer-tree{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:11px;background:#fff;padding:5px}
-.layer-row{display:grid;grid-template-columns:minmax(0,1fr) 28px 28px;gap:4px;align-items:center;min-height:31px;padding:2px 3px;border-radius:7px}
+.layer-row{display:grid;grid-template-columns:28px minmax(0,1fr) 28px 28px;gap:4px;align-items:center;min-height:31px;padding:2px 3px;border-radius:7px}
 .layer-row:hover{background:#f7f3fb}
 .layer-row.selected{background:#eee6fb;color:#5f2ca8}
 .layer-main{min-width:0;border:0;background:transparent;text-align:left;color:inherit;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:calc(var(--depth,0) * 12px)}
@@ -821,11 +821,24 @@ body.desktop .desktop-badge{display:inline-flex}
     <section class="card">
       <h2>Calques <small>arbre des éléments</small></h2>
       <input class="layer-search" id="layerSearch" type="search" placeholder="Rechercher un calque, id, classe…" autocomplete="off">
+      <div class="fields" style="margin-bottom:7px">
+        <div class="field" style="grid-column:1/-1"><label>Filtre</label><select id="layerFilter">
+          <option value="all">Tous les calques</option>
+          <option value="selected">Sélectionnés</option>
+          <option value="hidden">Masqués</option>
+          <option value="locked">Verrouillés</option>
+        </select></div>
+      </div>
       <div class="layer-tree" id="layerTree"><div class="hint">Chargement de l’arbre…</div></div>
       <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="expandLayersBtn">Tout déplier</button>
+        <button class="btn wide" id="collapseLayersBtn">Tout replier</button>
+      </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="isolateSelectionBtn">◎ Isoler la sélection</button>
         <button class="btn wide" id="refreshLayersBtn">Actualiser</button>
       </div>
-      <p>Clique un calque pour sélectionner précisément un élément imbriqué. Œil = masquer, cadenas = verrouiller.</p>
+      <p>Clique un calque pour le sélectionner. Les chevrons replient les branches. Œil = masquer, cadenas = verrouiller. L’isolation est temporaire et n’est pas exportée.</p>
     </section>
 
     <section class="card">
@@ -1164,6 +1177,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var breakpointActive=document.getElementById('breakpointActive');
   var layerTree=document.getElementById('layerTree');
   var layerSearch=document.getElementById('layerSearch');
+  var layerFilter=document.getElementById('layerFilter');
+  var collapsedLayerSelectors=new Set();
+  var isolationActiveHost=false;
   var selectionGroupList=document.getElementById('selectionGroupList');
   var selectionGroupName=document.getElementById('selectionGroupName');
   var lastLayerTree=[];
@@ -1302,7 +1318,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.6.0'};
+      project.studio={name:'App Interface Studio',version:'6.7.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1800,35 +1816,61 @@ body.desktop .desktop-badge{display:inline-flex}
     layerTree.innerHTML='';
     var frag=document.createDocumentFragment();
     var query=String(layerSearch&&layerSearch.value||'').trim().toLowerCase();
-    function nodeMatches(node){
-      if(!query)return true;
-      var own=[node.title,node.tag,node.selector].join(' ').toLowerCase();
-      if(own.indexOf(query)>=0)return true;
-      return (node.children||[]).some(nodeMatches);
+    var filter=String(layerFilter&&layerFilter.value||'all');
+
+    function ownMatch(node){
+      var searchOk=!query||[node.title,node.tag,node.selector].join(' ').toLowerCase().indexOf(query)>=0;
+      var filterOk=filter==='all'||(filter==='selected'&&node.selected)||(filter==='hidden'&&node.hidden)||(filter==='locked'&&node.locked);
+      return searchOk&&filterOk;
     }
+
+    function branchMatch(node){
+      if(ownMatch(node))return true;
+      return (node.children||[]).some(branchMatch);
+    }
+
     function add(nodes){
       (nodes||[]).forEach(function(node){
-        if(!nodeMatches(node))return;
+        if(!branchMatch(node))return;
         var row=document.createElement('div');
         row.className='layer-row'+(node.selected?' selected':'');
+        var hasChildren=Array.isArray(node.children)&&node.children.some(branchMatch);
+        var fold=document.createElement('button');
+        fold.className='layer-mini';
+        fold.title=hasChildren?(collapsedLayerSelectors.has(node.selector)?'Déplier':'Replier'):'';
+        fold.textContent=hasChildren?(collapsedLayerSelectors.has(node.selector)?'▸':'▾'):'';
+        fold.disabled=!hasChildren;
+        fold.style.visibility=hasChildren?'visible':'hidden';
+        fold.addEventListener('click',function(){
+          if(collapsedLayerSelectors.has(node.selector))collapsedLayerSelectors.delete(node.selector);
+          else collapsedLayerSelectors.add(node.selector);
+          renderLayers(lastLayerTree);
+        });
+
         var main=document.createElement('button');
         main.className='layer-main';
         main.style.setProperty('--depth',String(node.depth||0));
         main.title=node.selector||node.title||'';
         main.textContent=(node.title||node.tag||'élément')+' · '+(node.tag||'');
         main.addEventListener('click',function(e){post('select-selector',{selector:node.selector,additive:e.shiftKey})});
+
         var eye=document.createElement('button');
         eye.className='layer-mini';eye.title=node.hidden?'Afficher':'Masquer';eye.textContent=node.hidden?'◌':'◉';
         eye.addEventListener('click',function(){post('layer-hidden',{selector:node.selector,value:!node.hidden});setTimeout(function(){post('get-layers')},80)});
+
         var lock=document.createElement('button');
         lock.className='layer-mini';lock.title=node.locked?'Déverrouiller':'Verrouiller';lock.textContent=node.locked?'🔒':'🔓';
         lock.addEventListener('click',function(){post('layer-lock',{selector:node.selector,value:!node.locked});setTimeout(function(){post('get-layers')},80)});
-        row.append(main,eye,lock);frag.appendChild(row);
-        add(node.children);
+
+        row.append(fold,main,eye,lock);
+        frag.appendChild(row);
+        var forceOpen=!!query||filter!=='all';
+        if(forceOpen||!collapsedLayerSelectors.has(node.selector))add(node.children);
       });
     }
+
     add(lastLayerTree);
-    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">'+(query?'Aucun calque ne correspond à la recherche.':'Aucun élément visible.')+'</div>';
+    if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">'+((query||filter!=='all')?'Aucun calque ne correspond au filtre.':'Aucun élément visible.')+'</div>';
     else layerTree.appendChild(frag);
   }
 
@@ -2372,7 +2414,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.6.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.7.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2417,7 +2459,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.6.0'};
+    project.studio={name:'App Interface Studio',version:'6.7.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2475,7 +2517,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.6.0'};
+    project.studio={name:'App Interface Studio',version:'6.7.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2556,6 +2598,7 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Flow de navigation',hint:'',run:openFlow},
     {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
     {label:'Mode sélection rectangle',hint:'Ctrl+glisser',run:function(){setMarqueeModeHost(!marqueeModeActive)}},
+    {label:'Isoler / quitter l’isolation',hint:'',run:function(){post('isolate-selection',{active:!isolationActiveHost})}},
     {label:'Créer un groupe avec la sélection',hint:'',run:function(){post('selection-group-create',{name:selectionGroupName.value})}},
     {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
     {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
@@ -2696,6 +2739,14 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='selection-group-selected')setStatus('Groupe sélectionné : '+(p.name||'groupe')+' · '+(p.count||0)+' objet(s).');
     if(data.type==='selection-group-deleted')setStatus('Groupe supprimé : '+(p.name||'groupe')+'.');
     if(data.type==='selection-group-error')setStatus(p.message||'Impossible de créer le groupe.',true);
+    if(data.type==='isolation'){
+      isolationActiveHost=!!p.active;
+      var isolateBtn=document.getElementById('isolateSelectionBtn');
+      isolateBtn.classList.toggle('active',isolationActiveHost);
+      isolateBtn.textContent=isolationActiveHost?'◎ Quitter l’isolation':'◎ Isoler la sélection';
+      if(p.error)setStatus(p.error,true);
+      else setStatus(isolationActiveHost?'Isolation active sur '+(p.count||0)+' objet(s).':'Isolation désactivée.');
+    }
     if(data.type==='tokens')syncTokenInputs(p.tokens||{});
     if(data.type==='prototype')prototypeStatus.textContent='Prototype : '+Object.keys(p.links||{}).length+' lien(s) enregistré(s).';
     if(data.type==='audit')renderAudit(p);
@@ -3127,6 +3178,15 @@ body.desktop .desktop-badge{display:inline-flex}
   commandSearch.addEventListener('input',function(){renderCommands(commandSearch.value)});
   commandPalette.addEventListener('click',function(e){if(e.target===commandPalette)closeCommandPalette()});
   layerSearch.addEventListener('input',function(){renderLayers(lastLayerTree)});
+  layerFilter.addEventListener('change',function(){renderLayers(lastLayerTree)});
+  document.getElementById('expandLayersBtn').addEventListener('click',function(){collapsedLayerSelectors.clear();renderLayers(lastLayerTree)});
+  document.getElementById('collapseLayersBtn').addEventListener('click',function(){
+    function collect(nodes){(nodes||[]).forEach(function(node){if(node.children&&node.children.length)collapsedLayerSelectors.add(node.selector);collect(node.children)})}
+    collect(lastLayerTree);renderLayers(lastLayerTree);
+  });
+  document.getElementById('isolateSelectionBtn').addEventListener('click',function(){
+    post('isolate-selection',{active:!isolationActiveHost});
+  });
   document.getElementById('settingsBtn').addEventListener('click',function(){settingsModal.hidden=false});
   document.getElementById('settingsCloseBtn').addEventListener('click',function(){settingsModal.hidden=true});
   document.getElementById('settingsDoneBtn').addEventListener('click',function(){settingsModal.hidden=true});
