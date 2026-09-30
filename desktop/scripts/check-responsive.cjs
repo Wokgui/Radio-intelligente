@@ -349,6 +349,17 @@ expect(html,"function renderColumnGrid()","column grid rendering");
 expect(html,"function applyColumnGridPreset()","column grid automatic preset");
 expect(html,"post('layout-guides'","column grid snapping feed");
 expect(html,"Afficher / masquer la grille de colonnes","column grid command palette action");
+expect(main,"function generatedStructureScript(nodes)","generated structure patch builder");
+expect(main,"app-interface-studio.generated.js","generated structure patch filename");
+expect(main,'data-app-interface-studio="generated-structure"',"generated structure marker");
+expect(main,"function removeGeneratedStructureTag(html)","generated structure cleanup");
+expect(main,"function gitPathTracked(root,relativePath)","tracked generated-file detection");
+expect(main,"'add','-A','--'","git staging including deletions");
+expect(html,"generatedNodes:generatedNodes","local structural patch payload");
+expect(html,"generatedNodes=project&&project.snapshot","Git structural patch payload");
+expect(html,"structure : '+result.jsPath","structural patch host feedback");
+expect(preload,"applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload)","structural patch bridge");
+if(html.includes("ne les injecte pas encore"))throw new Error("Legacy structural limitation warning still present");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -356,4 +367,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.24 feature checks passed.');
+console.log('App Interface Studio 6.25 feature checks passed.');
