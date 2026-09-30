@@ -243,6 +243,15 @@ expect(html,"key==='+'||key==='='","zoom in keyboard shortcut");
 expect(html,"key==='-'","zoom out keyboard shortcut");
 expect(html,"var amount=baseStep*(modifier?10:1)","host keyboard nudge step");
 expect(html,"prefs.nudgeStep=Number(step.value)||1","nudge step persistence");
+expect(html,"function updateCustomGuide(axis,index,value)","keyboard-editable guide position");
+expect(html,"valueInput.type='number'","guide numeric editor");
+expect(html,"function addGuideAtSelection(axis)","guide from selection center");
+expect(html,"event.altKey&&lower==='m'","spacing keyboard shortcut");
+expect(html,"event.altKey&&event.shiftKey&&lower==='v'","vertical guide keyboard shortcut");
+expect(html,"event.altKey&&event.shiftKey&&lower==='h'","horizontal guide keyboard shortcut");
+expect(html,"Alt+M","spacing shortcut command");
+expect(html,"Alt+Maj+V","vertical guide command");
+expect(html,"Alt+Maj+H","horizontal guide command");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -250,4 +259,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.12 feature checks passed.');
+console.log('App Interface Studio 6.13 feature checks passed.');
