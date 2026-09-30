@@ -694,12 +694,16 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool" data-selection-nav="child" title="Premier enfant · Alt+↓">Enfant ↓</button>
       </div>
       <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" data-cycle-selection="-1" title="Élément précédent sous le pointeur · Maj+Tab">⇤ Sous pointeur</button>
+        <button class="tool wide" data-cycle-selection="1" title="Élément suivant sous le pointeur · Tab">Sous pointeur ⇥</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
         <button class="tool" id="undoEdit" disabled>↶</button>
         <button class="tool" id="redoEdit" disabled>↷</button>
         <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
         <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
-      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>Ctrl+Alt+C</kbd>/<kbd>Ctrl+Alt+V</kbd> copie/colle seulement le style · <kbd>←↑↓→</kbd> déplace · les poignées des coins et des côtés redimensionnent toute la sélection · <kbd>Maj</kbd> conserve les proportions · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
+      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>Ctrl+Alt+C</kbd>/<kbd>Ctrl+Alt+V</kbd> copie/colle seulement le style · <kbd>Tab</kbd>/<kbd>Maj+Tab</kbd> parcourt les éléments superposés sous le pointeur · <kbd>←↑↓→</kbd> déplace · les poignées des coins et des côtés redimensionnent toute la sélection · <kbd>Maj</kbd> conserve les proportions · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
     </section>
 
     <section class="card">
@@ -1359,7 +1363,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.19.0'};
+      project.studio={name:'App Interface Studio',version:'6.20.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2646,7 +2650,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.19.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.20.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2696,7 +2700,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.19.0'};
+    project.studio={name:'App Interface Studio',version:'6.20.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2754,7 +2758,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.19.0'};
+    project.studio={name:'App Interface Studio',version:'6.20.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2797,6 +2801,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
     if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
+    if(key==='Tab'){event.preventDefault();post('cycle-selection',{direction:event.shiftKey?-1:1});return}
     if(event.altKey&&lower==='m'){event.preventDefault();post('measure-spacing');return}
     if(event.altKey&&event.shiftKey&&lower==='v'){event.preventDefault();addGuideAtSelection('x');return}
     if(event.altKey&&event.shiftKey&&lower==='h'){event.preventDefault();addGuideAtSelection('y');return}
@@ -2874,6 +2879,8 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Sélectionner le premier enfant',hint:'Alt+↓',run:function(){post('navigate-selection',{direction:'child'})}},
     {label:'Sélectionner le frère précédent',hint:'Alt+←',run:function(){post('navigate-selection',{direction:'prev'})}},
     {label:'Sélectionner le frère suivant',hint:'Alt+→',run:function(){post('navigate-selection',{direction:'next'})}},
+    {label:'Élément suivant sous le pointeur',hint:'Tab',run:function(){post('cycle-selection',{direction:1})}},
+    {label:'Élément précédent sous le pointeur',hint:'Maj+Tab',run:function(){post('cycle-selection',{direction:-1})}},
     {label:'Raccourcis clavier : flèches déplacer · Maj+flèches redimensionner',hint:'?',run:function(){}}
   ];
 
@@ -2979,6 +2986,10 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='selection-navigation'){
       if(p.ok)setStatus('Sélection : '+(p.title||p.selector||'élément')+'.');
       else setStatus('Aucun élément dans cette direction.',true);
+    }
+    if(data.type==='selection-cycle'){
+      if(p.ok)setStatus('Sous le pointeur : '+(p.title||p.selector||'élément')+' · '+(p.index||1)+' / '+(p.count||1)+'.');
+      else setStatus('Aucun autre élément éditable sous le pointeur.',true);
     }
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
@@ -3200,6 +3211,10 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('pasteSelectionBtn').addEventListener('click',function(){post('selection-paste')});
   document.querySelectorAll('[data-selection-z]').forEach(function(btn){
     btn.addEventListener('click',function(){post('selection-z',{mode:btn.dataset.selectionZ})});
+  });
+
+  document.querySelectorAll('[data-cycle-selection]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('cycle-selection',{direction:Number(btn.dataset.cycleSelection)||1})});
   });
 
   document.querySelectorAll('[data-selection-nav]').forEach(function(btn){
