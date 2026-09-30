@@ -3087,6 +3087,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(result.cssApplied||result.cssRemoved)parts.push('CSS');
     if(result.structureApplied||result.structureRemoved)parts.push('structure/DOM');
     setStatus('Patch appliqué : '+parts.join(' + ')+(result.assetCount?' · '+result.assetCount+' asset(s) copié(s)':'')+' · sauvegarde transactionnelle créée.');
+    await refreshLocalTransactions();
     try{frame.contentWindow.location.reload()}catch(_){}
   }
 
@@ -3101,6 +3102,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var result=await desktop.rollbackLastPatch({source:currentSource});
     if(!result||!result.ok){setStatus((result&&result.error)||'Annulation du patch impossible.',true);return}
     setStatus('Dernier patch local annulé · transaction : '+result.transactionPath);
+    await refreshLocalTransactions();
     try{frame.contentWindow.location.reload()}catch(_){}
     multiFrames.forEach(function(rec){try{rec.iframe.contentWindow.location.reload()}catch(_){}});
   }
@@ -4406,6 +4408,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!ready)setStatus('Application chargée, mais le moteur d’édition n’a pas répondu. Clique sur Recharger pour relancer l’injection.',true);
     else setStatus(source.type==='android-project'?'Projet Android natif chargé : sélection visuelle + édition source XML/Compose.':'Éditeur prêt : clique directement sur un élément de l’application.');
     await refreshNativeTree();
+    await refreshLocalTransactions();
     return ready;
   }
 
