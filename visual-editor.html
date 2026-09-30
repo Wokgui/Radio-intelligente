@@ -674,6 +674,14 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>←↑↓→</kbd> déplace · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
     </section>
 
+    <section class="card">
+      <h2>Groupes de travail <small>sélections persistantes</small></h2>
+      <div class="field"><label>Nom du groupe</label><input id="selectionGroupName" type="text" placeholder="En-tête, lecteur, barre basse…"></div>
+      <button class="btn primary" id="createSelectionGroupBtn" style="width:100%;margin-top:8px">Créer depuis la sélection</button>
+      <div class="component-list" id="selectionGroupList"><div class="hint">Aucun groupe enregistré.</div></div>
+      <p>Un groupe mémorise les objets à sélectionner ensemble sans ajouter de conteneur HTML ni modifier la structure de l’application.</p>
+    </section>
+
     <section class="card" id="textCard">
       <h2>Texte <small>type Word</small></h2>
       <div class="text-controls">
@@ -1156,6 +1164,8 @@ body.desktop .desktop-badge{display:inline-flex}
   var breakpointActive=document.getElementById('breakpointActive');
   var layerTree=document.getElementById('layerTree');
   var layerSearch=document.getElementById('layerSearch');
+  var selectionGroupList=document.getElementById('selectionGroupList');
+  var selectionGroupName=document.getElementById('selectionGroupName');
   var lastLayerTree=[];
   var commandPalette=document.getElementById('commandPalette');
   var commandSearch=document.getElementById('commandSearch');
@@ -1292,7 +1302,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.5.0'};
+      project.studio={name:'App Interface Studio',version:'6.6.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2194,6 +2204,34 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
 
+  function renderSelectionGroups(items){
+    selectionGroupList.innerHTML='';
+    items=Array.isArray(items)?items:[];
+    if(!items.length){
+      selectionGroupList.innerHTML='<div class="hint">Aucun groupe enregistré.</div>';
+      return;
+    }
+    items.forEach(function(item){
+      var row=document.createElement('div');
+      row.className='component-item';
+      var main=document.createElement('button');
+      main.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit';
+      main.innerHTML='<strong></strong><small></small>';
+      main.querySelector('strong').textContent=item.name;
+      main.querySelector('small').textContent=(item.count||0)+' objet(s)';
+      main.addEventListener('click',function(){post('selection-group-select',{name:item.name})});
+      var actions=document.createElement('div');
+      actions.className='mini-actions';
+      var del=document.createElement('button');
+      del.textContent='×';
+      del.title='Supprimer ce groupe';
+      del.addEventListener('click',function(){post('selection-group-delete',{name:item.name})});
+      actions.appendChild(del);
+      row.append(main,actions);
+      selectionGroupList.appendChild(row);
+    });
+  }
+
   function renderComponents(items){
     componentCatalog=Array.isArray(items)?items:[];
     componentList.innerHTML='';
@@ -2334,7 +2372,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.5.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.6.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2379,7 +2417,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.5.0'};
+    project.studio={name:'App Interface Studio',version:'6.6.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2437,7 +2475,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.5.0'};
+    project.studio={name:'App Interface Studio',version:'6.6.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2518,6 +2556,7 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Flow de navigation',hint:'',run:openFlow},
     {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
     {label:'Mode sélection rectangle',hint:'Ctrl+glisser',run:function(){setMarqueeModeHost(!marqueeModeActive)}},
+    {label:'Créer un groupe avec la sélection',hint:'',run:function(){post('selection-group-create',{name:selectionGroupName.value})}},
     {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
     {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
     {label:'Coller',hint:'Ctrl+V',run:function(){post('selection-paste')}},
@@ -2594,6 +2633,7 @@ body.desktop .desktop-badge{display:inline-flex}
       post('get-css');
       post('get-layers');
       post('get-components');
+      post('get-selection-groups');
       setStatus('Éditeur prêt.');
       var waiters=readyWaiters.slice();readyWaiters.length=0;waiters.forEach(function(resolve){resolve(true)});
     }
@@ -2648,6 +2688,14 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='layers')renderLayers(p.tree||[]);
     if(data.type==='components')renderComponents(p.items||[]);
+    if(data.type==='selection-groups')renderSelectionGroups(p.items||[]);
+    if(data.type==='selection-group-created'){
+      selectionGroupName.value='';
+      setStatus('Groupe créé : '+(p.name||'groupe')+' · '+(p.count||0)+' objet(s).');
+    }
+    if(data.type==='selection-group-selected')setStatus('Groupe sélectionné : '+(p.name||'groupe')+' · '+(p.count||0)+' objet(s).');
+    if(data.type==='selection-group-deleted')setStatus('Groupe supprimé : '+(p.name||'groupe')+'.');
+    if(data.type==='selection-group-error')setStatus(p.message||'Impossible de créer le groupe.',true);
     if(data.type==='tokens')syncTokenInputs(p.tokens||{});
     if(data.type==='prototype')prototypeStatus.textContent='Prototype : '+Object.keys(p.links||{}).length+' lien(s) enregistré(s).';
     if(data.type==='audit')renderAudit(p);
@@ -2770,6 +2818,13 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   document.getElementById('marqueeModeBtn').addEventListener('click',function(){setMarqueeModeHost(!marqueeModeActive)});
+
+  document.getElementById('createSelectionGroupBtn').addEventListener('click',function(){
+    post('selection-group-create',{name:selectionGroupName.value});
+  });
+  selectionGroupName.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();post('selection-group-create',{name:selectionGroupName.value})}
+  });
 
   document.getElementById('duplicateSelectionBtn').addEventListener('click',function(){post('selection-duplicate')});
   document.getElementById('copySelectionBtn').addEventListener('click',function(){post('selection-copy')});
