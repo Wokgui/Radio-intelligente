@@ -41,7 +41,15 @@
     '<i class="ve-handle ve-handle-nw" data-handle="nw"></i>' +
     '<i class="ve-handle ve-handle-ne" data-handle="ne"></i>' +
     '<i class="ve-handle ve-handle-sw" data-handle="sw"></i>' +
-    '<i class="ve-handle ve-handle-se" data-handle="se"></i>';
+    '<i class="ve-handle ve-handle-se" data-handle="se"></i>' +
+    '<button class="ve-anchor-pin ve-anchor-left" data-anchor-axis="h" data-anchor-value="left" title="Ancrer à gauche">←</button>' +
+    '<button class="ve-anchor-pin ve-anchor-hcenter" data-anchor-axis="h" data-anchor-value="center" title="Centrer horizontalement">↔</button>' +
+    '<button class="ve-anchor-pin ve-anchor-right" data-anchor-axis="h" data-anchor-value="right" title="Ancrer à droite">→</button>' +
+    '<button class="ve-anchor-pin ve-anchor-top" data-anchor-axis="v" data-anchor-value="top" title="Ancrer en haut">↑</button>' +
+    '<button class="ve-anchor-pin ve-anchor-vcenter" data-anchor-axis="v" data-anchor-value="center" title="Centrer verticalement">↕</button>' +
+    '<button class="ve-anchor-pin ve-anchor-bottom" data-anchor-axis="v" data-anchor-value="bottom" title="Ancrer en bas">↓</button>' +
+    '<button class="ve-anchor-pin ve-anchor-hstretch" data-anchor-axis="h" data-anchor-value="stretch" title="Étirer horizontalement">⇆</button>' +
+    '<button class="ve-anchor-pin ve-anchor-vstretch" data-anchor-axis="v" data-anchor-value="stretch" title="Étirer verticalement">⇅</button>';
 
   const guideV = document.createElement('div');
   guideV.className = 've-guide ve-guide-v';
@@ -2558,6 +2566,17 @@
     };
   }
 
+  function syncAnchorPins(cfg,count) {
+    outline.classList.toggle('ve-single-selection',count===1);
+    outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
+      const axis=pin.dataset.anchorAxis;
+      const value=pin.dataset.anchorValue;
+      const activeValue=axis==='h'?(cfg&&cfg.hAnchor):(cfg&&cfg.vAnchor);
+      pin.classList.toggle('active',count===1&&activeValue===value);
+      pin.setAttribute('aria-pressed',count===1&&activeValue===value?'true':'false');
+    });
+  }
+
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
@@ -2565,6 +2584,7 @@
       altTargetOutline.style.display = 'none';
       altMeasureLabel.style.display = 'none';
       clearSecondaryOutlines();
+      syncAnchorPins(null,0);
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -2583,6 +2603,7 @@
     const count = selectionElements().length;
     const groupRect = count > 1 ? selectionBounds() : rect;
     const cfg = effectiveResponsive(state);
+    syncAnchorPins(cfg,count);
     constraintBadge.style.display = 'block';
     constraintBadge.style.left = Math.max(4, groupRect.left) + 'px';
     constraintBadge.style.top = Math.max(4, groupRect.top - 25) + 'px';
@@ -3372,6 +3393,25 @@
     commitHistory();
   }, true);
 
+  outline.querySelectorAll('.ve-anchor-pin').forEach(function(pin){
+    pin.addEventListener('pointerdown',function(event){
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    pin.addEventListener('click',function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      if(!active||!selected||selectionElements().length!==1)return;
+      const axis=pin.dataset.anchorAxis;
+      const value=pin.dataset.anchorValue;
+      const payload={enabled:true,breakpoint:editingBreakpoint};
+      if(axis==='h')payload.hAnchor=value;
+      else payload.vAnchor=value;
+      setResponsiveConfig(payload);
+      emit('constraint-direct',{axis:axis,value:value,breakpoint:editingBreakpoint});
+    });
+  });
+
   outline.querySelectorAll('.ve-handle').forEach(function (handle) {
     handle.addEventListener('pointerdown', function (event) {
       if (!active || !selected) return;
@@ -3736,6 +3776,7 @@
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
     navigateSelection: navigateSelection,
+    setResponsiveConfig: setResponsiveConfig,
     copySelection: copySelection,
     selectRelated: selectRelated,
     bulkLayerAction: bulkLayerAction,
