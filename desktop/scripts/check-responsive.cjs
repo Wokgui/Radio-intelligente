@@ -512,6 +512,11 @@ expect(html,'id="versionCompareB"',"checkpoint B selector");
 expect(html,"async function openVersionComparison()","checkpoint side-by-side flow");
 expect(html,"function swapVersionComparison()","checkpoint comparison swap");
 expect(html,"version-compare-grid","checkpoint comparison layout");
+expect(html,"async function captureNamedVersionThumbnail(project)","checkpoint thumbnail helper");
+expect(html,"function addNamedVersion(name,project,thumbnail,protectedId)","checkpoint insertion helper");
+expect(html,"async function restoreNamedVersionSafely(item)","safe checkpoint restore");
+expect(html,"Avant restauration","automatic pre-restore checkpoint");
+expect(html,"restoreNamedVersionSafely(item)","restore action uses safe flow");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
@@ -535,4 +540,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.40 feature checks passed.');
+console.log('App Interface Studio 6.41 feature checks passed.');
