@@ -165,7 +165,7 @@ expect(engine,"function restoreGeneratedNodes(list)","generated node restoration
 expect(engine,"function setSelectionZ(mode)","selection z-order control");
 expect(engine,"data.type === 'selection-duplicate'","duplicate engine command");
 expect(engine,"data.type === 'selection-z'","z-order engine command");
-expect(html,"Structure : '+generatedNodes.length+' duplication(s)","structural duplication confirmation");
+expect(html,"duplication(s) · '+(result.domPatchCount||0)","structural duplication summary");
 expect(html,"snapshot.generatedNodes","generated nodes export guidance");
 expect(html,'id="selectionGroupName"','selection group name input');
 expect(html,'id="selectionGroupList"','selection group list');
@@ -357,7 +357,7 @@ expect(main,"function gitPathTracked(root,relativePath)","tracked generated-file
 expect(main,"'add','-A','--'","git staging including deletions");
 expect(html,"generatedNodes:generatedNodes","local structural patch payload");
 expect(html,"generatedNodes=project&&project.snapshot","Git structural patch payload");
-expect(html,"structure : '+result.jsPath","structural patch host feedback");
+expect(html,"Diff complet préparé. Vérifie HTML, CSS et JS avant application.","structural patch preview feedback");
 expect(preload,"applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload)","structural patch bridge");
 if(html.includes("ne les injecte pas encore"))throw new Error("Legacy structural limitation warning still present");
 expect(main,"const patches=","generated DOM patch payload");
@@ -377,15 +377,15 @@ expect(main,"const sourceSelectors=Array.isArray(payload&&payload.sourceSelector
 expect(main,"const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css","stable CSS application");
 expect(html,"function projectSourceSelectors(project)","project source selector extraction");
 expect(html,"sourceSelectors:sourceSelectors","stable selector payload");
-expect(html,"cible(s) stabilisée(s)","stable locator host feedback");
+expect(html,"cible(s) stable(s)","stable locator host feedback");
 expect(html,"prototypeLinks:prototypeLinks","prototype links local payload");
-expect(html,"lien(s) de prototype","prototype links host feedback");
+expect(html,"lien(s) prototype","prototype links host feedback");
 expect(main,"const cleanPrototypeLinks=","prototype links sanitization");
 expect(main,"function onPrototypeClick(event)","prototype runtime click handler");
 expect(main,"prototypeRunning","prototype recursion guard");
 expect(main,"target.scrollIntoView","prototype target scroll");
 expect(main,"target.click&&target!==source","prototype target activation");
-expect(main,"prototypeCount:Object.keys(prototypeLinks).length","prototype result count");
+expect(main,"const prototypeCount=Object.keys(prototypeLinks).length;","prototype result count");
 expect(css,".ve-box-handle","box model handles CSS");
 expect(engine,"function setBoxModel(payload)","box model mutation");
 expect(engine,"function syncBoxModelVisuals(element,count,rect)","box model visual sync");
