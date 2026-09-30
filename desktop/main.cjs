@@ -511,18 +511,27 @@ function localSourceEntry(source){
   return null;
 }
 
-function generatedStructureScript(nodes){
-  const clean=(Array.isArray(nodes)?nodes:[]).map(item=>({
+function generatedStructureScript(nodes,patches){
+  const cleanNodes=(Array.isArray(nodes)?nodes:[]).map(item=>({
     cloneId:String(item&&item.cloneId||''),
     parentSelector:String(item&&item.parentSelector||''),
     index:Number.isInteger(item&&item.index)?item.index:-1,
     html:String(item&&item.html||'')
   })).filter(item=>item.cloneId&&item.parentSelector&&item.html);
 
+  const cleanPatches=(Array.isArray(patches)?patches:[]).map(item=>({
+    selector:String(item&&item.selector||''),
+    textAdjusted:!!(item&&item.textAdjusted),
+    textContent:String(item&&item.textContent!==undefined?item.textContent:''),
+    accessibilityAdjusted:!!(item&&item.accessibilityAdjusted),
+    accessibilityLabel:String(item&&item.accessibilityLabel||'')
+  })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted));
+
   return [
     '/* Généré par App Interface Studio — structure réversible. */',
     '(function(){',
-    '  const nodes='+JSON.stringify(clean)+';',
+    '  const nodes='+JSON.stringify(cleanNodes)+';',
+    '  const patches='+JSON.stringify(cleanPatches)+';',
     '  function existingClone(id){',
     '    return Array.from(document.querySelectorAll("[data-ais-clone-id]")).find(function(el){return el.getAttribute("data-ais-clone-id")===id})||null;',
     '  }',
@@ -543,6 +552,16 @@ function generatedStructureScript(nodes){
     '      const children=Array.from(parent.children);',
     '      const before=item.index>=0&&item.index<children.length?children[item.index]:null;',
     '      parent.insertBefore(node,before);',
+    '    });',
+    '    patches.forEach(function(item){',
+    '      let element=null;',
+    '      try{element=document.querySelector(item.selector)}catch(_){return}',
+    '      if(!element)return;',
+    '      if(item.textAdjusted)element.textContent=item.textContent;',
+    '      if(item.accessibilityAdjusted){',
+    '        if(item.accessibilityLabel)element.setAttribute("aria-label",item.accessibilityLabel);',
+    '        else element.removeAttribute("aria-label");',
+    '      }',
     '    });',
     '  }',
     '  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});',
@@ -568,6 +587,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const source=payload&&payload.source;
   const css=String(payload&&payload.css||'').trim();
   const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
+  const domPatches=Array.isArray(payload&&payload.domPatches)?payload.domPatches:[];
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
   if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
@@ -597,8 +617,8 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       cssApplied=true;
     }
 
-    if(generatedNodes.length){
-      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes),'utf8');
+    if(generatedNodes.length||domPatches.length){
+      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches),'utf8');
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
@@ -623,6 +643,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       htmlPath:local.html,
       backupPath,
       generatedCount:generatedNodes.length,
+      domPatchCount:domPatches.length,
       cssApplied,
       structureApplied
     };
