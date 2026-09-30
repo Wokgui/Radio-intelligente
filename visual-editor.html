@@ -68,6 +68,7 @@ main{
 .workspace{
   min-width:0;height:100%;display:flex;align-items:flex-start;justify-content:center;overflow:auto;
   padding:18px;border:1px solid rgba(219,212,228,.95);border-radius:22px;
+  cursor:default;
   background:
     linear-gradient(90deg,rgba(156,145,173,.12) 1px,transparent 1px),
     linear-gradient(rgba(156,145,173,.12) 1px,transparent 1px),
@@ -75,6 +76,8 @@ main{
   background-size:20px 20px,20px 20px,auto;
   box-shadow:inset 0 1px 0 #fff,0 14px 34px rgba(45,31,70,.06)
 }
+.workspace.canvas-pan-ready{cursor:grab}
+.workspace.canvas-panning{cursor:grabbing}
 .stage{position:relative;padding:31px 0 0 31px}
 .ruler-x,.ruler-y{
   position:absolute;background:#fbfafc;color:#736a80;border:1px solid #d8d2df;
@@ -622,8 +625,9 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="toolbar" style="margin-top:8px">
         <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
         <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
+        <button class="btn wide" id="resetCanvasBtn">◎ Recentrer le canevas</button>
       </div>
-      <p>Glisse les objets. Les guides roses apparaissent pour le centre et les alignements proches. Le contour violet représente la zone sûre simulée.</p>
+      <p>Glisse les objets. Les guides roses s’accrochent au centre, au parent, à la zone sûre et aux objets proches. <kbd>Espace</kbd> + glisser déplace le canevas ; <kbd>Ctrl</kbd> + molette zoome.</p>
     </section>
 
     <section class="card">
@@ -1071,6 +1075,8 @@ body.desktop .desktop-badge{display:inline-flex}
   var device=document.getElementById('device');
   var stage=document.getElementById('stage');
   var workspace=document.querySelector('.workspace');
+  var canvasPanX=0;
+  var canvasPanY=0;
   var rulerX=document.getElementById('rulerX');
   var rulerY=document.getElementById('rulerY');
   var preset=document.getElementById('devicePreset');
@@ -1277,7 +1283,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.3.0'};
+      project.studio={name:'App Interface Studio',version:'6.4.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1526,6 +1532,44 @@ body.desktop .desktop-badge{display:inline-flex}
     if(desktop&&desktop.setPreviewMode&&currentPreviewMode!=='edit'){
       desktop.setPreviewMode({mode:currentPreviewMode,source:currentSource,profile:previewProfile()});
     }
+  }
+
+  function currentZoomScale(){
+    var match=String(device.style.transform||'').match(/scale\(([-\d.]+)\)/);
+    var value=match?Number(match[1]):Number(zoom.value);
+    return Number.isFinite(value)&&value>0?value:1;
+  }
+
+  function setRuntimeZoom(value){
+    var next=Math.max(.25,Math.min(2,Number(value)||1));
+    var option=Array.from(zoom.options).find(function(o){
+      var n=Number(o.value);return Number.isFinite(n)&&Math.abs(n-next)<.005;
+    });
+    var custom=document.getElementById('runtimeZoomOption');
+    if(!option){
+      if(!custom){
+        custom=document.createElement('option');
+        custom.id='runtimeZoomOption';
+        zoom.appendChild(custom);
+      }
+      custom.value=next.toFixed(2);
+      custom.textContent=Math.round(next*100)+' %';
+      option=custom;
+    }
+    zoom.value=option.value;
+    setDevice();
+  }
+
+  function applyCanvasPan(){
+    stage.style.transform='translate('+Math.round(canvasPanX)+'px,'+Math.round(canvasPanY)+'px)';
+  }
+
+  function resetCanvasPosition(){
+    canvasPanX=0;
+    canvasPanY=0;
+    applyCanvasPan();
+    if(workspace){workspace.scrollLeft=0;workspace.scrollTop=0}
+    setStatus('Canevas recentré.');
   }
 
   function setDevice(){
@@ -2277,7 +2321,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.3.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.4.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2322,7 +2366,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.3.0'};
+    project.studio={name:'App Interface Studio',version:'6.4.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2380,7 +2424,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.3.0'};
+    project.studio={name:'App Interface Studio',version:'6.4.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2446,6 +2490,9 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Ouvrir une application',hint:'Ctrl+O',run:function(){sourceModal.hidden=false}},
     {label:'Enregistrer le projet',hint:'Ctrl+S',run:saveProject},
     {label:'Ajuster le zoom à l’écran',hint:'Ctrl+0',run:function(){zoom.value='fit';setDevice()}},
+    {label:'Zoom avant',hint:'Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
+    {label:'Zoom arrière',hint:'Ctrl+molette ↓',run:function(){setRuntimeZoom(currentZoomScale()-.1)}},
+    {label:'Recentrer le canevas',hint:'',run:resetCanvasPosition},
     {label:'Mode Édition',hint:'',run:function(){setPreviewMode('edit')}},
     {label:'Aperçu plein écran',hint:'',run:function(){setPreviewMode('preview')}},
     {label:'Android exact',hint:'',run:function(){setPreviewMode('android')}},
@@ -2545,6 +2592,25 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='marquee-selection'){
       setStatus((p.count||0)+' objet(s) sélectionné(s) par rectangle.');
+    }
+    if(data.type==='canvas-pan-ready'){
+      workspace.classList.toggle('canvas-pan-ready',!!p.active);
+    }
+    if(data.type==='canvas-pan-start'){
+      workspace.classList.add('canvas-panning');
+    }
+    if(data.type==='canvas-pan-end'){
+      workspace.classList.remove('canvas-panning');
+    }
+    if(data.type==='canvas-pan'){
+      canvasPanX+=Number(p.dx)||0;
+      canvasPanY+=Number(p.dy)||0;
+      canvasPanX=Math.max(-1600,Math.min(1600,canvasPanX));
+      canvasPanY=Math.max(-1600,Math.min(1600,canvasPanY));
+      applyCanvasPan();
+    }
+    if(data.type==='canvas-zoom'){
+      setRuntimeZoom(currentZoomScale()+(Number(p.delta)||0));
     }
     if(data.type==='spacing'){
       document.getElementById('spaceL').textContent=p.left?Math.round(p.left.gap)+' px':'—';
@@ -2683,6 +2749,13 @@ body.desktop .desktop-badge{display:inline-flex}
   document.querySelectorAll('[data-selection-nav]').forEach(function(btn){
     btn.addEventListener('click',function(){post('navigate-selection',{direction:btn.dataset.selectionNav})});
   });
+
+  document.getElementById('resetCanvasBtn').addEventListener('click',resetCanvasPosition);
+  workspace.addEventListener('wheel',function(event){
+    if(!(event.ctrlKey||event.metaKey))return;
+    event.preventDefault();
+    setRuntimeZoom(currentZoomScale()+(event.deltaY<0?.1:-.1));
+  },{passive:false});
 
   document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
   document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
