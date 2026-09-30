@@ -826,6 +826,12 @@ body.desktop .desktop-badge{display:inline-flex}
         <option value="fill">Étirer</option>
         <option value="none">Taille naturelle</option>
       </select></div>
+      <div class="fields" style="margin-top:8px">
+        <div class="field"><label>Point focal horizontal <span id="mediaPositionXValue">50 %</span></label><input id="mediaPositionX" type="range" min="0" max="100" step="1" value="50"></div>
+        <div class="field"><label>Point focal vertical <span id="mediaPositionYValue">50 %</span></label><input id="mediaPositionY" type="range" min="0" max="100" step="1" value="50"></div>
+      </div>
+      <div class="hint" style="margin-top:7px">Avec « Couvrir », déplace le point focal pour choisir précisément la zone conservée.</div>
+      <div style="margin-top:10px"><label class="hint">Assets déjà utilisés</label><div class="component-list" id="mediaAssetLibrary"><div class="hint">Aucun asset réutilisable dans ce projet.</div></div></div>
       <button class="btn" id="resetMediaBtn" type="button" style="width:100%;margin-top:8px">Rétablir le visuel d’origine</button>
       <div class="hint" id="mediaStatus" style="margin-top:8px">Sélectionne un objet. Une image remplace directement un &lt;img&gt;, un SVG ou le fond du bloc sélectionné.</div>
       <p>Pour une source HTML locale, l’asset est copié dans <code>app-interface-studio-assets</code> lors de l’application du patch et suit le rollback.</p>
@@ -1266,6 +1272,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var textCard=document.getElementById('textCard');
   var mediaCard=document.getElementById('mediaCard');
   var mediaFit=document.getElementById('mediaFit');
+  var mediaPositionX=document.getElementById('mediaPositionX');
+  var mediaPositionY=document.getElementById('mediaPositionY');
+  var mediaPositionXValue=document.getElementById('mediaPositionXValue');
+  var mediaPositionYValue=document.getElementById('mediaPositionYValue');
+  var mediaAssetLibrary=document.getElementById('mediaAssetLibrary');
   var mediaStatus=document.getElementById('mediaStatus');
   var replaceMediaBtn=document.getElementById('replaceMediaBtn');
   var resetMediaBtn=document.getElementById('resetMediaBtn');
@@ -2191,6 +2202,27 @@ body.desktop .desktop-badge{display:inline-flex}
     selectionBreadcrumbs.scrollLeft=selectionBreadcrumbs.scrollWidth;
   }
 
+  function renderMediaAssetLibrary(items){
+    mediaAssetLibrary.innerHTML='';
+    items=Array.isArray(items)?items:[];
+    if(!items.length){mediaAssetLibrary.innerHTML='<div class="hint">Aucun asset réutilisable dans ce projet.</div>';return}
+    items.forEach(function(item){
+      var row=document.createElement('div');
+      row.className='component-item';
+      var button=document.createElement('button');
+      button.type='button';
+      button.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit;width:100%';
+      var strong=document.createElement('strong');
+      strong.textContent=item.name||'asset';
+      var small=document.createElement('small');
+      small.textContent='Réutiliser sans réimporter';
+      button.append(strong,small);
+      button.addEventListener('click',function(){reuseMediaAsset(item)});
+      row.appendChild(button);
+      mediaAssetLibrary.appendChild(row);
+    });
+  }
+
   function updateState(p){
     lastState=p;
     hasSelection=!!p.selected;
@@ -2254,8 +2286,15 @@ body.desktop .desktop-badge{display:inline-flex}
     mediaCard.classList.toggle('disabled',!mediaEditable);
     replaceMediaBtn.disabled=!mediaEditable||!desktop||!desktop.pickAssetImage;
     mediaFit.disabled=!mediaEditable||!p.mediaAdjusted;
+    mediaPositionX.disabled=!mediaEditable||!p.mediaAdjusted;
+    mediaPositionY.disabled=!mediaEditable||!p.mediaAdjusted;
     resetMediaBtn.disabled=!mediaEditable||!p.mediaAdjusted;
     if(p.mediaFit&&Array.from(mediaFit.options).some(function(o){return o.value===p.mediaFit}))mediaFit.value=p.mediaFit;
+    mediaPositionX.value=String(Math.max(0,Math.min(100,Number(p.mediaPositionX)||50)));
+    mediaPositionY.value=String(Math.max(0,Math.min(100,Number(p.mediaPositionY)||50)));
+    mediaPositionXValue.textContent=mediaPositionX.value+' %';
+    mediaPositionYValue.textContent=mediaPositionY.value+' %';
+    renderMediaAssetLibrary(p.mediaAssets||[]);
     if(!mediaEditable)mediaStatus.textContent='Sélectionne un seul objet pour remplacer son image ou son icône.';
     else if(p.mediaAdjusted)mediaStatus.textContent='Visuel remplacé : '+(p.mediaName||'asset')+' · '+(p.mediaKind||'image')+'.';
     else mediaStatus.textContent='Objet prêt : le remplacement utilisera '+(p.mediaKind==='background'?'une image de fond':p.mediaKind==='svg'?'le SVG sélectionné':p.mediaKind==='svg-image'?'l’image SVG sélectionnée':'la source de l’image')+'.';
@@ -2757,8 +2796,30 @@ body.desktop .desktop-badge{display:inline-flex}
     var result=await desktop.pickAssetImage();
     if(!result||result.canceled)return;
     if(!result.ok){setStatus(result.error||'Image impossible à ouvrir.',true);return}
-    post('media-set',{source:result.dataUrl,path:result.path,name:result.name||'image',fit:mediaFit.value||'contain'});
+    post('media-set',{
+      source:result.dataUrl,path:result.path,name:result.name||'image',fit:mediaFit.value||'contain',
+      positionX:Number(mediaPositionX.value)||50,positionY:Number(mediaPositionY.value)||50
+    });
     mediaStatus.textContent='Chargement de '+(result.name||'image')+'…';
+  }
+
+  async function reuseMediaAsset(item){
+    if(!hasSelection||!lastState||Number(lastState.selectionCount)!==1){setStatus('Sélectionne un seul objet.',true);return}
+    if(!desktop||!desktop.loadAssetImage){setStatus('Réutilisation d’asset disponible dans l’application Windows.',true);return}
+    var result=await desktop.loadAssetImage(item&&item.path||'');
+    if(!result||!result.ok){setStatus((result&&result.error)||'Asset impossible à relire.',true);return}
+    post('media-set',{
+      source:result.dataUrl,path:result.path,name:result.name||item.name||'asset',
+      fit:mediaFit.value||'contain',
+      positionX:Number(mediaPositionX.value)||50,
+      positionY:Number(mediaPositionY.value)||50
+    });
+  }
+
+  function postMediaPosition(){
+    mediaPositionXValue.textContent=mediaPositionX.value+' %';
+    mediaPositionYValue.textContent=mediaPositionY.value+' %';
+    if(hasSelection)post('media-position',{x:Number(mediaPositionX.value),y:Number(mediaPositionY.value)});
   }
 
   function projectDomPatches(project){
@@ -2775,7 +2836,9 @@ body.desktop .desktop-badge{display:inline-flex}
         mediaSource:item.mediaSource||'',
         mediaAssetPath:item.mediaAssetPath||'',
         mediaName:item.mediaName||'',
-        mediaFit:item.mediaFit||'contain'
+        mediaFit:item.mediaFit||'contain',
+        mediaPositionX:Math.max(0,Math.min(100,Number(item.mediaPositionX)||50)),
+        mediaPositionY:Math.max(0,Math.min(100,Number(item.mediaPositionY)||50))
       };
     });
   }
@@ -3621,6 +3684,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('editTextInlineBtn').addEventListener('click',function(){post('inline-text-edit',{active:true})});
   replaceMediaBtn.addEventListener('click',replaceSelectedMedia);
   mediaFit.addEventListener('change',function(){if(hasSelection)post('media-fit',{value:mediaFit.value})});
+  mediaPositionX.addEventListener('input',postMediaPosition);
+  mediaPositionY.addEventListener('input',postMediaPosition);
   resetMediaBtn.addEventListener('click',function(){post('media-reset')});
   fontFamily.addEventListener('change',function(){post('text-style',{kind:'family',value:fontFamily.value})});
   fontSize.addEventListener('change',function(){post('text-style',{kind:'size',value:Number(fontSize.value)})});
