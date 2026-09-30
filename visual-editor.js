@@ -94,6 +94,8 @@
   dragMeasureLabel.className = 've-drag-measure';
   const marqueeBox = document.createElement('div');
   marqueeBox.className = 've-marquee';
+  const layoutDiagnosticLayer = document.createElement('div');
+  layoutDiagnosticLayer.className = 've-layout-diagnostics';
   const spacingVisuals = ['left','right','top','bottom'].map(function(direction){
     const line=document.createElement('div');
     line.className='ve-spacing-line '+((direction==='left'||direction==='right')?'horizontal':'vertical');
@@ -104,7 +106,7 @@
     return {direction:direction,line:line,label:label};
   });
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, boxMarginRing, boxPaddingRing, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, boxMarginRing, boxPaddingRing, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox, layoutDiagnosticLayer);
   constraintLines.forEach(function(line){document.body.appendChild(line)});
   spacingVisuals.forEach(function(item){document.body.append(item.line,item.label)});
 
@@ -163,6 +165,7 @@
   let repairPreviewSnapshot = null;
   let stressBackup = null;
   let contrastPreview = null;
+  let layoutDiagnostics = [];
   let responsiveResizeTimer = null;
   let spacingVisualTimer = null;
 
@@ -2202,6 +2205,199 @@
       const row=map.get(key);row.count+=1;if(row.selectors.length<8)row.selectors.push(item.selector);
     });
     return Array.from(map.values()).sort(function(a,b){return b.count-a.count});
+  }
+
+  function clearLayoutDiagnostics() {
+    layoutDiagnostics=[];
+    layoutDiagnosticLayer.innerHTML='';
+    layoutDiagnosticLayer.classList.remove('visible');
+    emit('layout-diagnostic',{items:[],summary:{errors:0,warnings:0,info:0},cleared:true});
+  }
+
+  function diagnosticRectFinding(element,type,severity,message,cause,action,targetSelector) {
+    const rect=element.getBoundingClientRect();
+    const selector=selectorFor(element);
+    return {
+      id:'layout-'+(layoutDiagnostics.length+1),
+      selector:selector,
+      targetSelector:targetSelector||selector,
+      type:type,
+      severity:severity||'warning',
+      message:message,
+      cause:cause||'',
+      rect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height},
+      action:action||null
+    };
+  }
+
+  function drawLayoutDiagnostics() {
+    layoutDiagnosticLayer.innerHTML='';
+    layoutDiagnostics.slice(0,80).forEach(function(item,index){
+      if(!item.rect||item.rect.width<1||item.rect.height<1)return;
+      const box=document.createElement('div');
+      box.className='ve-layout-diagnostic '+(item.severity||'warning');
+      box.style.left=Math.round(item.rect.left)+'px';
+      box.style.top=Math.round(item.rect.top)+'px';
+      box.style.width=Math.max(2,Math.round(item.rect.width))+'px';
+      box.style.height=Math.max(2,Math.round(item.rect.height))+'px';
+      const badge=document.createElement('span');
+      badge.textContent=(index+1)+' · '+item.type;
+      box.appendChild(badge);
+      layoutDiagnosticLayer.appendChild(box);
+    });
+    layoutDiagnosticLayer.classList.toggle('visible',layoutDiagnostics.length>0);
+  }
+
+  function analyzeLayoutDiagnostics(scope) {
+    layoutDiagnostics=[];
+    const all=Array.from(document.body.querySelectorAll('*')).filter(function(el){
+      if(isEditorNode(el)||/^SCRIPT|STYLE|LINK|META$/i.test(el.tagName))return false;
+      const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+      return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>2&&r.height>2;
+    }).slice(0,900);
+    let targets=all;
+    if(scope==='selection'&&selected){
+      const set=new Set(selectionElements());
+      selectionElements().forEach(function(el){if(el.parentElement)set.add(el.parentElement)});
+      targets=Array.from(set);
+    }
+    const seen=new Set();
+    function add(f){
+      const key=f.type+'|'+f.selector+'|'+f.targetSelector;
+      if(seen.has(key))return;
+      seen.add(key);layoutDiagnostics.push(f);
+    }
+    targets.forEach(function(el){
+      const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+      const parent=el.parentElement;
+      const parentCs=parent&&getComputedStyle(parent);
+      const parentRect=parent&&parent.getBoundingClientRect();
+
+      if(el.scrollWidth>el.clientWidth+3){
+        add(diagnosticRectFinding(
+          el,'overflow-x','error',
+          'Le contenu dépasse horizontalement de '+Math.round(el.scrollWidth-el.clientWidth)+' px.',
+          'scrollWidth '+el.scrollWidth+' px > largeur intérieure '+el.clientWidth+' px. Vérifie largeur fixe, min-width, gap ou pistes Grid.',
+          {'overflow-x':'auto','max-width':'100%','box-sizing':'border-box'}
+        ));
+      }
+      if(el.scrollHeight>el.clientHeight+3&&/(hidden|clip)/.test(cs.overflowY+cs.overflow)){
+        add(diagnosticRectFinding(
+          el,'contenu-coupé','warning',
+          'Du contenu vertical est coupé dans ce conteneur.',
+          'scrollHeight '+el.scrollHeight+' px > hauteur intérieure '+el.clientHeight+' px alors que overflow masque le dépassement.',
+          {'overflow-y':'auto'}
+        ));
+      }
+
+      if(parent&&parentRect&&parentRect.width>2&&r.width>parentRect.width+3&&cs.position!=='fixed'){
+        add(diagnosticRectFinding(
+          el,'plus-large-parent','warning',
+          'Cet objet est plus large que son parent de '+Math.round(r.width-parentRect.width)+' px.',
+          'Largeur rendue '+Math.round(r.width)+' px pour un parent de '+Math.round(parentRect.width)+' px.',
+          {'max-width':'100%','box-sizing':'border-box'}
+        ));
+      }
+
+      if(parentCs&&/flex/.test(parentCs.display)){
+        const vertical=/column/.test(parentCs.flexDirection);
+        if(!vertical&&parentCs.flexWrap==='nowrap'&&parent.scrollWidth>parent.clientWidth+3){
+          add(diagnosticRectFinding(
+            parent,'flex-nowrap','warning',
+            'La rangée Flex ne tient pas sur la largeur disponible.',
+            'flex-wrap: nowrap avec un contenu total plus large que le conteneur.',
+            {'flex-wrap':'wrap'},
+            selectorFor(parent)
+          ));
+        }
+        if(!vertical&&parseFloat(cs.minWidth)>0&&r.right>parentRect.right+3){
+          add(diagnosticRectFinding(
+            el,'min-width-flex','warning',
+            'La largeur minimale de cet enfant Flex contribue au débordement.',
+            'Dans un conteneur Flex, min-width:auto ou une min-width fixe peut empêcher l’élément de rétrécir.',
+            {'min-width':'0','max-width':'100%'}
+          ));
+        }
+      }
+
+      if(/grid/.test(cs.display)){
+        const tracks=String(cs.gridTemplateColumns||'').split(/\s+/).filter(Boolean);
+        const fixed=tracks.filter(function(x){return /^\d+(\.\d+)?px$/.test(x)});
+        const fixedTotal=fixed.reduce(function(n,x){return n+(parseFloat(x)||0)},0);
+        if(fixed.length&&fixedTotal>r.width+3){
+          const count=Math.max(1,tracks.length);
+          add(diagnosticRectFinding(
+            el,'grid-pistes-fixes','warning',
+            'Les colonnes Grid fixes dépassent la largeur du conteneur.',
+            'Somme des pistes fixes ≈ '+Math.round(fixedTotal)+' px pour '+Math.round(r.width)+' px disponibles.',
+            {'grid-template-columns':'repeat('+count+', minmax(0, 1fr))'}
+          ));
+        }
+      }
+
+      if(parent&&parentRect&&parentCs&&/flex|grid/.test(parentCs.display)&&cs.position==='absolute'){
+        add(diagnosticRectFinding(
+          el,'hors-flux','info',
+          'Cet objet est positionné hors du flux de son conteneur '+(parentCs.display.indexOf('grid')>=0?'Grid':'Flex')+'.',
+          'position:absolute retire l’objet du calcul normal des alignements, gaps et dimensions du parent.',
+          null
+        ));
+      }
+    });
+
+    // Detect meaningful sibling overlaps.
+    const containers=targets.filter(function(el){
+      const cs=getComputedStyle(el);return /flex|grid|block/.test(cs.display)&&el.children&&el.children.length>1;
+    }).slice(0,160);
+    containers.forEach(function(parent){
+      const children=Array.from(parent.children).filter(function(el){
+        if(isEditorNode(el))return false;const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+        return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>4&&r.height>4;
+      }).slice(0,40);
+      for(let i=0;i<children.length;i+=1){
+        const a=children[i],ar=a.getBoundingClientRect(),acs=getComputedStyle(a);
+        if(acs.position==='absolute'||acs.position==='fixed')continue;
+        for(let j=i+1;j<children.length;j+=1){
+          const b=children[j],br=b.getBoundingClientRect(),bcs=getComputedStyle(b);
+          if(bcs.position==='absolute'||bcs.position==='fixed')continue;
+          const w=Math.min(ar.right,br.right)-Math.max(ar.left,br.left);
+          const h=Math.min(ar.bottom,br.bottom)-Math.max(ar.top,br.top);
+          if(w>6&&h>6&&w*h>Math.min(ar.width*ar.height,br.width*br.height)*.12){
+            add(diagnosticRectFinding(
+              parent,'chevauchement','warning',
+              'Deux enfants se chevauchent de façon significative.',
+              selectorFor(a)+' et '+selectorFor(b)+' occupent une zone commune d’environ '+Math.round(w)+' × '+Math.round(h)+' px.',
+              null
+            ));
+            break;
+          }
+        }
+      }
+    });
+
+    layoutDiagnostics=layoutDiagnostics.slice(0,120);
+    drawLayoutDiagnostics();
+    const summary={
+      errors:layoutDiagnostics.filter(function(x){return x.severity==='error'}).length,
+      warnings:layoutDiagnostics.filter(function(x){return x.severity==='warning'}).length,
+      info:layoutDiagnostics.filter(function(x){return x.severity==='info'}).length,
+      fixable:layoutDiagnostics.filter(function(x){return !!x.action}).length
+    };
+    emit('layout-diagnostic',{items:layoutDiagnostics,summary:summary,scope:scope||'screen'});
+  }
+
+  function applyLayoutDiagnostic(id) {
+    const item=layoutDiagnostics.find(function(x){return x.id===id});
+    if(!item||!item.action)return;
+    let el=null;try{el=document.querySelector(item.targetSelector||item.selector)}catch(_){}
+    if(!el)return;
+    const st=remember(el);if(!st||st.locked)return;
+    st.advancedAdjusted=true;st.advancedStyles=st.advancedStyles||{};
+    Object.assign(st.advancedStyles,item.action);
+    applyState(el,st,false);
+    commitHistory();updateOverlay();
+    analyzeLayoutDiagnostics('screen');
+    emit('layout-diagnostic-applied',{id:id,selector:item.targetSelector||item.selector});
   }
 
   function analyzeDesignConsistency() {
@@ -4707,6 +4903,7 @@
     responsiveResizeTimer = setTimeout(function () {
       responsiveResizeTimer = null;
       reflowResponsive();
+      if(layoutDiagnostics.length)analyzeLayoutDiagnostics('screen');
     }, 40);
   });
 
@@ -4790,6 +4987,9 @@
     if (data.type === 'box-model') setBoxModel(payload);
     if (data.type === 'box-model-visible') { boxModelVisible=payload.active!==false; updateOverlay(); }
     if (data.type === 'design-consistency') analyzeDesignConsistency();
+    if (data.type === 'layout-diagnostic') analyzeLayoutDiagnostics(payload.scope||'screen');
+    if (data.type === 'layout-diagnostic-clear') clearLayoutDiagnostics();
+    if (data.type === 'layout-diagnostic-apply') applyLayoutDiagnostic(payload.id);
     if (data.type === 'repair-suggest') makeRepairSuggestions();
     if (data.type === 'repair-preview') previewRepair(payload.id);
     if (data.type === 'repair-preview-clear') clearRepairPreview();
