@@ -482,6 +482,21 @@ expect(engine,"mediaAssetPath: state.mediaAssetPath || ''","active media asset p
 expect(html,"var mediaAssetThumbCache=new Map()","asset thumbnail cache");
 expect(html,"function loadMediaAssetThumb(path,img)","lazy asset thumbnail loading");
 expect(html,"renderMediaAssetLibrary(p.mediaAssets||[],p.mediaAssetPath||'')","active asset highlighting");
+expect(main,"asset:stage-data","dropped image staging IPC");
+expect(main,"function generatedAssetReferences(local)","generated asset reference scan");
+expect(main,"function cleanupGeneratedAssets(local)","generated asset cleanup");
+expect(main,"const cleanup=cleanupGeneratedAssets(local);","automatic cleanup before Git publish");
+expect(preload,"stageAssetData: payload => ipcRenderer.invoke('asset:stage-data', payload)","dropped image staging bridge");
+expect(preload,"cleanGeneratedAssets: source => ipcRenderer.invoke('source:clean-assets', { source })","asset cleanup bridge");
+expect(engine,"class=\"ve-media-focal\"","direct focal handle");
+expect(engine,"mediaFocalHandle.addEventListener('pointermove'","direct focal dragging");
+expect(engine,"window.addEventListener('drop'","image drop listener");
+expect(engine,"emit('media-drop'","image drop host event");
+expect(html,"async function handleDroppedMedia(payload)","image drop host flow");
+expect(html,'id="cleanAssetsBtn"',"manual asset cleanup control");
+expect(html,"async function cleanGeneratedAssetsNow()","manual asset cleanup flow");
+expect(css,".ve-media-focal","focal handle styling");
+expect(css,"body.ve-media-drop-ready","image drop visual state");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
@@ -505,4 +520,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.38 feature checks passed.');
+console.log('App Interface Studio 6.39 feature checks passed.');
