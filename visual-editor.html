@@ -1404,7 +1404,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.26.0'};
+      project.studio={name:'App Interface Studio',version:'6.27.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2586,6 +2586,21 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function projectSourceSelectors(project){
+    var selectors=[];
+    var snapshot=project&&project.snapshot||{};
+    (Array.isArray(snapshot.items)?snapshot.items:[]).forEach(function(item){
+      if(item&&item.selector)selectors.push(String(item.selector));
+    });
+    (Array.isArray(snapshot.generatedNodes)?snapshot.generatedNodes:[]).forEach(function(item){
+      if(item&&item.parentSelector)selectors.push(String(item.parentSelector));
+    });
+    projectDomPatches(project).forEach(function(item){if(item.selector)selectors.push(String(item.selector))});
+    return selectors.filter(function(selector,index,list){
+      return selector&&selector.indexOf('[data-ais-clone-id=')!==0&&selector!==':root'&&list.indexOf(selector)===index;
+    });
+  }
+
   async function applyToLocalSource(){
     if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
@@ -2593,10 +2608,11 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!project){setStatus('Projet non récupéré.',true);return}
     var generatedNodes=project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
     var domPatches=projectDomPatches(project);
+    var sourceSelectors=projectSourceSelectors(project);
     var message='Appliquer un patch réversible au code local ? Le CSS sera écrit dans un fichier généré et les duplications, textes et labels d’accessibilité dans un patch structurel JavaScript. Une sauvegarde du HTML sera créée.';
     if(generatedNodes.length||domPatches.length)message+='\n\nStructure : '+generatedNodes.length+' duplication(s) · '+domPatches.length+' modification(s) DOM.';
     if(!confirm(message))return;
-    var result=await desktop.applyCssToSource({source:currentSource,css:project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches});
+    var result=await desktop.applyCssToSource({source:currentSource,css:project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches,sourceSelectors:sourceSelectors});
     if(result&&result.ok){
       var parts=[];
       if(result.cssApplied&&result.cssPath)parts.push('CSS : '+result.cssPath);
@@ -2770,14 +2786,15 @@ body.desktop .desktop-badge{display:inline-flex}
       var project=await requestProject();
       var generatedNodes=project&&project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
       var domPatches=projectDomPatches(project);
-      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches});
+      var sourceSelectors=projectSourceSelectors(project);
+      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value,generatedNodes:generatedNodes,domPatches:domPatches,sourceSelectors:sourceSelectors});
       if(!applied||!applied.ok){gitStatusText.textContent=applied&&applied.error||'Impossible de préparer le patch local.';return}
     }
     var result=await desktop.gitPublish({
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.26.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.27.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2827,7 +2844,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.26.0'};
+    project.studio={name:'App Interface Studio',version:'6.27.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2885,7 +2902,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.26.0'};
+    project.studio={name:'App Interface Studio',version:'6.27.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
