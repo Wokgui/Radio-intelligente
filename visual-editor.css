@@ -151,6 +151,16 @@ body.ve-active .ve-selection{
 .ve-handle-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
 .ve-handle-se{right:-7px;bottom:-7px;cursor:nwse-resize}
 
+body.ve-active .ve-marquee{
+  position:fixed;
+  z-index:2147483646;
+  display:none;
+  pointer-events:none;
+  border:1px solid #6f49f5;
+  background:#6f49f51a;
+  box-shadow:0 0 0 1px #ffffffaa inset;
+}
+body.ve-active.ve-marquee-mode{cursor:crosshair!important}
 .ve-guide,
 .ve-guide-label{
   display:none;
