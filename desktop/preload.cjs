@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   loadAssetImage: path => ipcRenderer.invoke('asset:load-image', { path }),
   assetThumbnail: path => ipcRenderer.invoke('asset:thumbnail', { path }),
   stageAssetData: payload => ipcRenderer.invoke('asset:stage-data', payload),
+  auditAssets: source => ipcRenderer.invoke('source:audit-assets', { source }),
   cleanGeneratedAssets: source => ipcRenderer.invoke('source:clean-assets', { source }),
   previewPatch: payload => ipcRenderer.invoke('source:preview-patch', payload),
   applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload),
