@@ -164,6 +164,11 @@ body.no-animations *,body.no-animations *::before,body.no-animations *::after{tr
   display:flex;align-items:center;
   font:700 10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
 }
+.selection-breadcrumbs{display:flex;align-items:center;gap:3px;overflow:auto;margin-top:6px;padding:5px 6px;border:1px solid var(--line);border-radius:9px;background:#fff;white-space:nowrap;scrollbar-width:thin}
+.selection-breadcrumbs button{flex:0 0 auto;border:0;border-radius:7px;background:#f5f1f9;color:#604776;padding:5px 7px;font-size:.64rem;font-weight:800;cursor:pointer}
+.selection-breadcrumbs button:hover{background:#ebe2f7}
+.selection-breadcrumbs i{flex:0 0 auto;color:#aaa;font-style:normal;font-size:.62rem}
+.selection-breadcrumbs span{color:var(--muted);font-size:.64rem;padding:3px 2px}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
 .metric{min-height:52px;padding:7px 5px;border-radius:10px;background:#f5f1f9;text-align:center;display:grid;place-items:center;align-content:center;gap:2px}
 .metric b{display:block;font-size:.86rem;line-height:1}
@@ -605,7 +610,15 @@ body.desktop .desktop-badge{display:inline-flex}
           <option value="iphone-island">iPhone · Dynamic Island</option>
         </select></div>
       </div>
-      <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre et bords des objets proches</label>
+      <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre, parent, zone sûre et objets proches</label>
+      <div class="fields" style="margin-top:7px">
+        <div class="field" style="grid-column:1/-1"><label>Sensibilité de l’accrochage</label><select id="guideThresholdPref">
+          <option value="3">Précise · 3 px</option>
+          <option value="5" selected>Normale · 5 px</option>
+          <option value="8">Souple · 8 px</option>
+          <option value="12">Forte · 12 px</option>
+        </select></div>
+      </div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
         <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
@@ -616,6 +629,7 @@ body.desktop .desktop-badge{display:inline-flex}
     <section class="card">
       <h2>Sélection <small>ajustement fin</small></h2>
       <div class="selector" id="selector">Clique un élément dans l’aperçu.</div>
+      <div class="selection-breadcrumbs" id="selectionBreadcrumbs"><span>Aucune hiérarchie sélectionnée.</span></div>
       <div class="metrics">
         <div class="metric"><b id="mx">—</b><small>X</small></div>
         <div class="metric"><b id="my">—</b><small>Y</small></div>
@@ -1103,6 +1117,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var responsiveSummary=document.getElementById('responsiveSummary');
   var metrics={x:document.getElementById('mx'),y:document.getElementById('my'),w:document.getElementById('mw'),h:document.getElementById('mh')};
   var settingsModal=document.getElementById('settingsModal');
+  var selectionBreadcrumbs=document.getElementById('selectionBreadcrumbs');
+  var smartGuidesPref=document.getElementById('smartGuidesPref');
+  var guideThresholdPref=document.getElementById('guideThresholdPref');
   var uiFontScale=document.getElementById('uiFontScale');
   var uiFontScaleValue=document.getElementById('uiFontScaleValue');
   var uiDensity=document.getElementById('uiDensity');
@@ -1202,7 +1219,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   var PREF_KEY='app-interface-studio.preferences.v1';
   var RECOVERY_KEY='app-interface-studio.recovery.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true};
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1225,7 +1242,8 @@ body.desktop .desktop-badge{display:inline-flex}
     rememberPanels.checked=!!prefs.rememberPanels;
     autoRecovery.checked=prefs.autoRecovery!==false;
     smartGuidesPref.checked=prefs.smartGuides!==false;
-    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false});
+    guideThresholdPref.value=String(Number(prefs.guideThreshold)||5);
+    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5});
   }
 
   function recoveryPreview(project){
@@ -1255,7 +1273,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.1.0'};
+      project.studio={name:'App Interface Studio',version:'6.2.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1607,11 +1625,37 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
 
+  function renderSelectionBreadcrumbs(path){
+    selectionBreadcrumbs.innerHTML='';
+    var items=Array.isArray(path)?path:[];
+    if(!items.length){
+      var empty=document.createElement('span');
+      empty.textContent='Aucune hiérarchie sélectionnée.';
+      selectionBreadcrumbs.appendChild(empty);
+      return;
+    }
+    items.forEach(function(item,index){
+      if(index){
+        var sep=document.createElement('i');
+        sep.textContent='›';
+        selectionBreadcrumbs.appendChild(sep);
+      }
+      var button=document.createElement('button');
+      button.type='button';
+      button.title=item.selector||'';
+      button.textContent=item.title||item.tag||'élément';
+      button.addEventListener('click',function(){post('select-selector',{selector:item.selector})});
+      selectionBreadcrumbs.appendChild(button);
+    });
+    selectionBreadcrumbs.scrollLeft=selectionBreadcrumbs.scrollWidth;
+  }
+
   function updateState(p){
     lastState=p;
     hasSelection=!!p.selected;
     var selectionCount=Number(p.selectionCount)||0;
     selector.textContent=p.selected?(selectionCount>1?selectionCount+' objets sélectionnés · Maj+clic pour modifier la sélection':p.selector):'Clique un élément dans l’aperçu.';
+    renderSelectionBreadcrumbs(p.selected?p.selectionPath:[]);
     metrics.x.textContent=p.selected?p.x:'—';
     metrics.y.textContent=p.selected?p.y:'—';
     metrics.w.textContent=p.selected?p.width:'—';
@@ -2229,7 +2273,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.1.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.2.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2274,7 +2318,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.1.0'};
+    project.studio={name:'App Interface Studio',version:'6.2.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2332,7 +2376,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.1.0'};
+    project.studio={name:'App Interface Studio',version:'6.2.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2464,7 +2508,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
-      post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false});
+      post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5});
       applySafeArea();
       post(currentPreviewMode==='edit'?'enable':'disable');
       post('environment-set',{
@@ -2912,6 +2956,7 @@ body.desktop .desktop-badge{display:inline-flex}
   uiAnimations.addEventListener('change',function(){prefs.animations=uiAnimations.checked;applyPrefs();savePrefs()});
   defaultResponsivePref.addEventListener('change',function(){prefs.defaultResponsive=defaultResponsivePref.checked;applyPrefs();savePrefs()});
   smartGuidesPref.addEventListener('change',function(){prefs.smartGuides=smartGuidesPref.checked;applyPrefs();savePrefs()});
+  guideThresholdPref.addEventListener('change',function(){prefs.guideThreshold=Number(guideThresholdPref.value)||5;applyPrefs();savePrefs()});
   rememberPanels.addEventListener('change',function(){
     prefs.rememberPanels=rememberPanels.checked;
     if(!prefs.rememberPanels)prefs.openPanels=[];
