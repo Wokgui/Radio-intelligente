@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.48.0",
+  "version": "6.49.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec contraste WCAG AA/AAA en direct sur la sélection, audit accessibilité amélioré, rollback ciblé, test multi-patches réel, édition SVG inline et audit des assets",
+  "description": "Éditeur visuel universel Windows avec états interactifs éditables, correction automatique du contraste AA/AAA, projets portables autonomes, rollback ciblé, smoke Electron réel et audit des assets",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
