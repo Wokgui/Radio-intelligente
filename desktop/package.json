@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.11.0",
+  "version": "6.12.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec règles synchronisées au zoom, mesures visuelles d’espacement, repères déplaçables, viewport exact, isolation et groupes persistants",
+  "description": "Éditeur visuel universel Windows avec pas clavier cohérent, zoom sur sélection, zoom 100 %, raccourcis d’ordre de pile, mesures visuelles, repères déplaçables et viewport exact",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
