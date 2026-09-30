@@ -61,7 +61,8 @@
     '<button class="ve-box-handle padding" data-box-kind="padding" data-side="top">P ↑</button>' +
     '<button class="ve-box-handle padding" data-box-kind="padding" data-side="right">P →</button>' +
     '<button class="ve-box-handle padding" data-box-kind="padding" data-side="bottom">P ↓</button>' +
-    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="left">P ←</button>';
+    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="left">P ←</button>' +
+    '<button class="ve-media-focal" type="button" title="Déplacer le point focal de l’image" aria-label="Point focal de l’image">◎</button>';
 
   const guideV = document.createElement('div');
   guideV.className = 've-guide ve-guide-v';
@@ -109,6 +110,7 @@
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
+  const mediaFocalHandle = outline.querySelector('.ve-media-focal');
   const registry = new Map();
   const touched = new Map();
 
@@ -133,6 +135,7 @@
   let layoutGuidesX = [];
   let boxModelVisible = true;
   let boxDrag = null;
+  let mediaFocalDrag = null;
   let inlineTextEdit = null;
   let nudgeStep = 1;
   let keyboardCommitTimer = null;
@@ -2945,6 +2948,7 @@
       syncAnchorPins(null,0);
       hideConstraintLines();
       hideBoxModelVisuals();
+      if(mediaFocalHandle)mediaFocalHandle.style.display='none';
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -2955,6 +2959,7 @@
     if (!state || state.deleted) {
       outline.style.display = 'none';
       constraintBadge.style.display = 'none';
+      if(mediaFocalHandle)mediaFocalHandle.style.display='none';
       emit('state', currentPayload());
       return;
     }
@@ -2977,6 +2982,14 @@
     outline.style.top = groupRect.top + 'px';
     outline.style.width = groupRect.width + 'px';
     outline.style.height = groupRect.height + 'px';
+    if(mediaFocalHandle){
+      const showFocal=count===1&&!!state.mediaAdjusted&&!!state.mediaSource;
+      mediaFocalHandle.style.display=showFocal?'flex':'none';
+      if(showFocal){
+        mediaFocalHandle.style.left=mediaPercent(state.mediaPositionX,50)+'%';
+        mediaFocalHandle.style.top=mediaPercent(state.mediaPositionY,50)+'%';
+      }
+    }
     syncSecondaryOutlines();
     targetLabel.textContent = count > 1 ? (count + ' objets sélectionnés') : state.selector;
     metrics.textContent = 'X ' + Math.round(groupRect.left) + ' · Y ' + Math.round(groupRect.top) +
