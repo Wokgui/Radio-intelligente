@@ -3185,8 +3185,8 @@ body.desktop .desktop-badge{display:inline-flex}
         text.appendChild(thumb);
       }
       var actions=document.createElement('div');actions.className='mini-actions';
-      var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer';
-      restore.addEventListener('click',function(){post('load-project',{project:item.project});setStatus('Version restaurée : '+item.name)});
+      var restore=document.createElement('button');restore.textContent='↶';restore.title='Restaurer avec sauvegarde automatique de l’état courant';
+      restore.addEventListener('click',function(){restoreNamedVersionSafely(item)});
       var compare=document.createElement('button');compare.textContent='Δ';compare.title='Comparer à l’état actuel';compare.disabled=!item.thumbnail||!desktop;
       compare.addEventListener('click',function(){compareNamedVersion(item)});
       var rename=document.createElement('button');rename.textContent='✎';rename.title='Renommer';
@@ -3199,21 +3199,55 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  async function captureNamedVersionThumbnail(project){
+    if(!desktop||!desktop.captureCurrentSource||!currentSource)return null;
+    try{
+      var size=currentDeviceSize();
+      var shot=await desktop.captureCurrentSource(projectCapturePayload(project,{width:size.width,height:size.height}));
+      return shot&&shot.ok?shot.dataUrl:null;
+    }catch(_){return null}
+  }
+
+  function addNamedVersion(name,project,thumbnail,protectedId){
+    var version={id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:JSON.parse(JSON.stringify(project||{})),thumbnail:thumbnail||null};
+    namedVersions.push(version);
+    while(namedVersions.length>20){
+      var removeIndex=namedVersions.findIndex(function(v){return !protectedId||v.id!==protectedId});
+      if(removeIndex<0)break;
+      namedVersions.splice(removeIndex,1);
+    }
+    renderVersions();
+    scheduleRecovery();
+    return version;
+  }
+
+  async function restoreNamedVersionSafely(item){
+    if(!item||!item.project)return;
+    var current=await requestProject();
+    if(!current){setStatus('État courant impossible à sauvegarder.',true);return}
+    var same=false;
+    try{
+      same=JSON.stringify(current.snapshot||{})===JSON.stringify(item.project.snapshot||{})&&
+        JSON.stringify(current.designTokens||{})===JSON.stringify(item.project.designTokens||{})&&
+        JSON.stringify(current.prototypeLinks||{})===JSON.stringify(item.project.prototypeLinks||{});
+    }catch(_){}
+    if(!same){
+      var now=new Date();
+      var label='Avant restauration · '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      var thumbnail=await captureNamedVersionThumbnail(current);
+      addNamedVersion(label,current,thumbnail,item.id);
+    }
+    post('load-project',{project:item.project});
+    setStatus((same?'Version déjà active. ':'État courant sauvegardé automatiquement. ')+'Version restaurée : '+item.name);
+  }
+
   async function saveNamedVersion(){
     var project=await requestProject();
     if(!project)return;
     var name=String(document.getElementById('versionName').value||'').trim()||('Version '+(namedVersions.length+1));
-    var thumbnail=null;
-    if(desktop&&desktop.captureCurrentSource&&currentSource){
-      try{
-        var size=currentDeviceSize();
-        var shot=await desktop.captureCurrentSource(projectCapturePayload(project,{width:size.width,height:size.height}));
-        if(shot&&shot.ok)thumbnail=shot.dataUrl;
-      }catch(_){}
-    }
-    namedVersions.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2,7),name:name,createdAt:new Date().toISOString(),project:project,thumbnail:thumbnail});
-    if(namedVersions.length>20)namedVersions.shift();
-    renderVersions();setStatus('Point de contrôle créé : '+name);
+    var thumbnail=await captureNamedVersionThumbnail(project);
+    addNamedVersion(name,project,thumbnail);
+    setStatus('Point de contrôle créé : '+name);
   }
 
   function syncTokenInputs(tokens){
