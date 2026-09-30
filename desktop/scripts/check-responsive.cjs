@@ -328,6 +328,14 @@ expect(engine,"if(fromCenter)right=start.right-dx","horizontal center resize");
 expect(engine,"if(fromCenter)bottom=start.bottom-dy","vertical center resize");
 expect(engine,"fromCenter?' · centre':''","center resize HUD");
 expect(html,"Alt</kbd> sur une poignée redimensionne depuis le centre","center resize help");
+expect(html,'id="layoutGridOverlay"','layout grid overlay');
+expect(html,'id="gridOverlayToggle"','layout grid visibility toggle');
+expect(html,"function renderGridOverlay()","layout grid rendering");
+expect(html,"gridStep:1","grid step preference");
+expect(html,"showGridOverlay:false","grid visibility preference");
+expect(html,"prefs.gridStep=Number(grid.value)||1","grid step persistence");
+expect(html,"layoutGridOverlay.classList.toggle('visible'","grid visibility application");
+expect(html,"Afficher / masquer la grille d’accrochage","grid command palette action");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -335,4 +343,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.22 feature checks passed.');
+console.log('App Interface Studio 6.23 feature checks passed.');
