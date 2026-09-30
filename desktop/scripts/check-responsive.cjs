@@ -210,6 +210,16 @@ expect(engine,"Repère vertical","custom vertical snapping");
 expect(engine,"Repère horizontal","custom horizontal snapping");
 expect(html,"--frame-size:10px","non-consuming phone frame");
 expect(html,"position:relative;border:0;border-radius:34px","exact logical viewport frame");
+expect(css,".ve-drag-measure","drag measurement overlay");
+expect(engine,"dragMeasureLabel.className = 've-drag-measure'","drag measure node");
+expect(engine,"function updateDragMeasure(event)","drag measure updates");
+expect(engine,"emit('drag-measure'","drag measure event");
+expect(html,'id="guideList"','custom guide list');
+expect(html,"function removeCustomGuide(axis,index)","individual guide removal");
+expect(html,"function startGuideDrag(event)","custom guide drag");
+expect(html,"guideValueFromClient","guide pointer coordinate conversion");
+expect(html,"line.addEventListener('pointerdown',startGuideDrag)","draggable custom guide");
+expect(html,"line.addEventListener('dblclick'","double-click guide removal");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -217,4 +227,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.9 feature checks passed.');
+console.log('App Interface Studio 6.10 feature checks passed.');
