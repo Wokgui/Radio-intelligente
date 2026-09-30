@@ -8,6 +8,9 @@ const css=fs.readFileSync(path.join(root,'visual-editor.css'),'utf8');
 const runtime=fs.readFileSync(path.join(root,'app-runtime.html'),'utf8');
 const main=fs.readFileSync(path.join(root,'desktop','main.cjs'),'utf8');
 const preload=fs.readFileSync(path.join(root,'desktop','preload.cjs'),'utf8');
+const smoke=fs.readFileSync(path.join(root,'desktop','scripts','run-smoke.cjs'),'utf8');
+const workflow=fs.readFileSync(path.join(root,'.github','workflows','build-desktop.yml'),'utf8');
+const desktopPackage=fs.readFileSync(path.join(root,'desktop','package.json'),'utf8');
 
 function expect(text,needle,label){
   if(!text.includes(needle))throw new Error('Missing '+label+': '+needle);
@@ -529,6 +532,16 @@ expect(html,'id="svgTintMode"',"SVG tint mode control");
 expect(html,"svgTintAdjusted:!!item.svgTintAdjusted","SVG tint DOM patch");
 expect(main,"svgTintAdjusted:!!(item&&item.svgTintAdjusted)","SVG tint structure patch");
 expect(main,'if(item.svgTintAdjusted&&String(element.tagName||"").toLowerCase()==="svg")',"SVG tint runtime patch");
+expect(main,"const smokeMode=process.env.AIS_SMOKE_TEST==='1'","Electron smoke mode");
+expect(main,"show:!smokeMode","hidden smoke window");
+expect(main,"AIS_SMOKE_OK","smoke success marker");
+expect(main,"api.openDemo()","smoke demo IPC");
+expect(main,"api.captureCurrentSource({source:demo.source,width:360,height:800","smoke rendered capture");
+expect(smoke,"AIS_SMOKE_TEST:'1'","smoke runner environment");
+expect(smoke,"const timeout=setTimeout","smoke runner timeout");
+expect(workflow,"- name: Electron smoke test","workflow smoke step");
+expect(workflow,"run: npm run smoke","workflow smoke command");
+expect(desktopPackage,'"smoke": "node scripts/run-smoke.cjs"',"package smoke command");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
@@ -554,4 +567,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.42 feature checks passed.');
+console.log('App Interface Studio 6.43 feature checks passed.');
