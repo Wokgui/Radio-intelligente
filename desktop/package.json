@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.41.0",
+  "version": "6.42.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec restauration sûre des points de contrôle, audit des assets, comparaison côte à côte, glisser-déposer d’images, point focal manipulable et diff interactif HTML/CSS/JS",
+  "description": "Éditeur visuel universel Windows avec édition des SVG inline, restauration sûre des points de contrôle, audit des assets, comparaison côte à côte, glisser-déposer d’images, point focal manipulable et diff interactif HTML/CSS/JS",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
