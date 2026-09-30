@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   pickReferenceImage: () => ipcRenderer.invoke('reference:pick-image'),
   pickAssetImage: () => ipcRenderer.invoke('asset:pick-image'),
   loadAssetImage: path => ipcRenderer.invoke('asset:load-image', { path }),
+  assetThumbnail: path => ipcRenderer.invoke('asset:thumbnail', { path }),
   previewPatch: payload => ipcRenderer.invoke('source:preview-patch', payload),
   applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload),
   rollbackLastPatch: payload => ipcRenderer.invoke('source:rollback-last-patch', payload),
