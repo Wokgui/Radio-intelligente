@@ -1925,14 +1925,8 @@ async function auditSourceAtConfig(source,css,cfg){
 
 ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
   const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
-  const sizes=[{name:'compact',width:360,height:800},{name:'phone',width:412,height:915},{name:'tablet',width:768,height:1024},{name:'desktop',width:1366,height:768}];
-  const scales=[1,1.3,1.5],configs=[];
-  sizes.forEach(size=>scales.forEach(fontScale=>configs.push({name:size.name,width:size.width,height:size.height,fontScale,dark:false,keyboard:size.width<600&&fontScale>=1.3?280:0})));
-  const results=[];
-  try{
-    for(const cfg of configs)results.push(await auditSourceAtConfig(source,payload.css,cfg));
-    return {ok:true,results,summary:{tested:results.length,failed:results.filter(x=>x.issues.length).length,totalIssues:results.reduce((n,x)=>n+x.issues.length,0)}};
-  }catch(error){return {ok:false,error:'Matrice de tests impossible : '+String(error&&error.message||error),results}}
+  try{return await runMatrixForSource(source,payload.css)}
+  catch(error){return {ok:false,error:'Matrice de tests impossible : '+String(error&&error.message||error),results:[]}}
 });
 
 function hashText(value){
@@ -2055,6 +2049,192 @@ function directSourceCandidate(source,selector,css,sourceSelector,preferredHref)
 ipcMain.handle('source:prepare-direct-edit',async (_event,payload)=>{
   try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''),String(payload&&payload.sourceSelector||''),String(payload&&payload.preferredHref||''))}
   catch(error){return {ok:false,error:'Préparation du diff impossible : '+String(error&&error.message||error)}}
+});
+
+function matrixConfigs(){
+  const sizes=[{name:'compact',width:360,height:800},{name:'phone',width:412,height:915},{name:'tablet',width:768,height:1024},{name:'desktop',width:1366,height:768}];
+  const scales=[1,1.3,1.5],configs=[];
+  sizes.forEach(size=>scales.forEach(fontScale=>configs.push({
+    name:size.name,width:size.width,height:size.height,fontScale,dark:false,
+    keyboard:size.width<600&&fontScale>=1.3?280:0
+  })));
+  return configs;
+}
+
+async function runMatrixForSource(source,css){
+  const results=[];
+  for(const cfg of matrixConfigs())results.push(await auditSourceAtConfig(source,css,cfg));
+  return {
+    ok:true,
+    results,
+    summary:{
+      tested:results.length,
+      failed:results.filter(x=>x.issues.length).length,
+      totalIssues:results.reduce((n,x)=>n+x.issues.length,0)
+    }
+  };
+}
+
+function severeMatrixIssues(matrix){
+  const severe=new Map();
+  (matrix&&matrix.results||[]).forEach(item=>{
+    const key=[item.config&&item.config.name,item.config&&item.config.width,item.config&&item.config.fontScale].join('|');
+    (item.issues||[]).forEach(issue=>{
+      if(issue.type==='overflow-x'||issue.type==='text-clipped'){
+        const issueKey=key+'|'+issue.type;
+        severe.set(issueKey,(severe.get(issueKey)||0)+Number(issue.count||1));
+      }
+    });
+  });
+  return severe;
+}
+
+function compareMatrixSafety(baseline,candidate){
+  const before=severeMatrixIssues(baseline),after=severeMatrixIssues(candidate);
+  const regressions=[];
+  after.forEach((count,key)=>{
+    const previous=before.get(key)||0;
+    if(count>previous)regressions.push({key,before:previous,after:count});
+  });
+  const failedBefore=Number(baseline&&baseline.summary&&baseline.summary.failed)||0;
+  const failedAfter=Number(candidate&&candidate.summary&&candidate.summary.failed)||0;
+  const issuesBefore=Number(baseline&&baseline.summary&&baseline.summary.totalIssues)||0;
+  const issuesAfter=Number(candidate&&candidate.summary&&candidate.summary.totalIssues)||0;
+  return {
+    safe:regressions.length===0&&failedAfter<=failedBefore+1&&issuesAfter<=issuesBefore+2,
+    regressions,failedBefore,failedAfter,issuesBefore,issuesAfter
+  };
+}
+
+async function validateDirectEditCandidate(payload){
+  const source=payload&&payload.source;
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Validation disponible uniquement pour une source locale.'};
+  const file=String(payload&&payload.file||'');
+  if(!file||!isPathInside(local.root,file))return {ok:false,error:'Fichier candidat hors du projet.'};
+  const relative=path.relative(local.root,file);
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-validate-'));
+  const copyRoot=path.join(root,'source');
+  let server=null;
+  try{
+    fs.cpSync(local.root,copyRoot,{recursive:true,filter:(src)=>{
+      const rel=path.relative(local.root,src);
+      if(!rel)return true;
+      return !rel.split(path.sep).some(part=>['.git','node_modules','dist','build','coverage'].includes(part));
+    }});
+    const candidateFile=path.join(copyRoot,relative);
+    fs.mkdirSync(path.dirname(candidateFile),{recursive:true});
+    fs.writeFileSync(candidateFile,String(payload&&payload.after||''),'utf8');
+    server=serveStatic(copyRoot);
+    const base=await listen(server);
+    const entry=path.relative(local.root,local.html).replace(/\\/g,'/');
+    const candidateSource=Object.assign({},source,{root:copyRoot,path:copyRoot,url:base+'/'+entry.split('/').map(encodeURIComponent).join('/')});
+    const baseline=await runMatrixForSource(source,'');
+    const candidate=await runMatrixForSource(candidateSource,'');
+    const comparison=compareMatrixSafety(baseline,candidate);
+    return {ok:true,safe:comparison.safe,baseline:baseline.summary,candidate:candidate.summary,regressions:comparison.regressions};
+  }catch(error){
+    return {ok:false,error:'Validation préalable impossible : '+String(error&&error.message||error)};
+  }finally{
+    await closeHttpServer(server);
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+
+ipcMain.handle('source:validate-direct-edit',async (_event,payload)=>validateDirectEditCandidate(payload));
+
+function parseSimpleCssRules(text){
+  const rules=[];
+  const re=/([^{}@]+)\{([^{}]*)\}/g;
+  let m;
+  while((m=re.exec(String(text||'')))){
+    const selector=String(m[1]||'').trim();
+    if(!selector||selector.startsWith('@'))continue;
+    const props={};
+    String(m[2]||'').split(';').forEach(part=>{
+      const i=part.indexOf(':');if(i<0)return;
+      const key=part.slice(0,i).trim(),value=part.slice(i+1).replace(/\s*!important\s*$/,'').trim();
+      if(key&&value)props[key]=value;
+    });
+    if(Object.keys(props).length)rules.push({selector,props,raw:m[0],index:m.index});
+  }
+  return rules;
+}
+
+function sameProperties(a,b){
+  const ak=Object.keys(a||{}),bk=Object.keys(b||{});
+  if(ak.length!==bk.length)return false;
+  return ak.every(k=>Object.prototype.hasOwnProperty.call(b,k)&&String(a[k]).trim()===String(b[k]).trim());
+}
+
+function analyzeLegacyOverrides(source){
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Source locale requise.',items:[]};
+  const root=local.root,dir=path.dirname(local.html);
+  const direct=path.join(dir,'app-interface-studio.direct.css');
+  const generated=path.join(dir,'app-interface-studio.generated.css');
+  const candidates=[];
+  const otherCss=walkFiles(root,['.css'],400).filter(f=>f!==direct&&f!==generated);
+  const corpus=otherCss.map(file=>{
+    let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){}
+    return {file,text,rules:parseSimpleCssRules(text)};
+  });
+  if(fs.existsSync(direct)){
+    const text=fs.readFileSync(direct,'utf8');
+    const rules=parseSimpleCssRules(text);
+    rules.forEach(rule=>{
+      const matches=[];
+      corpus.forEach(doc=>doc.rules.forEach(other=>{
+        if(other.selector===rule.selector&&sameProperties(rule.props,other.props))matches.push(doc.file);
+      }));
+      if(matches.length)candidates.push({
+        kind:'redundant-rule',file:direct,selector:rule.selector,raw:rule.raw,
+        reason:'Même sélecteur et mêmes propriétés déjà présents dans '+path.relative(root,matches[0])+'.',
+        duplicateFile:matches[0]
+      });
+    });
+    if(!String(text).replace(/\/\*[\s\S]*?\*\//g,'').trim())candidates.push({kind:'empty-file',file:direct,reason:'Fichier de surcharge vide.'});
+  }
+  if(fs.existsSync(generated)){
+    const text=fs.readFileSync(generated,'utf8');
+    if(!String(text).replace(/\/\*[\s\S]*?\*\//g,'').trim())candidates.push({kind:'empty-file',file:generated,reason:'Fichier CSS généré vide.'});
+  }
+  return {ok:true,root,items:candidates.map((x,i)=>Object.assign({id:'override-'+(i+1),relativePath:path.relative(root,x.file)},x))};
+}
+
+ipcMain.handle('source:analyze-overrides',async (_event,payload)=>analyzeLegacyOverrides(payload&&payload.source));
+
+ipcMain.handle('source:cleanup-overrides',async (_event,payload)=>{
+  const source=payload&&payload.source,local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Source locale requise.'};
+  const analysis=analyzeLegacyOverrides(source);
+  if(!analysis.ok)return analysis;
+  const ids=new Set(Array.isArray(payload&&payload.ids)?payload.ids.map(String):[]);
+  const selected=analysis.items.filter(x=>ids.has(String(x.id)));
+  if(!selected.length)return {ok:false,error:'Aucune surcharge sûre sélectionnée.'};
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[],removed=[];
+  const byFile=new Map();
+  selected.forEach(item=>{
+    if(!byFile.has(item.file))byFile.set(item.file,[]);
+    byFile.get(item.file).push(item);
+  });
+  try{
+    byFile.forEach((items,file)=>{
+      if(!fs.existsSync(file))return;
+      const before=fs.readFileSync(file,'utf8');
+      const backup=file+'.ais-cleanup-backup-'+stamp;
+      fs.copyFileSync(file,backup);backups.push(backup);
+      let after=before;
+      items.filter(x=>x.kind==='redundant-rule').forEach(item=>{after=after.replace(item.raw,'')});
+      after=after.replace(/\n{3,}/g,'\n\n').trim();
+      const removeWhole=items.some(x=>x.kind==='empty-file')||!after;
+      if(removeWhole){fs.unlinkSync(file);removed.push(path.relative(local.root,file))}
+      else fs.writeFileSync(file,after+'\n','utf8');
+    });
+    return {ok:true,removed,backups,changed:selected.length};
+  }catch(error){
+    return {ok:false,error:'Nettoyage impossible : '+String(error&&error.message||error),backups};
+  }
 });
 
 ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
