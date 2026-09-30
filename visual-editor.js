@@ -3776,6 +3776,48 @@
     if(!isEditorNode(event.target))lastPointerPoint={x:event.clientX,y:event.clientY};
   },true);
 
+  function droppedImageFile(event){
+    const files=event&&event.dataTransfer&&event.dataTransfer.files?Array.from(event.dataTransfer.files):[];
+    return files.find(function(file){
+      return file&&file.size>0&&file.size<=24*1024*1024&&(/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(file.name||'')||String(file.type||'').indexOf('image/')===0);
+    })||null;
+  }
+
+  window.addEventListener('dragover',function(event){
+    if(!active)return;
+    const file=droppedImageFile(event);
+    if(!file)return;
+    event.preventDefault();
+    if(event.dataTransfer)event.dataTransfer.dropEffect='copy';
+    document.body.classList.add('ve-media-drop-ready');
+  },true);
+
+  window.addEventListener('dragleave',function(event){
+    if(!event.relatedTarget||event.relatedTarget===document.documentElement)document.body.classList.remove('ve-media-drop-ready');
+  },true);
+
+  window.addEventListener('drop',function(event){
+    if(!active)return;
+    const file=droppedImageFile(event);
+    if(!file)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    document.body.classList.remove('ve-media-drop-ready');
+    let target=document.elementFromPoint(event.clientX,event.clientY)||event.target;
+    if(!target||isEditorNode(target))target=selected;
+    if(target&&!isEditorNode(target))select(target,false);
+    if(!selected){emit('media-error',{message:'Dépose l’image sur un élément de l’interface.'});return}
+    const selector=selectorFor(selected);
+    const reader=new FileReader();
+    reader.onerror=function(){emit('media-error',{message:'Lecture du fichier déposé impossible.'})};
+    reader.onload=function(){
+      const dataUrl=String(reader.result||'');
+      if(!dataUrl.startsWith('data:image/')){emit('media-error',{message:'Le fichier déposé n’est pas une image prise en charge.'});return}
+      emit('media-drop',{selector:selector,name:file.name||'image',type:file.type||'',size:file.size||0,dataUrl:dataUrl});
+    };
+    reader.readAsDataURL(file);
+  },true);
+
   window.addEventListener('dblclick',function(event){
     if(!active||isEditorNode(event.target))return;
     event.preventDefault();
@@ -4011,6 +4053,43 @@
       emit('constraint-direct',{axis:axis,value:value,breakpoint:editingBreakpoint});
     });
   });
+
+  if(mediaFocalHandle){
+    mediaFocalHandle.addEventListener('pointerdown',function(event){
+      if(!active||!selected||selectionElements().length!==1)return;
+      const state=remember(selected);
+      if(!state||state.locked||!state.mediaAdjusted)return;
+      event.preventDefault();
+      event.stopPropagation();
+      mediaFocalDrag={pointerId:event.pointerId,startSnapshot:snapshot()};
+      mediaFocalHandle.setPointerCapture&&mediaFocalHandle.setPointerCapture(event.pointerId);
+    });
+    mediaFocalHandle.addEventListener('pointermove',function(event){
+      if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId||!selected)return;
+      event.preventDefault();
+      const state=remember(selected);
+      if(!state||state.locked||!state.mediaAdjusted)return;
+      const rect=outline.getBoundingClientRect();
+      if(rect.width<1||rect.height<1)return;
+      state.mediaPositionX=mediaPercent((event.clientX-rect.left)/rect.width*100,50);
+      state.mediaPositionY=mediaPercent((event.clientY-rect.top)/rect.height*100,50);
+      applyState(selected,state,false);
+      updateOverlay();
+      emit('media-updated',{kind:state.mediaKind,name:state.mediaName,fit:state.mediaFit,positionX:state.mediaPositionX,positionY:state.mediaPositionY,positionOnly:true});
+    });
+    mediaFocalHandle.addEventListener('pointerup',function(event){
+      if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId)return;
+      event.preventDefault();
+      mediaFocalDrag=null;
+      commitHistory();
+    });
+    mediaFocalHandle.addEventListener('pointercancel',function(event){
+      if(!mediaFocalDrag||event.pointerId!==mediaFocalDrag.pointerId)return;
+      const snap=mediaFocalDrag.startSnapshot;
+      mediaFocalDrag=null;
+      if(snap)loadSnapshot(snap);
+    });
+  }
 
   outline.querySelectorAll('.ve-handle').forEach(function (handle) {
     handle.addEventListener('pointerdown', function (event) {
@@ -4469,6 +4548,7 @@
     align: alignSelected,
     setTextProperty: setTextProperty,
     setTextContent: setTextContent,
+    setMediaPosition: setMediaPosition,
     toggleLock: toggleLock,
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
