@@ -96,6 +96,7 @@
   let grid = 1;
   let smartGuidesEnabled = true;
   let customGuides = {x:[],y:[]};
+  let nudgeStep = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
@@ -3346,6 +3347,16 @@
       selectRelated(event.shiftKey?'similar':'siblings');
       return true;
     }
+    if (modifier && key === ']') {
+      event.preventDefault();
+      setSelectionZ('front');
+      return true;
+    }
+    if (modifier && key === '[') {
+      event.preventDefault();
+      setSelectionZ('back');
+      return true;
+    }
     if (modifier && key.toLowerCase() === 'd') {
       event.preventDefault();
       duplicateSelection();
@@ -3385,17 +3396,17 @@
     }
 
     event.preventDefault();
-    const step = modifier ? 10 : 1;
+    const moveStep = Math.max(1,Number(nudgeStep)||1) * (modifier ? 10 : 1);
     if (event.shiftKey) {
-      if (key === 'ArrowLeft') adjustSize(-step, 0, false);
-      if (key === 'ArrowRight') adjustSize(step, 0, false);
-      if (key === 'ArrowUp') adjustSize(0, -step, false);
-      if (key === 'ArrowDown') adjustSize(0, step, false);
+      if (key === 'ArrowLeft') adjustSize(-moveStep, 0, false);
+      if (key === 'ArrowRight') adjustSize(moveStep, 0, false);
+      if (key === 'ArrowUp') adjustSize(0, -moveStep, false);
+      if (key === 'ArrowDown') adjustSize(0, moveStep, false);
     } else {
-      if (key === 'ArrowLeft') adjustMove(-step, 0, false);
-      if (key === 'ArrowRight') adjustMove(step, 0, false);
-      if (key === 'ArrowUp') adjustMove(0, -step, false);
-      if (key === 'ArrowDown') adjustMove(0, step, false);
+      if (key === 'ArrowLeft') adjustMove(-moveStep, 0, false);
+      if (key === 'ArrowRight') adjustMove(moveStep, 0, false);
+      if (key === 'ArrowUp') adjustMove(0, -moveStep, false);
+      if (key === 'ArrowDown') adjustMove(0, moveStep, false);
     }
     queueKeyboardCommit();
     return true;
@@ -3456,6 +3467,7 @@
       if (payload.defaultResponsive !== undefined) defaultResponsive = !!payload.defaultResponsive;
       if (payload.smartGuides !== undefined) smartGuidesEnabled = !!payload.smartGuides;
       if (payload.guideThreshold !== undefined) guideThreshold = Math.max(1, Math.min(20, Number(payload.guideThreshold) || 5));
+      if (payload.nudgeStep !== undefined) nudgeStep = Math.max(1, Math.min(50, Number(payload.nudgeStep) || 1));
       if (!smartGuidesEnabled) hideGuides();
     }
     if (data.type === 'custom-guides') {
