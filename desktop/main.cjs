@@ -543,6 +543,28 @@ ipcMain.handle('asset:load-image',async (_event,payload)=>{
   }catch(error){return {ok:false,error:'Lecture de l’asset impossible : '+String(error&&error.message||error)}}
 });
 
+ipcMain.handle('asset:thumbnail',async (_event,payload)=>{
+  const file=path.resolve(String(payload&&payload.path||''));
+  if(!file||!fs.existsSync(file))return {ok:false,error:'Asset introuvable.'};
+  try{
+    const stat=fs.statSync(file);
+    const ext=path.extname(file).toLowerCase();
+    if(!stat.isFile()||!/^\.(png|jpe?g|webp|gif|svg|avif)$/i.test(ext))return {ok:false,error:'Asset invalide.'};
+    if(stat.size>24*1024*1024)return {ok:false,error:'Image trop volumineuse.'};
+    if(ext==='.svg'){
+      return {ok:true,path:file,dataUrl:'data:image/svg+xml;base64,'+fs.readFileSync(file).toString('base64')};
+    }
+    const image=nativeImage.createFromPath(file);
+    if(image&&!image.isEmpty()){
+      const size=image.getSize();
+      const scale=Math.min(1,96/Math.max(1,size.width),96/Math.max(1,size.height));
+      const width=Math.max(1,Math.round(size.width*scale)),height=Math.max(1,Math.round(size.height*scale));
+      return {ok:true,path:file,dataUrl:image.resize({width,height,quality:'best'}).toDataURL()};
+    }
+    return {ok:true,path:file,dataUrl:'data:'+mediaMime(file)+';base64,'+fs.readFileSync(file).toString('base64')};
+  }catch(error){return {ok:false,error:'Miniature impossible : '+String(error&&error.message||error)}}
+});
+
 function localSourceEntry(source){
   if(!source)return null;
   if(source.type==='folder'&&source.path){
