@@ -4146,6 +4146,10 @@ body.desktop .desktop-badge{display:inline-flex}
   });
 
   colorText.addEventListener('input',function(){if(hasSelection)post('style',{kind:'color',value:colorText.value})});
+  previewContrastAABtn.addEventListener('click',function(){post('contrast-preview',{level:'AA'})});
+  previewContrastAAABtn.addEventListener('click',function(){post('contrast-preview',{level:'AAA'})});
+  applyContrastFixBtn.addEventListener('click',function(){post('contrast-fix-apply')});
+  cancelContrastFixBtn.addEventListener('click',function(){post('contrast-preview-clear')});
   colorBg.addEventListener('input',function(){if(hasSelection)post('style',{kind:'background',value:colorBg.value})});
   colorBorder.addEventListener('input',function(){if(hasSelection)post('style',{kind:'border',value:colorBorder.value})});
   zIndex.addEventListener('change',function(){if(hasSelection)post('z-set',{value:Number(zIndex.value)||0})});
