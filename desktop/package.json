@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.39.0",
+  "version": "6.40.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec glisser-déposer d’images, point focal manipulable à la souris, nettoyage automatique des assets orphelins, bibliothèque d’assets à miniatures, historique visuel comparable et diff interactif HTML/CSS/JS",
+  "description": "Éditeur visuel universel Windows avec audit des assets, comparaison côte à côte des points de contrôle, glisser-déposer d’images, point focal manipulable, nettoyage automatique des assets orphelins et diff interactif HTML/CSS/JS",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
