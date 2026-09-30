@@ -450,6 +450,20 @@ expect(main,"createdAssets","transaction-created media tracking");
 expect(main,"mediaKind:String(item&&item.mediaKind||'')","media structure patch");
 expect(main,'element.setAttribute("src",item.mediaSource)',"runtime image replacement");
 expect(main,'document.createElementNS("http://www.w3.org/2000/svg","image")',"runtime SVG replacement");
+expect(main,"asset:load-image","reusable media asset loader IPC");
+expect(preload,"loadAssetImage: path => ipcRenderer.invoke('asset:load-image', { path })","reusable media asset bridge");
+expect(engine,"function mediaAssetSummary()","media asset library summary");
+expect(engine,"function setMediaPosition(payload)","media focal position engine");
+expect(engine,"data.type === 'media-position'","media focal position command");
+expect(engine,"mediaPositionX: mediaPercent(state.mediaPositionX,50)","media focal history");
+expect(html,'id="mediaPositionX"',"media focal horizontal control");
+expect(html,'id="mediaPositionY"',"media focal vertical control");
+expect(html,'id="mediaAssetLibrary"',"reusable media asset library");
+expect(html,"function reuseMediaAsset(item)","reusable media asset host flow");
+expect(html,"mediaPositionX:item.mediaPositionX","media focal DOM patch");
+expect(main,"mediaPositionX:Number.isFinite(Number(item&&item.mediaPositionX))","media focal structure patch");
+expect(main,"element.style.objectPosition=px+","runtime image focal position");
+expect(main,"background-position\",px+\"% \"+py+\"%","runtime background focal position");
 expect(main,"const ext=/^\\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)","media extension preservation");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
@@ -457,9 +471,10 @@ if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generated
 const generatedStructureFactory=new Function(main.slice(generatedStructureStart,generatedStructureEnd)+";return generatedStructureScript;");
 const generatedStructure=generatedStructureFactory();
 const generatedMediaScript=generatedStructure([],[
-  {selector:"#hero",mediaAdjusted:true,mediaKind:"background",mediaSource:"./app-interface-studio-assets/hero.png",mediaFit:"cover"}
+  {selector:"#hero",mediaAdjusted:true,mediaKind:"background",mediaSource:"./app-interface-studio-assets/hero.png",mediaFit:"cover",mediaPositionX:0,mediaPositionY:100}
 ],[{selector:"#hero",key:"s-demo"}],{});
 new Function(generatedMediaScript);
+if(!generatedMediaScript.includes('"mediaPositionX":0')||!generatedMediaScript.includes('"mediaPositionY":100'))throw new Error("Generated media focal edges were not preserved");
 const syncAnchorStart=engine.indexOf("function syncAnchorPins(cfg,count)");
 const syncAnchorEnd=engine.indexOf("function hideConstraintLines()",syncAnchorStart);
 if(syncAnchorStart<0||syncAnchorEnd<0)throw new Error("syncAnchorPins block missing");
@@ -473,4 +488,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.35 feature checks passed.');
+console.log('App Interface Studio 6.36 feature checks passed.');
