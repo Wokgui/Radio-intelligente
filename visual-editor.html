@@ -332,7 +332,7 @@ body.desktop .desktop-badge{display:inline-flex}
 .command-head input:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
 .command-list{overflow:auto;padding:7px}
 .command-item{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:0;border-radius:11px;background:transparent;padding:10px 12px;text-align:left;color:var(--ink)}
-.command-item:hover,.command-item:focus{background:var(--accentSoft);outline:none}
+.command-item:hover,.command-item:focus,.command-item.active{background:var(--accentSoft);outline:none}
 .command-item span{font-size:.75rem;color:var(--muted)}
 .command-foot{padding:9px 13px;border-top:1px solid var(--line);font-size:.7rem;color:var(--muted);background:#faf9fc}
 .diff-modal,.flow-modal,.matrix-modal,.repair-modal{
@@ -1262,6 +1262,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var hasSelection=false;
   var lastState=null;
   var projectResolver=null;
+  var projectRequestPromise=null;
   var currentSource=null;
   var readyWaiters=[];
   var currentPreviewMode='edit';
@@ -1346,7 +1347,7 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   async function saveRecovery(){
-    if(recoveryBusy||projectResolver||prefs.autoRecovery===false||!currentSource)return;
+    if(recoveryBusy||prefs.autoRecovery===false||!currentSource)return;
     recoveryBusy=true;
     try{
       var project=await requestProject();
@@ -1354,7 +1355,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.13.0'};
+      project.studio={name:'App Interface Studio',version:'6.14.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2641,7 +2642,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.13.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.14.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2649,7 +2650,8 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   function requestProject(){
-    return new Promise(function(resolve){
+    if(projectRequestPromise)return projectRequestPromise;
+    projectRequestPromise=new Promise(function(resolve){
       projectResolver=resolve;
       post('get-project');
       setTimeout(function(){
@@ -2659,6 +2661,8 @@ body.desktop .desktop-badge{display:inline-flex}
         }
       },2500);
     });
+    projectRequestPromise.then(function(){projectRequestPromise=null},function(){projectRequestPromise=null});
+    return projectRequestPromise;
   }
 
   function projectPrompt(project){
@@ -2686,7 +2690,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.13.0'};
+    project.studio={name:'App Interface Studio',version:'6.14.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2744,7 +2748,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.13.0'};
+    project.studio={name:'App Interface Studio',version:'6.14.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2824,6 +2828,8 @@ body.desktop .desktop-badge{display:inline-flex}
       if(key==='ArrowDown')post('move',{dx:0,dy:amount,commit:false});
     }
   }
+  var commandActiveIndex=0;
+  var filteredCommands=[];
   var commands=[
     {label:'Ouvrir une application',hint:'Ctrl+O',run:function(){sourceModal.hidden=false}},
     {label:'Enregistrer le projet',hint:'Ctrl+S',run:saveProject},
@@ -2864,22 +2870,47 @@ body.desktop .desktop-badge{display:inline-flex}
   function renderCommands(filter){
     var q=String(filter||'').trim().toLowerCase();
     commandList.innerHTML='';
-    commands.filter(function(item){return !q||item.label.toLowerCase().indexOf(q)>=0||String(item.hint||'').toLowerCase().indexOf(q)>=0}).forEach(function(item){
+    filteredCommands=commands.filter(function(item){return !q||item.label.toLowerCase().indexOf(q)>=0||String(item.hint||'').toLowerCase().indexOf(q)>=0});
+    if(commandActiveIndex>=filteredCommands.length)commandActiveIndex=Math.max(0,filteredCommands.length-1);
+    filteredCommands.forEach(function(item,index){
       var btn=document.createElement('button');
-      btn.className='command-item';
+      btn.className='command-item'+(index===commandActiveIndex?' active':'');
       btn.type='button';
+      btn.dataset.commandIndex=String(index);
       var label=document.createElement('b');label.textContent=item.label;
       var hint=document.createElement('span');hint.textContent=item.hint||'';
       btn.append(label,hint);
+      btn.addEventListener('mouseenter',function(){commandActiveIndex=index;syncCommandActive()});
       btn.addEventListener('click',function(){closeCommandPalette();item.run()});
       commandList.appendChild(btn);
     });
     if(!commandList.childNodes.length)commandList.innerHTML='<div class="hint" style="padding:14px">Aucune commande trouvée.</div>';
   }
 
+  function syncCommandActive(){
+    commandList.querySelectorAll('.command-item').forEach(function(btn,index){
+      btn.classList.toggle('active',index===commandActiveIndex);
+      if(index===commandActiveIndex)btn.scrollIntoView({block:'nearest'});
+    });
+  }
+
+  function moveCommandActive(delta){
+    if(!filteredCommands.length)return;
+    commandActiveIndex=(commandActiveIndex+delta+filteredCommands.length)%filteredCommands.length;
+    syncCommandActive();
+  }
+
+  function runActiveCommand(){
+    var item=filteredCommands[commandActiveIndex];
+    if(!item)return;
+    closeCommandPalette();
+    item.run();
+  }
+
   function openCommandPalette(filter){
     commandPalette.hidden=false;
     commandSearch.value=filter||'';
+    commandActiveIndex=0;
     renderCommands(commandSearch.value);
     setTimeout(function(){commandSearch.focus();commandSearch.select()},0);
   }
@@ -3442,7 +3473,13 @@ body.desktop .desktop-badge{display:inline-flex}
 
   document.getElementById('commandsBtn').addEventListener('click',function(){openCommandPalette()});
   document.getElementById('commandCloseBtn').addEventListener('click',closeCommandPalette);
-  commandSearch.addEventListener('input',function(){renderCommands(commandSearch.value)});
+  commandSearch.addEventListener('input',function(){commandActiveIndex=0;renderCommands(commandSearch.value)});
+  commandSearch.addEventListener('keydown',function(e){
+    if(e.key==='ArrowDown'){e.preventDefault();moveCommandActive(1);return}
+    if(e.key==='ArrowUp'){e.preventDefault();moveCommandActive(-1);return}
+    if(e.key==='Enter'){e.preventDefault();runActiveCommand();return}
+    if(e.key==='Escape'){e.preventDefault();closeCommandPalette()}
+  });
   commandPalette.addEventListener('click',function(e){if(e.target===commandPalette)closeCommandPalette()});
   layerSearch.addEventListener('input',function(){renderLayers(lastLayerTree)});
   layerFilter.addEventListener('change',function(){renderLayers(lastLayerTree)});
