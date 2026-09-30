@@ -562,7 +562,15 @@ expect(html,'id="refreshTransactionsBtn"',"transaction history refresh control")
 expect(html,"function renderLocalTransactions(result)","transaction history renderer");
 expect(html,"async function refreshLocalTransactions()","transaction history refresh flow");
 expect(html,"↶ Prochain rollback","next rollback marker");
-expect(main,"Historique transactionnel incohérent après rollback.","transaction history smoke assertion");
+expect(main,"Historique transactionnel incohérent après rollback","transaction history smoke assertion");
+expect(main,"async function rollbackThroughLocalTransaction(payload)","rollback-through engine");
+expect(main,"source:rollback-through","rollback-through IPC");
+expect(preload,"rollbackThroughTransaction: payload => ipcRenderer.invoke('source:rollback-through', payload)","rollback-through bridge");
+expect(html,"async function rollbackThroughHistory(item,count)","rollback-through UI flow");
+expect(html,"↶…","rollback-through history control");
+expect(main,"crypto.randomBytes(3).toString('hex')","unique transaction stamp");
+expect(main,"Collision de fichiers de transaction.","transaction collision smoke assertion");
+expect(main,"rollbackThrough:true","multi-rollback smoke result");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
@@ -588,4 +596,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.45 feature checks passed.');
+console.log('App Interface Studio 6.46 feature checks passed.');
