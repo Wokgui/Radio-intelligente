@@ -517,16 +517,30 @@ expect(html,"function addNamedVersion(name,project,thumbnail,protectedId)","chec
 expect(html,"async function restoreNamedVersionSafely(item)","safe checkpoint restore");
 expect(html,"Avant restauration","automatic pre-restore checkpoint");
 expect(html,"restoreNamedVersionSafely(item)","restore action uses safe flow");
+expect(engine,"const svgTintOriginals = new WeakMap()","SVG tint original style tracking");
+expect(engine,"function applySvgTint(element,state)","SVG tint application");
+expect(engine,"function clearSvgTint(element)","SVG tint restoration");
+expect(engine,"function setSvgTint(payload)","SVG tint command engine");
+expect(engine,"data.type === 'svg-tint'","SVG tint host command");
+expect(engine,"svgTintAdjusted: !!state.svgTintAdjusted","SVG tint history");
+expect(html,'id="svgTintControls"',"SVG tint inspector");
+expect(html,'id="svgTintColor"',"SVG tint color control");
+expect(html,'id="svgTintMode"',"SVG tint mode control");
+expect(html,"svgTintAdjusted:!!item.svgTintAdjusted","SVG tint DOM patch");
+expect(main,"svgTintAdjusted:!!(item&&item.svgTintAdjusted)","SVG tint structure patch");
+expect(main,'if(item.svgTintAdjusted&&String(element.tagName||"").toLowerCase()==="svg")',"SVG tint runtime patch");
 const generatedStructureStart=main.indexOf("function generatedStructureScript");
 const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
 if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
 const generatedStructureFactory=new Function(main.slice(generatedStructureStart,generatedStructureEnd)+";return generatedStructureScript;");
 const generatedStructure=generatedStructureFactory();
 const generatedMediaScript=generatedStructure([],[
-  {selector:"#hero",mediaAdjusted:true,mediaKind:"background",mediaSource:"./app-interface-studio-assets/hero.png",mediaFit:"cover",mediaPositionX:0,mediaPositionY:100}
-],[{selector:"#hero",key:"s-demo"}],{});
+  {selector:"#hero",mediaAdjusted:true,mediaKind:"background",mediaSource:"./app-interface-studio-assets/hero.png",mediaFit:"cover",mediaPositionX:0,mediaPositionY:100},
+  {selector:"#icon",svgTintAdjusted:true,svgTintColor:"#ff00aa",svgTintMode:"stroke"}
+],[{selector:"#hero",key:"s-demo"},{selector:"#icon",key:"s-icon"}],{});
 new Function(generatedMediaScript);
 if(!generatedMediaScript.includes('"mediaPositionX":0')||!generatedMediaScript.includes('"mediaPositionY":100'))throw new Error("Generated media focal edges were not preserved");
+if(!generatedMediaScript.includes('"svgTintColor":"#ff00aa"')||!generatedMediaScript.includes('item.svgTintAdjusted'))throw new Error("Generated SVG tint patch missing");
 const syncAnchorStart=engine.indexOf("function syncAnchorPins(cfg,count)");
 const syncAnchorEnd=engine.indexOf("function hideConstraintLines()",syncAnchorStart);
 if(syncAnchorStart<0||syncAnchorEnd<0)throw new Error("syncAnchorPins block missing");
@@ -540,4 +554,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.41 feature checks passed.');
+console.log('App Interface Studio 6.42 feature checks passed.');
