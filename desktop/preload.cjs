@@ -37,7 +37,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   saveChatGPTExport: payload => ipcRenderer.invoke('layout:save-chatgpt', payload),
   copyText: text => ipcRenderer.invoke('layout:copy-text', String(text || '')),
-  appInfo: () => ipcRenderer.invoke('layout:app-info')
+  appInfo: () => ipcRenderer.invoke('layout:app-info'),
+  smokeTransactionRoundtrip: () => ipcRenderer.invoke('smoke:transaction-roundtrip')
 });
 
 // Compatibilité avec la v1.
