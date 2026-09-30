@@ -60,6 +60,10 @@ jobs:
         working-directory: desktop
         run: npm run check
 
+      - name: Electron smoke test
+        working-directory: desktop
+        run: npm run smoke
+
       - name: Build Windows app
         working-directory: desktop
         env:
