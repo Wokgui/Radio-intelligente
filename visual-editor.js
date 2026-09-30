@@ -53,7 +53,15 @@
     '<button class="ve-anchor-pin ve-anchor-vcenter" data-anchor-axis="v" data-anchor-value="center" title="Centrer verticalement">↕</button>' +
     '<button class="ve-anchor-pin ve-anchor-bottom" data-anchor-axis="v" data-anchor-value="bottom" title="Ancrer en bas">↓</button>' +
     '<button class="ve-anchor-pin ve-anchor-hstretch" data-anchor-axis="h" data-anchor-value="stretch" title="Étirer horizontalement">⇆</button>' +
-    '<button class="ve-anchor-pin ve-anchor-vstretch" data-anchor-axis="v" data-anchor-value="stretch" title="Étirer verticalement">⇅</button>';
+    '<button class="ve-anchor-pin ve-anchor-vstretch" data-anchor-axis="v" data-anchor-value="stretch" title="Étirer verticalement">⇅</button>' +
+    '<button class="ve-box-handle margin" data-box-kind="margin" data-side="top">M ↑</button>' +
+    '<button class="ve-box-handle margin" data-box-kind="margin" data-side="right">M →</button>' +
+    '<button class="ve-box-handle margin" data-box-kind="margin" data-side="bottom">M ↓</button>' +
+    '<button class="ve-box-handle margin" data-box-kind="margin" data-side="left">M ←</button>' +
+    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="top">P ↑</button>' +
+    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="right">P →</button>' +
+    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="bottom">P ↓</button>' +
+    '<button class="ve-box-handle padding" data-box-kind="padding" data-side="left">P ←</button>';
 
   const guideV = document.createElement('div');
   guideV.className = 've-guide ve-guide-v';
@@ -66,6 +74,10 @@
 
   const constraintBadge = document.createElement('div');
   constraintBadge.className = 've-constraint-badge';
+  const boxMarginRing = document.createElement('div');
+  boxMarginRing.className = 've-box-ring-margin';
+  const boxPaddingRing = document.createElement('div');
+  boxPaddingRing.className = 've-box-ring-padding';
   const constraintLines = ['left','right','top','bottom','center-x','center-y'].map(function(kind){
     const line=document.createElement('div');
     const horizontal=kind==='left'||kind==='right'||kind==='center-y';
@@ -91,7 +103,7 @@
     return {direction:direction,line:line,label:label};
   });
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, boxMarginRing, boxPaddingRing, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
   constraintLines.forEach(function(line){document.body.appendChild(line)});
   spacingVisuals.forEach(function(item){document.body.append(item.line,item.label)});
 
@@ -119,6 +131,8 @@
   let smartGuidesEnabled = true;
   let customGuides = {x:[],y:[]};
   let layoutGuidesX = [];
+  let boxModelVisible = true;
+  let boxDrag = null;
   let nudgeStep = 1;
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
@@ -799,7 +813,7 @@
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
       node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
-      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox ||
+      node === constraintBadge || node === boxMarginRing || node === boxPaddingRing || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox ||
       constraintLines.includes(node) ||
       spacingVisuals.some(function(item){return node===item.line||node===item.label});
   }
@@ -2686,6 +2700,13 @@
       environment: Object.assign({}, environment),
       advancedStyles: Object.assign({}, state.advancedStyles || {}),
       advancedAdjusted: !!state.advancedAdjusted,
+      boxModel: (function(){
+        var cs=getComputedStyle(selected);
+        return {
+          margin:{top:parseFloat(cs.marginTop)||0,right:parseFloat(cs.marginRight)||0,bottom:parseFloat(cs.marginBottom)||0,left:parseFloat(cs.marginLeft)||0},
+          padding:{top:parseFloat(cs.paddingTop)||0,right:parseFloat(cs.paddingRight)||0,bottom:parseFloat(cs.paddingBottom)||0,left:parseFloat(cs.paddingLeft)||0}
+        };
+      })(),
       animation: Object.assign({}, state.animation || {}),
       animationAdjusted: !!state.animationAdjusted,
       componentName: state.componentName || '',
@@ -2758,6 +2779,72 @@
     }
   }
 
+  function hideBoxModelVisuals(){
+    outline.classList.remove('ve-box-model-visible');
+    boxMarginRing.style.display='none';
+    boxPaddingRing.style.display='none';
+  }
+
+  function boxValues(element){
+    if(!element)return null;
+    const cs=getComputedStyle(element);
+    return {
+      margin:{top:parseFloat(cs.marginTop)||0,right:parseFloat(cs.marginRight)||0,bottom:parseFloat(cs.marginBottom)||0,left:parseFloat(cs.marginLeft)||0},
+      padding:{top:parseFloat(cs.paddingTop)||0,right:parseFloat(cs.paddingRight)||0,bottom:parseFloat(cs.paddingBottom)||0,left:parseFloat(cs.paddingLeft)||0}
+    };
+  }
+
+  function syncBoxModelVisuals(element,count,rect){
+    if(!boxModelVisible||count!==1||!element||!rect){hideBoxModelVisuals();return}
+    const values=boxValues(element);
+    outline.classList.add('ve-box-model-visible');
+    outline.querySelectorAll('.ve-box-handle').forEach(function(handle){
+      const kind=handle.dataset.boxKind,side=handle.dataset.side;
+      const value=Math.round(values[kind][side]*10)/10;
+      handle.textContent=(kind==='margin'?'M ':'P ')+value;
+      handle.title=(kind==='margin'?'Marge ':'Padding ')+side+' : '+value+' px · glisser pour modifier';
+    });
+
+    boxMarginRing.style.display='block';
+    boxMarginRing.style.left=(rect.left-values.margin.left)+'px';
+    boxMarginRing.style.top=(rect.top-values.margin.top)+'px';
+    boxMarginRing.style.width=(rect.width+values.margin.left+values.margin.right)+'px';
+    boxMarginRing.style.height=(rect.height+values.margin.top+values.margin.bottom)+'px';
+    boxMarginRing.style.borderWidth=[
+      Math.max(0,values.margin.top)+'px',Math.max(0,values.margin.right)+'px',
+      Math.max(0,values.margin.bottom)+'px',Math.max(0,values.margin.left)+'px'
+    ].join(' ');
+
+    boxPaddingRing.style.display='block';
+    boxPaddingRing.style.left=rect.left+'px';
+    boxPaddingRing.style.top=rect.top+'px';
+    boxPaddingRing.style.width=rect.width+'px';
+    boxPaddingRing.style.height=rect.height+'px';
+    boxPaddingRing.style.borderWidth=[
+      Math.max(0,values.padding.top)+'px',Math.max(0,values.padding.right)+'px',
+      Math.max(0,values.padding.bottom)+'px',Math.max(0,values.padding.left)+'px'
+    ].join(' ');
+  }
+
+  function setBoxModel(payload){
+    if(!active||!selected)return false;
+    const kind=payload&&payload.kind==='margin'?'margin':'padding';
+    const side=String(payload&&payload.side||'');
+    if(['top','right','bottom','left'].indexOf(side)<0)return false;
+    const value=Math.max(0,Number(payload&&payload.value)||0);
+    const prop=kind+'-'+side;
+    selectionElements().forEach(function(el){
+      const st=remember(el);if(!st||st.locked)return;
+      st.advancedAdjusted=true;st.advancedStyles=st.advancedStyles||{};
+      st.advancedStyles[prop]=(Math.round(value*10)/10)+'px';
+      applyState(el,st,false);
+    });
+    updateOverlay();
+    if(payload.commit!==false)commitHistory();
+    emit('box-model-changed',{kind:kind,side:side,value:value});
+    return true;
+  }
+
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
@@ -2767,6 +2854,7 @@
       clearSecondaryOutlines();
       syncAnchorPins(null,0);
       hideConstraintLines();
+      hideBoxModelVisuals();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -2787,6 +2875,7 @@
     const cfg = effectiveResponsive(state);
     syncAnchorPins(cfg,count);
     syncConstraintLines(selected,cfg,count,groupRect);
+    syncBoxModelVisuals(selected,count,groupRect);
     constraintBadge.style.display = 'block';
     constraintBadge.style.left = Math.max(4, groupRect.left) + 'px';
     constraintBadge.style.top = Math.max(4, groupRect.top - 25) + 'px';
@@ -3424,6 +3513,7 @@
     outline.style.display = 'none';
     constraintBadge.style.display = 'none';
     hideConstraintLines();
+    hideBoxModelVisuals();
     clearAltMeasure();
     hideDragMeasure();
     clearSpacingVisuals();
