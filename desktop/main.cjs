@@ -997,7 +997,7 @@ ipcMain.handle('source:preview-patch',async (_event,payload)=>{
   }
 });
 
-ipcMain.handle('source:apply-css',async (_event,payload)=>{
+async function applyLocalPatch(payload){
   let plan=null;
   try{
     plan=computeLocalPatchPlan(payload,payload&&payload.applyParts);
@@ -1065,6 +1065,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       locatorCount:plan.locatorCount,
       prototypeCount:plan.prototypeCount,
       assetCount:plan.assetCount,
+      createdAssets:createdAssets.slice(),
       cssApplied:plan.parts.css&&!!plan.after.css,
       cssRemoved:plan.parts.css&&!plan.after.css&&!!plan.before.css,
       structureApplied:plan.parts.structure&&!!plan.after.js,
@@ -1076,9 +1077,9 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
     createdAssets.forEach(file=>{try{if(fs.existsSync(file))fs.unlinkSync(file)}catch(_){}});
     return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)};
   }
-});
+}
 
-ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>{
+async function rollbackLocalPatch(payload){
   const local=localSourceEntry(payload&&payload.source);
   if(!local)return {ok:false,error:'Rollback disponible uniquement pour une source HTML locale.'};
   const dir=path.dirname(local.html);
@@ -1116,12 +1117,115 @@ ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>{
       ok:true,
       htmlPath:local.html,
       transactionPath:chosenPath,
-      restoredAt:chosen.rolledBackAt
+      restoredAt:chosen.rolledBackAt,
+      removedAssets:Array.isArray(chosen.createdAssets)?chosen.createdAssets.slice():[]
     };
   }catch(error){
     return {ok:false,error:'Annulation du patch impossible : '+String(error&&error.message||error)};
   }
-});
+}
+
+ipcMain.handle('source:apply-css',async (_event,payload)=>applyLocalPatch(payload));
+ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>rollbackLocalPatch(payload));
+
+async function inspectSmokeFixture(url){
+  const win=new BrowserWindow({
+    show:false,width:360,height:640,useContentSize:true,
+    webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,backgroundThrottling:false}
+  });
+  try{
+    await win.loadURL(url);
+    await new Promise(resolve=>setTimeout(resolve,250));
+    return await win.webContents.executeJavaScript(`
+      (function(){
+        const title=document.getElementById('title');
+        const cover=document.getElementById('cover');
+        const icon=document.getElementById('icon');
+        const pathNode=icon&&icon.querySelector('path');
+        return {
+          text:title&&title.textContent,
+          titleColor:title&&getComputedStyle(title).color,
+          coverSrc:cover&&cover.getAttribute('src'),
+          iconFill:pathNode&&getComputedStyle(pathNode).fill,
+          iconStroke:pathNode&&getComputedStyle(pathNode).stroke,
+          generatedCss:!!document.querySelector('link[data-app-interface-studio="generated"]'),
+          generatedJs:!!document.querySelector('script[data-app-interface-studio="generated-structure"]')
+        };
+      })()
+    `,true);
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+async function smokeTransactionRoundtrip(){
+  const dir=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-roundtrip-'));
+  const htmlPath=path.join(dir,'index.html');
+  const assetPath=path.join(dir,'fixture.png');
+  const original='<!doctype html><html><head><meta charset="utf-8"><title>Fixture</title></head><body><div id="title">Original</div><img id="cover" width="24" height="24"><svg id="icon" viewBox="0 0 10 10" width="20" height="20"><path d="M1 1h8v8H1z" fill="#111111" stroke="#222222"/></svg></body></html>';
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z2V8AAAAASUVORK5CYII=','base64');
+  fs.writeFileSync(htmlPath,original,'utf8');
+  fs.writeFileSync(assetPath,png);
+
+  let url='';
+  try{
+    url=await startLocalTarget(dir,'index.html');
+    const source={type:'html',path:htmlPath,root:dir,entry:'index.html',url,label:'AIS transaction fixture'};
+    const payload={
+      source,
+      css:'#title { color: rgb(1, 2, 3) !important; }',
+      generatedNodes:[],
+      sourceSelectors:['#title','#cover','#icon'],
+      prototypeLinks:{},
+      domPatches:[
+        {selector:'#title',textAdjusted:true,textContent:'Changed'},
+        {selector:'#cover',mediaAdjusted:true,mediaKind:'img',mediaAssetPath:assetPath,mediaName:'fixture.png',mediaFit:'contain',mediaPositionX:50,mediaPositionY:50},
+        {selector:'#icon',svgTintAdjusted:true,svgTintColor:'#ff00aa',svgTintMode:'stroke'}
+      ],
+      applyParts:{css:true,structure:true}
+    };
+
+    const preview=computeLocalPatchPlan(payload,payload.applyParts);
+    if(!preview.changed.html||!preview.changed.css||!preview.changed.structure||preview.assetCount!==1)throw new Error('Plan transactionnel incomplet.');
+
+    const applied=await applyLocalPatch(payload);
+    if(!applied.ok)throw new Error(applied.error||'Application transactionnelle échouée.');
+    const cssPath=path.join(dir,'app-interface-studio.generated.css');
+    const jsPath=path.join(dir,'app-interface-studio.generated.js');
+    if(!fs.existsSync(cssPath)||!fs.existsSync(jsPath))throw new Error('Fichiers générés absents après application.');
+    const htmlAfter=fs.readFileSync(htmlPath,'utf8');
+    if(!htmlAfter.includes('data-app-interface-studio="generated"')||!htmlAfter.includes('data-app-interface-studio="generated-structure"'))throw new Error('Balises générées absentes du HTML.');
+    const tx=JSON.parse(fs.readFileSync(applied.transactionPath,'utf8'));
+    if(tx.rolledBack!==false||!Array.isArray(tx.createdAssets)||tx.createdAssets.length!==1)throw new Error('Transaction ou asset créé invalide.');
+    if(!fs.existsSync(tx.createdAssets[0]))throw new Error('Asset généré absent.');
+
+    const renderedAfter=await inspectSmokeFixture(url);
+    if(renderedAfter.text!=='Changed')throw new Error('Texte appliqué non rendu.');
+    if(renderedAfter.titleColor!=='rgb(1, 2, 3)')throw new Error('CSS appliqué non rendu : '+renderedAfter.titleColor);
+    if(!String(renderedAfter.coverSrc||'').includes('app-interface-studio-assets/'))throw new Error('Image générée non rendue.');
+    if(renderedAfter.iconStroke!=='rgb(255, 0, 170)')throw new Error('Teinte SVG non rendue : '+renderedAfter.iconStroke);
+    if(!renderedAfter.generatedCss||!renderedAfter.generatedJs)throw new Error('Balises générées non chargées.');
+
+    const rolled=await rollbackLocalPatch({source});
+    if(!rolled.ok)throw new Error(rolled.error||'Rollback transactionnel échoué.');
+    if(fs.readFileSync(htmlPath,'utf8')!==original)throw new Error('HTML non restauré exactement.');
+    if(fs.existsSync(cssPath)||fs.existsSync(jsPath))throw new Error('Fichiers générés non supprimés au rollback.');
+    if(tx.createdAssets.some(file=>fs.existsSync(file)))throw new Error('Asset créé non supprimé au rollback.');
+    const rolledTx=JSON.parse(fs.readFileSync(rolled.transactionPath,'utf8'));
+    if(rolledTx.rolledBack!==true||!rolledTx.rolledBackAt)throw new Error('Transaction non marquée comme annulée.');
+
+    const renderedRollback=await inspectSmokeFixture(url);
+    if(renderedRollback.text!=='Original')throw new Error('Texte non restauré après rollback.');
+    if(renderedRollback.coverSrc!==null)throw new Error('Image non restaurée après rollback.');
+    if(renderedRollback.iconStroke!=='rgb(34, 34, 34)')throw new Error('SVG non restauré après rollback : '+renderedRollback.iconStroke);
+    if(renderedRollback.generatedCss||renderedRollback.generatedJs)throw new Error('Balises générées encore présentes après rollback.');
+
+    return {ok:true,preview:true,apply:true,render:true,rollback:true,asset:true,svg:true};
+  }finally{
+    await stopTargetServer();
+    try{fs.rmSync(dir,{recursive:true,force:true})}catch(_){}
+  }
+}
+
+if(smokeMode)ipcMain.handle('smoke:transaction-roundtrip',async ()=>smokeTransactionRoundtrip());
 
 function generatedAssetReferences(local){
   const dir=path.dirname(local.html);
