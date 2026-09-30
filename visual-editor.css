@@ -233,3 +233,7 @@ body.ve-active .ve-alt-measure{
   padding:6px 8px;border-radius:8px;background:#21182fe8;color:#fff;
   font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 6px 18px #0004
 }
+[data-ais-isolation-hidden="1"]{
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
