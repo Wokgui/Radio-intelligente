@@ -554,12 +554,14 @@ function generatedStructureScript(nodes){
 
 function ensureGeneratedTag(html,tag,marker){
   if(html.includes(marker))return html;
-  if(/<\\/body>/i.test(html))return html.replace(/<\\/body>/i,'  '+tag+'\\n</body>');
-  return html+'\\n'+tag+'\\n';
+  const closingBody=new RegExp('</body>','i');
+  if(closingBody.test(html))return html.replace(closingBody,'  '+tag+'\n</body>');
+  return html+'\n'+tag+'\n';
 }
 
 function removeGeneratedStructureTag(html){
-  return html.replace(/\\s*<script[^>]*data-app-interface-studio=["']generated-structure["'][^>]*><\\/script>\\s*/ig,'\\n');
+  const pattern=new RegExp('\\s*<script[^>]*data-app-interface-studio=["\\\']generated-structure["\\\'][^>]*></script>\\s*','ig');
+  return html.replace(pattern,'\n');
 }
 
 ipcMain.handle('source:apply-css',async (_event,payload)=>{
@@ -589,7 +591,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       if(!html.includes(marker)){
         const href='./'+path.basename(cssPath);
         const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
-        if(/<\\/head>/i.test(html))html=html.replace(/<\\/head>/i,'  '+link+'\\n</head>');
+        if(new RegExp('</head>','i').test(html))html=html.replace(new RegExp('</head>','i'),'  '+link+'\\n</head>');
         else html=link+'\\n'+html;
       }
       cssApplied=true;
