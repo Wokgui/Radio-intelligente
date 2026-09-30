@@ -2035,6 +2035,189 @@ async function auditSourceAtConfig(source,css,cfg){
   }finally{if(!win.isDestroyed())win.destroy()}
 }
 
+async function scenarioWindow(source,css,width,height){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)throw new Error('Source invalide.');
+  const win=new BrowserWindow({
+    show:false,width:Math.max(240,Number(width)||412),height:Math.max(260,Number(height)||915),
+    useContentSize:true,frame:false,
+    webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}
+  });
+  await win.loadURL(target);
+  await new Promise(r=>setTimeout(r,320));
+  if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */'){
+    await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
+    await new Promise(r=>setTimeout(r,80));
+  }
+  return win;
+}
+
+function scenarioActionScript(action){
+  return `(function(action){
+    function find(){try{return document.querySelector(String(action.selector||''))}catch(_){return null}}
+    var el=find();
+    if(!el)return {ok:false,error:'Cible introuvable',selector:action.selector||''};
+    var r=el.getBoundingClientRect(),cs=getComputedStyle(el);
+    if(cs.display==='none'||cs.visibility==='hidden'||r.width<1||r.height<1)return {ok:false,error:'Cible non visible',selector:action.selector||''};
+    try{
+      if(action.type==='click'){
+        if(el.focus)try{el.focus({preventScroll:true})}catch(_){}
+        el.click();
+      }else if(action.type==='input'||action.type==='change'){
+        var proto=Object.getPrototypeOf(el),desc=proto&&Object.getOwnPropertyDescriptor(proto,'value');
+        if(desc&&desc.set)desc.set.call(el,String(action.value==null?'':action.value));else el.value=String(action.value==null?'':action.value);
+        el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));
+        if(action.type==='change')el.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
+      }else if(action.type==='keydown'){
+        if(el.focus)el.focus({preventScroll:true});
+        el.dispatchEvent(new KeyboardEvent('keydown',{key:String(action.key||''),code:String(action.code||''),bubbles:true,cancelable:true}));
+        el.dispatchEvent(new KeyboardEvent('keyup',{key:String(action.key||''),code:String(action.code||''),bubbles:true,cancelable:true}));
+      }else return {ok:false,error:'Action non prise en charge',selector:action.selector||''};
+      return {ok:true,selector:action.selector||'',type:action.type,url:location.href};
+    }catch(error){return {ok:false,error:String(error&&error.message||error),selector:action.selector||''}}
+  })(`+JSON.stringify(action)+`)`;
+}
+
+async function replayScenarioAtConfig(source,css,actions,cfg){
+  const win=await scenarioWindow(source,css,cfg.width,cfg.height);
+  const steps=[];
+  try{
+    for(let i=0;i<actions.length;i+=1){
+      const action=actions[i];
+      const result=await win.webContents.executeJavaScript(scenarioActionScript(action),true);
+      steps.push(Object.assign({index:i},result||{}));
+      await new Promise(r=>setTimeout(r,Math.max(20,Math.min(500,Number(action.waitAfter)||90))));
+      if(!result||!result.ok)break;
+    }
+    const audit=await win.webContents.executeJavaScript('('+browserResponsiveAudit.toString()+')()',true);
+    return {
+      config:cfg,
+      ok:steps.length===actions.length&&steps.every(x=>x.ok),
+      steps,
+      issues:audit&&audit.issues||[],
+      diagnostics:audit&&audit.diagnostics||{},
+      finalUrl:await win.webContents.getURL()
+    };
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('scenario:replay',async (_event,payload)=>{
+  const source=payload&&payload.source,actions=Array.isArray(payload&&payload.actions)?payload.actions.slice(0,160):[];
+  if(!source||!source.url)return {ok:false,error:'Source requise.',results:[]};
+  if(!actions.length)return {ok:false,error:'Scénario vide.',results:[]};
+  const configs=[
+    {name:'phone',width:412,height:915},
+    {name:'tablet',width:768,height:1024},
+    {name:'desktop',width:1366,height:768}
+  ];
+  const results=[];
+  try{
+    for(const cfg of configs)results.push(await replayScenarioAtConfig(source,payload&&payload.css,actions,cfg));
+    return {
+      ok:true,
+      results,
+      summary:{
+        tested:results.length,
+        failed:results.filter(x=>!x.ok||(x.issues||[]).some(y=>y.type==='overflow-x'||y.type==='text-clipped')).length,
+        failedSteps:results.reduce((n,x)=>n+x.steps.filter(s=>!s.ok).length,0),
+        layoutIssues:results.reduce((n,x)=>n+(x.issues||[]).filter(y=>y.type==='overflow-x'||y.type==='text-clipped').length,0)
+      }
+    };
+  }catch(error){return {ok:false,error:'Relecture du scénario impossible : '+String(error&&error.message||error),results}}
+});
+
+function focusSelectorScript(){
+  return "(function(){var el=document.activeElement;if(!el||el===document.body)return '';if(el.id)return '#'+CSS.escape(el.id);var p=[],n=el,g=0;while(n&&n.nodeType===1&&n!==document.body&&g++<6){var s=n.tagName.toLowerCase();var c=Array.from(n.classList||[]).find(function(x){return !/^ve-/.test(x)});if(c)s+='.'+CSS.escape(c);p.unshift(s);n=n.parentElement;}return p.join(' > ');})()";
+}
+
+async function keyboardAccessibilityAudit(source,css){
+  const win=await scenarioWindow(source,css,412,915);
+  try{
+    const initial=await win.webContents.executeJavaScript(`(function(){
+      var nodes=Array.from(document.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex],[contenteditable="true"]'));
+      var visible=nodes.filter(function(el){var cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>0&&r.height>0&&!el.disabled&&Number(el.getAttribute('tabindex')||0)>=0});
+      var positive=visible.filter(function(el){return Number(el.getAttribute('tabindex')||0)>0}).length;
+      var modal=Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"],dialog[open]')).find(function(el){var r=el.getBoundingClientRect(),cs=getComputedStyle(el);return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>0&&r.height>0});
+      return {focusable:visible.length,positiveTabindex:positive,modal:!!modal};
+    })()`);
+    const maxTabs=Math.min(80,Math.max(1,Number(initial.focusable)||1)+3),sequence=[];
+    for(let i=0;i<maxTabs;i+=1){
+      win.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
+      win.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
+      await new Promise(r=>setTimeout(r,24));
+      const selector=await win.webContents.executeJavaScript(focusSelectorScript(),true);
+      sequence.push(selector||'(body)');
+      if(i>2&&selector&&selector===sequence[0])break;
+    }
+    const focusChecks=await win.webContents.executeJavaScript(`(function(){
+      var el=document.activeElement,cs=el&&el!==document.body?getComputedStyle(el):null;
+      var modal=Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"],dialog[open]')).find(function(x){var r=x.getBoundingClientRect(),s=getComputedStyle(x);return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0});
+      return {
+        activeInsideModal:!modal||!!(el&&modal.contains(el)),
+        focusVisibleStyle:!cs||cs.outlineStyle!=='none'||parseFloat(cs.outlineWidth||0)>0||String(cs.boxShadow||'none')!=='none'
+      };
+    })()`);
+    let reducedMotion={supported:false,violations:0};
+    try{
+      win.webContents.debugger.attach('1.3');
+      await win.webContents.debugger.sendCommand('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+      await new Promise(r=>setTimeout(r,70));
+      reducedMotion=await win.webContents.executeJavaScript(`(function(){
+        var mq=matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var bad=0;
+        Array.from(document.querySelectorAll('*')).slice(0,900).forEach(function(el){
+          var cs=getComputedStyle(el),ad=cs.animationDuration.split(',').map(parseFloat),td=cs.transitionDuration.split(',').map(parseFloat);
+          if((ad.some(function(x){return x>.1})&&cs.animationName!=='none')||td.some(function(x){return x>.3}))bad++;
+        });
+        return {supported:mq,violations:bad};
+      })()`);
+    }catch(_){}
+    finally{try{if(win.webContents.debugger.isAttached())win.webContents.debugger.detach()}catch(_){}}
+    const unique=Array.from(new Set(sequence.filter(Boolean)));
+    const stuck=initial.focusable>1&&unique.length<=1;
+    const issues=[];
+    if(initial.positiveTabindex)issues.push({type:'positive-tabindex',count:initial.positiveTabindex,message:'tabindex positif détecté.'});
+    if(stuck)issues.push({type:'focus-stuck',count:1,message:'La touche Tab ne fait pas progresser le focus.'});
+    if(focusChecks&&!focusChecks.activeInsideModal)issues.push({type:'focus-trap',count:1,message:'Le focus est sorti d’une boîte de dialogue modale.'});
+    if(focusChecks&&!focusChecks.focusVisibleStyle)issues.push({type:'focus-invisible',count:1,message:'Le focus actif ne présente ni outline ni box-shadow visible.'});
+    if(reducedMotion&&reducedMotion.supported&&reducedMotion.violations)issues.push({type:'reduced-motion',count:reducedMotion.violations,message:'Animations/transitions longues encore actives avec prefers-reduced-motion: reduce.'});
+    return {ok:true,focusable:initial.focusable,sequence:sequence.slice(0,80),reducedMotion,issues};
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('accessibility:keyboard-audit',async (_event,payload)=>{
+  try{return await keyboardAccessibilityAudit(payload&&payload.source,payload&&payload.css)}
+  catch(error){return {ok:false,error:'Audit clavier impossible : '+String(error&&error.message||error),issues:[]}}
+});
+
+async function smokeCascadeFixtures(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-cascade-smoke-'));
+  try{
+    const htmlPath=path.join(root,'index.html'),cssPath=path.join(root,'styles.css');
+    fs.writeFileSync(htmlPath,'<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body><button id="target" class="item primary">Test</button></body></html>','utf8');
+    const css=[
+      '.item { width: 100px; color: black; }',
+      '@layer base { .item { width: 110px; color: navy; } }',
+      '@media (max-width: 599px) { .item { width: 120px; color: red; } }',
+      '@media (min-width: 600px) { @layer components { .item { width: 130px; color: blue; } } }'
+    ].join('\n');
+    fs.writeFileSync(cssPath,css,'utf8');
+    const server=serveStatic(root),base=await listen(server);
+    try{
+      const source={type:'folder',path:root,root,entry:'index.html',url:base+'/index.html',label:'cascade fixture'};
+      const generated='.item { width: 140px; color: green; }';
+      const phone=directSourceCandidate(source,'.item',generated,'.item',base+'/styles.css',['width'],'@media (max-width: 599px)');
+      if(!phone.ok||!phone.contextMatched||!phone.after.includes('@media (max-width: 599px)'))throw new Error('Ciblage @media téléphone échoué.');
+      const desktop=directSourceCandidate(source,'.item',generated,'.item',base+'/styles.css',['width'],'@media (min-width: 600px) · @layer components');
+      if(!desktop.ok||!desktop.contextMatched||!desktop.matchedContext.includes('@layer components'))throw new Error('Ciblage @media/@layer échoué.');
+      const propertyOnly=directSourceCandidate(source,'.item',generated,'.item',base+'/styles.css',['color'],'');
+      if(!propertyOnly.ok||Object.keys(propertyOnly.properties).join(',')!=='color')throw new Error('Filtrage propriété du diff échoué.');
+      return {ok:true,media:true,layer:true,propertyFilter:true};
+    }finally{await closeHttpServer(server)}
+  }finally{try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}}
+}
+if(smokeMode)ipcMain.handle('smoke:cascade-fixtures',async ()=>smokeCascadeFixtures());
+
 ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
   const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
   try{return await runMatrixForSource(source,payload.css)}
