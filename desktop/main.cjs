@@ -515,11 +515,16 @@ function sourceLocatorKey(selector){
   return 's-'+crypto.createHash('sha1').update(String(selector||'')).digest('hex').slice(0,14);
 }
 
-function buildSourceLocators(selectors,nodes,patches){
+function buildSourceLocators(selectors,nodes,patches,prototypeLinks){
   const all=[];
   (Array.isArray(selectors)?selectors:[]).forEach(selector=>all.push(String(selector||'')));
   (Array.isArray(nodes)?nodes:[]).forEach(item=>{if(item&&item.parentSelector)all.push(String(item.parentSelector))});
   (Array.isArray(patches)?patches:[]).forEach(item=>{if(item&&item.selector)all.push(String(item.selector))});
+  const links=prototypeLinks&&typeof prototypeLinks==='object'?prototypeLinks:{};
+  Object.keys(links).forEach(sourceSelector=>{
+    all.push(String(sourceSelector||''));
+    if(links[sourceSelector]&&links[sourceSelector].target)all.push(String(links[sourceSelector].target));
+  });
   return Array.from(new Set(all.filter(selector=>
     selector&&selector!==':root'&&!selector.startsWith('[data-ais-clone-id=')
   ))).map(selector=>({selector,key:sourceLocatorKey(selector)}));
@@ -536,7 +541,7 @@ function rewriteGeneratedCss(css,locators){
   return output;
 }
 
-function generatedStructureScript(nodes,patches,locators){
+function generatedStructureScript(nodes,patches,locators,prototypeLinks){
   const locatorList=Array.isArray(locators)?locators:[];
   const keyBySelector=new Map(locatorList.map(item=>[String(item.selector||''),String(item.key||'')]));
 
@@ -562,12 +567,25 @@ function generatedStructureScript(nodes,patches,locators){
     accessibilityLabel:String(item&&item.accessibilityLabel||'')
   })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted));
 
+  const cleanPrototypeLinks=Object.keys(prototypeLinks&&typeof prototypeLinks==='object'?prototypeLinks:{}).map(sourceSelector=>{
+    const link=prototypeLinks[sourceSelector]||{};
+    const targetSelector=String(link.target||'').trim();
+    return {
+      sourceSelector:String(sourceSelector||''),
+      sourceKey:keyBySelector.get(String(sourceSelector||''))||'',
+      targetSelector,
+      targetKey:keyBySelector.get(targetSelector)||'',
+      trigger:String(link.trigger||'click')
+    };
+  }).filter(item=>item.sourceSelector&&item.targetSelector&&item.trigger==='click');
+
   return [
     '/* Généré par App Interface Studio — structure réversible. */',
     '(function(){',
     '  const locators='+JSON.stringify(cleanLocators)+';',
     '  const nodes='+JSON.stringify(cleanNodes)+';',
     '  const patches='+JSON.stringify(cleanPatches)+';',
+    '  const prototypeLinks='+JSON.stringify(cleanPrototypeLinks)+';',
     '  function sourceByKey(key){',
     '    if(!key)return null;',
     '    return document.querySelector("[data-ais-source-key=\\\""+key+"\\\"]");',
@@ -613,6 +631,30 @@ function generatedStructureScript(nodes,patches,locators){
     '      }',
     '    });',
     '  }',
+    '  let prototypeRunning=false;',
+    '  function resolveTarget(key,selector){',
+    '    let element=sourceByKey(key);',
+    '    if(!element){try{element=document.querySelector(selector)}catch(_){return null}}',
+    '    return element;',
+    '  }',
+    '  function onPrototypeClick(event){',
+    '    if(prototypeRunning)return;',
+    '    for(const item of prototypeLinks){',
+    '      const source=resolveTarget(item.sourceKey,item.sourceSelector);',
+    '      if(!source||!(event.target===source||source.contains(event.target)))continue;',
+    '      const target=resolveTarget(item.targetKey,item.targetSelector);',
+    '      if(!target)return;',
+    '      prototypeRunning=true;',
+    '      try{',
+    '        if(target.scrollIntoView)target.scrollIntoView({behavior:"smooth",block:"center"});',
+    '        if(target.click&&target!==source&&/button|a|input/i.test(target.tagName))target.click();',
+    '        if(target.animate)target.animate([{outline:"3px solid #6f49f5"},{outline:"0 solid transparent"}],{duration:700});',
+    '      }finally{setTimeout(function(){prototypeRunning=false},0)}',
+    '      event.preventDefault();',
+    '      return;',
+    '    }',
+    '  }',
+    '  if(prototypeLinks.length)document.addEventListener("click",onPrototypeClick,true);',
     '  function start(){apply();setTimeout(apply,0);}',
     '  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});',
     '  else start();',
@@ -639,6 +681,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
   const domPatches=Array.isArray(payload&&payload.domPatches)?payload.domPatches:[];
   const sourceSelectors=Array.isArray(payload&&payload.sourceSelectors)?payload.sourceSelectors:[];
+  const prototypeLinks=payload&&payload.prototypeLinks&&typeof payload.prototypeLinks==='object'?payload.prototypeLinks:{};
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
   if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
@@ -655,7 +698,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
     let html=originalHtml;
     let cssApplied=false;
     let structureApplied=false;
-    const sourceLocators=generatedNodes.length?buildSourceLocators(sourceSelectors,generatedNodes,domPatches):[];
+    const sourceLocators=generatedNodes.length?buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks):[];
     const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
 
     if(stableCss&&stableCss!=='/* Aucun ajustement. */'){
@@ -670,8 +713,8 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       cssApplied=true;
     }
 
-    if(generatedNodes.length||domPatches.length||sourceLocators.length){
-      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches,sourceLocators),'utf8');
+    if(generatedNodes.length||domPatches.length||sourceLocators.length||Object.keys(prototypeLinks).length){
+      fs.writeFileSync(jsPath,generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks),'utf8');
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
@@ -698,6 +741,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       generatedCount:generatedNodes.length,
       domPatchCount:domPatches.length,
       locatorCount:sourceLocators.length,
+      prototypeCount:Object.keys(prototypeLinks).length,
       cssApplied,
       structureApplied
     };
