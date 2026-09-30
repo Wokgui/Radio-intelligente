@@ -593,8 +593,8 @@ if(!normalLargeWcag.large||normalLargeWcag.aa!==3)throw new Error("WCAG 24px lar
 expect(engine,"function selectedContrastPayload(element)","selected text live contrast payload");
 expect(engine,"contrast: selectedContrastPayload(selected)","selected contrast state export");
 expect(html,'id="selectedContrastStatus"',"selected contrast status UI");
-expect(html,"function renderSelectedContrast(contrast)","selected contrast renderer");
-expect(html,"renderSelectedContrast(p.selected?p.contrast:null)","selected contrast state binding");
+expect(html,"function renderSelectedContrast(contrast,interactiveState)","selected contrast renderer");
+expect(html,"renderSelectedContrast(p.selected?p.contrast:null,p.interactiveState)","selected contrast state binding");
 expect(html,"Contraste '+ratio.toFixed(2)+':1","selected contrast ratio display");
 expect(html,"AA '+(contrast.passesAA?'✓':'✗')","selected contrast AA result");
 expect(html,"AAA '+(contrast.passesAAA?'✓':'✗')","selected contrast AAA result");
