@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   adbStatus: () => ipcRenderer.invoke('adb:status'),
   adbScreenshot: payload => ipcRenderer.invoke('adb:screenshot', payload || {}),
   pickReferenceImage: () => ipcRenderer.invoke('reference:pick-image'),
+  pickAssetImage: () => ipcRenderer.invoke('asset:pick-image'),
   previewPatch: payload => ipcRenderer.invoke('source:preview-patch', payload),
   applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload),
   rollbackLastPatch: payload => ipcRenderer.invoke('source:rollback-last-patch', payload),
