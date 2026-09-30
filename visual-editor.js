@@ -76,6 +76,8 @@
   let resizeDrag = null;
   let marqueeDrag = null;
   let marqueeMode = false;
+  let spaceHeld = false;
+  let canvasPan = null;
   let grid = 1;
   let smartGuidesEnabled = true;
   let keyboardCommitTimer = null;
@@ -2676,7 +2678,11 @@
     active = false;
     drag = null;
     resizeDrag = null;
-    document.body.classList.remove('ve-active');
+    marqueeDrag = null;
+    canvasPan = null;
+    spaceHeld = false;
+    marqueeBox.style.display = 'none';
+    document.body.classList.remove('ve-active','ve-space-pan','ve-canvas-panning');
     outline.style.display = 'none';
     constraintBadge.style.display = 'none';
     clearAltMeasure();
@@ -2689,6 +2695,12 @@
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (spaceHeld) {
+      canvasPan={pointerId:event.pointerId,x:event.clientX,y:event.clientY};
+      document.body.classList.add('ve-canvas-panning');
+      emit('canvas-pan-start',{});
+      return;
+    }
     if (marqueeMode || event.ctrlKey || event.metaKey) {
       startMarquee(event);
       return;
@@ -2711,6 +2723,15 @@
 
   window.addEventListener('pointermove', function (event) {
     if (!active) return;
+    if (canvasPan && event.pointerId===canvasPan.pointerId) {
+      event.preventDefault();
+      const dx=event.clientX-canvasPan.x;
+      const dy=event.clientY-canvasPan.y;
+      canvasPan.x=event.clientX;
+      canvasPan.y=event.clientY;
+      emit('canvas-pan',{dx:dx,dy:dy});
+      return;
+    }
     if (updateMarquee(event)) { event.preventDefault(); return; }
     if (!drag || event.pointerId !== drag.pointerId || !selected) return;
     event.preventDefault();
@@ -2771,6 +2792,14 @@
 
   window.addEventListener('pointerup', function (event) {
     if (!active) return;
+    if (canvasPan && event.pointerId===canvasPan.pointerId) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      canvasPan=null;
+      document.body.classList.remove('ve-canvas-panning');
+      emit('canvas-pan-end',{});
+      return;
+    }
     if (finishMarquee(event)) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -2854,6 +2883,14 @@
     const key = event.key;
     const modifier = event.ctrlKey || event.metaKey;
 
+    if (key === ' ' && !modifier && !event.altKey) {
+      event.preventDefault();
+      spaceHeld = true;
+      document.body.classList.add('ve-space-pan');
+      emit('canvas-pan-ready',{active:true});
+      return true;
+    }
+
     if (modifier && key.toLowerCase() === 'z') {
       event.preventDefault();
       if (event.shiftKey) redo();
@@ -2910,9 +2947,24 @@
   }, true);
 
   window.addEventListener('keyup', function (event) {
-    if (!active || !event.key.startsWith('Arrow')) return;
+    if (!active) return;
+    if (event.key === ' ') {
+      spaceHeld=false;
+      canvasPan=null;
+      document.body.classList.remove('ve-space-pan','ve-canvas-panning');
+      emit('canvas-pan-ready',{active:false});
+      emit('canvas-pan-end',{});
+      return;
+    }
+    if (!event.key.startsWith('Arrow')) return;
     flushKeyboardCommit();
   }, true);
+
+  window.addEventListener('wheel', function(event){
+    if(!active || !(event.ctrlKey || event.metaKey)) return;
+    event.preventDefault();
+    emit('canvas-zoom',{delta:event.deltaY<0?0.1:-0.1});
+  }, {capture:true,passive:false});
 
   window.addEventListener('resize', function () {
     if (responsiveResizeTimer) clearTimeout(responsiveResizeTimer);
