@@ -111,7 +111,9 @@ expect(html,'id="layerSearch"','layer search');
 expect(html,'<option value="fit">Ajuster à l’écran</option>','fit zoom');
 expect(html,"RECOVERY_KEY='app-interface-studio.recovery.v1'","automatic recovery storage");
 expect(html,'id="restoreRecoveryBtn"','recovery restore button');
-expect(html,"projectResolver||prefs.autoRecovery===false","recovery/manual-save collision guard");
+expect(html,"var projectRequestPromise=null","shared project request state");
+expect(html,"if(projectRequestPromise)return projectRequestPromise","serialized project request reuse");
+expect(html,"return project?JSON.parse(JSON.stringify(project)):null","isolated project copies");
 expect(html,"openCommandPalette","command palette logic");
 expect(html,'id="smartGuidesPref"','smart guides preference');
 expect(html,'data-selection-nav="parent"','selection parent navigation button');
@@ -252,6 +254,14 @@ expect(html,"event.altKey&&event.shiftKey&&lower==='h'","horizontal guide keyboa
 expect(html,"Alt+M","spacing shortcut command");
 expect(html,"Alt+Maj+V","vertical guide command");
 expect(html,"Alt+Maj+H","horizontal guide command");
+expect(html,"var commandActiveIndex=0","command palette active index");
+expect(html,"var filteredCommands=[]","command palette filtered state");
+expect(html,"function moveCommandActive(delta)","command palette arrow navigation");
+expect(html,"function runActiveCommand()","command palette enter execution");
+expect(html,"if(e.key==='ArrowDown')","command palette down key");
+expect(html,"if(e.key==='ArrowUp')","command palette up key");
+expect(html,"if(e.key==='Enter')","command palette enter key");
+expect(html,".command-item.active","command palette active styling");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -259,4 +269,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.13 feature checks passed.');
+console.log('App Interface Studio 6.14 feature checks passed.');
