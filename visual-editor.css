@@ -239,6 +239,17 @@ body.ve-active .ve-drag-measure{
   font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
   box-shadow:0 6px 18px #0004;white-space:nowrap
 }
+body.ve-active .ve-spacing-line,
+body.ve-active .ve-spacing-label{
+  position:fixed;z-index:2147483646;display:none;pointer-events:none
+}
+body.ve-active .ve-spacing-line{background:#ff8a00;box-shadow:0 0 0 1px #fff9}
+body.ve-active .ve-spacing-line.horizontal{height:1px}
+body.ve-active .ve-spacing-line.vertical{width:1px}
+body.ve-active .ve-spacing-label{
+  z-index:2147483647;padding:3px 5px;border-radius:6px;background:#ff8a00;color:#fff;
+  font:850 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap
+}
 [data-ais-isolation-hidden="1"]{
   visibility:hidden!important;
   pointer-events:none!important;
