@@ -1026,7 +1026,7 @@ async function applyLocalPatch(payload){
     return {ok:false,error:'Le code local est déjà synchronisé avec le projet.'};
   }
 
-  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-')+'-'+crypto.randomBytes(3).toString('hex');
   const htmlBackupPath=path.join(plan.dir,path.basename(plan.local.html)+'.ais-backup-'+stamp);
   const cssBackup=optionalFileBackup(plan.cssPath,stamp);
   const jsBackup=optionalFileBackup(plan.jsPath,stamp);
@@ -1296,15 +1296,36 @@ async function smokeTransactionRoundtrip(){
     if(renderedAfter.iconStroke!=='rgb(255, 0, 170)')throw new Error('Teinte SVG non rendue : '+renderedAfter.iconStroke);
     if(!renderedAfter.generatedCss||!renderedAfter.generatedJs)throw new Error('Balises générées non chargées.');
 
-    const rolled=await rollbackLocalPatch({source});
-    if(!rolled.ok)throw new Error(rolled.error||'Rollback transactionnel échoué.');
+    const payload2=Object.assign({},payload,{
+      css:'#title { color: rgb(4, 5, 6) !important; }',
+      domPatches:[
+        {selector:'#title',textAdjusted:true,textContent:'Changed again'},
+        {selector:'#cover',mediaAdjusted:true,mediaKind:'img',mediaAssetPath:assetPath,mediaName:'fixture.png',mediaFit:'cover',mediaPositionX:10,mediaPositionY:90},
+        {selector:'#icon',svgTintAdjusted:true,svgTintColor:'#00aaff',svgTintMode:'stroke'}
+      ]
+    });
+    const applied2=await applyLocalPatch(payload2);
+    if(!applied2.ok)throw new Error(applied2.error||'Deuxième application transactionnelle échouée.');
+    if(path.resolve(applied2.transactionPath)===path.resolve(applied.transactionPath))throw new Error('Collision de fichiers de transaction.');
+    const tx2=JSON.parse(fs.readFileSync(applied2.transactionPath,'utf8'));
+    if(!Array.isArray(tx2.createdAssets)||tx2.createdAssets.length!==0)throw new Error('Le deuxième patch ne doit pas dupliquer un asset déjà copié.');
+
+    const renderedSecond=await inspectSmokeFixture(url);
+    if(renderedSecond.text!=='Changed again')throw new Error('Deuxième texte appliqué non rendu.');
+    if(renderedSecond.titleColor!=='rgb(4, 5, 6)')throw new Error('Deuxième CSS non rendu : '+renderedSecond.titleColor);
+    if(renderedSecond.iconStroke!=='rgb(0, 170, 255)')throw new Error('Deuxième teinte SVG non rendue : '+renderedSecond.iconStroke);
+
+    const historyBefore=listLocalTransactions({source});
+    if(!historyBefore.ok||historyBefore.transactions.filter(item=>!item.rolledBack).length!==2||path.resolve(historyBefore.nextRollbackPath)!==path.resolve(applied2.transactionPath))throw new Error('Historique transactionnel incohérent avant rollback ciblé.');
+
+    const rolled=await rollbackThroughLocalTransaction({source,transactionPath:applied.transactionPath});
+    if(!rolled.ok||rolled.count!==2)throw new Error(rolled.error||'Rollback ciblé de deux transactions échoué.');
     if(fs.readFileSync(htmlPath,'utf8')!==original)throw new Error('HTML non restauré exactement.');
     if(fs.existsSync(cssPath)||fs.existsSync(jsPath))throw new Error('Fichiers générés non supprimés au rollback.');
     if(tx.createdAssets.some(file=>fs.existsSync(file)))throw new Error('Asset créé non supprimé au rollback.');
-    const rolledTx=JSON.parse(fs.readFileSync(rolled.transactionPath,'utf8'));
-    if(rolledTx.rolledBack!==true||!rolledTx.rolledBackAt)throw new Error('Transaction non marquée comme annulée.');
+
     const history=listLocalTransactions({source});
-    if(!history.ok||history.transactions.length!==1||history.transactions[0].rolledBack!==true||history.nextRollbackPath)throw new Error('Historique transactionnel incohérent après rollback.');
+    if(!history.ok||history.transactions.length!==2||history.transactions.some(item=>!item.rolledBack)||history.nextRollbackPath)throw new Error('Historique transactionnel incohérent après rollback ciblé.');
 
     const renderedRollback=await inspectSmokeFixture(url);
     if(renderedRollback.text!=='Original')throw new Error('Texte non restauré après rollback.');
@@ -1312,7 +1333,7 @@ async function smokeTransactionRoundtrip(){
     if(renderedRollback.iconStroke!=='rgb(34, 34, 34)')throw new Error('SVG non restauré après rollback : '+renderedRollback.iconStroke);
     if(renderedRollback.generatedCss||renderedRollback.generatedJs)throw new Error('Balises générées encore présentes après rollback.');
 
-    return {ok:true,preview:true,apply:true,render:true,rollback:true,history:true,asset:true,svg:true};
+    return {ok:true,preview:true,apply:true,render:true,rollback:true,rollbackThrough:true,history:true,asset:true,svg:true};
   }finally{
     await closeHttpServer(fixtureServer);
     try{fs.rmSync(dir,{recursive:true,force:true})}catch(_){}
