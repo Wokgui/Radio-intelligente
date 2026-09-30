@@ -323,6 +323,11 @@ expect(html,"Maj</kbd> pendant un glisser verrouille l’axe X/Y","axis lock hel
 expect(html,"Échap</kbd> annule un déplacement/redimensionnement en cours","interaction cancel help");
 expect(html,"post('interaction-cancel')","host escape cancel");
 expect(html,"data.type==='interaction-cancelled'","interaction cancel host feedback");
+expect(engine,"const fromCenter=!!event.altKey","center resize modifier");
+expect(engine,"if(fromCenter)right=start.right-dx","horizontal center resize");
+expect(engine,"if(fromCenter)bottom=start.bottom-dy","vertical center resize");
+expect(engine,"fromCenter?' · centre':''","center resize HUD");
+expect(html,"Alt</kbd> sur une poignée redimensionne depuis le centre","center resize help");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -330,4 +335,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.21 feature checks passed.');
+console.log('App Interface Studio 6.22 feature checks passed.');
