@@ -1140,7 +1140,8 @@ body.desktop .desktop-badge{display:inline-flex}
       <button class="btn primary" id="exportChatGPTBtn2" style="width:100%;margin-top:7px">Exporter un fichier prêt pour ChatGPT</button>
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
       <button class="btn" id="applySourceBtn" style="width:100%;margin-top:7px">Appliquer au code local (réversible)</button>
-      <p>Le fichier projet conserve la source de l’application et les réglages exacts. L’export ChatGPT ajoute les instructions nécessaires pour reporter proprement ces choix dans le code source correspondant.</p>
+      <button class="btn danger" id="rollbackSourceBtn" style="width:100%;margin-top:7px">Annuler le dernier patch local</button>
+      <p>Chaque application locale crée une transaction avec sauvegarde de l’HTML et des patchs générés précédents. Les annulations peuvent être répétées pour remonter plusieurs applications.</p>
     </section>
 
     <section class="card">
@@ -1404,7 +1405,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.28.0'};
+      project.studio={name:'App Interface Studio',version:'6.29.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2629,6 +2630,18 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
 
+  async function rollbackLastLocalPatch(){
+    if(!desktop||!desktop.rollbackLastPatch){setStatus('Fonction disponible dans l’application Windows.',true);return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre une source HTML locale avant d’annuler un patch.',true);return}
+    if(!confirm('Restaurer l’état précédant le dernier patch App Interface Studio pour cette source ?'))return;
+    var result=await desktop.rollbackLastPatch({source:currentSource});
+    if(!result||!result.ok){setStatus((result&&result.error)||'Annulation du patch impossible.',true);return}
+    setStatus('Dernier patch local annulé · transaction : '+result.transactionPath);
+    try{frame.contentWindow.location.reload()}catch(_){}
+    multiFrames.forEach(function(rec){try{rec.iframe.contentWindow.location.reload()}catch(_){}});
+  }
+
+
   function renderSelectionGroups(items){
     selectionGroupList.innerHTML='';
     items=Array.isArray(items)?items:[];
@@ -2801,7 +2814,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.28.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.29.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2851,7 +2864,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.28.0'};
+    project.studio={name:'App Interface Studio',version:'6.29.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2909,7 +2922,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.28.0'};
+    project.studio={name:'App Interface Studio',version:'6.29.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -3018,6 +3031,7 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Réparer avec aperçu',hint:'',run:function(){post('repair-suggest');repairModal.classList.add('visible')}},
     {label:'Flow de navigation',hint:'',run:openFlow},
     {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
+    {label:'Annuler le dernier patch local',hint:'',run:rollbackLastLocalPatch},
     {label:'Mode sélection rectangle',hint:'Ctrl+glisser',run:function(){setMarqueeModeHost(!marqueeModeActive)}},
     {label:'Isoler / quitter l’isolation',hint:'',run:function(){post('isolate-selection',{active:!isolationActiveHost})}},
     {label:'Créer un groupe avec la sélection',hint:'',run:function(){post('selection-group-create',{name:selectionGroupName.value})}},
@@ -3560,6 +3574,7 @@ body.desktop .desktop-badge{display:inline-flex}
     compareStatus.textContent='Comparaison retirée.';
   });
   document.getElementById('applySourceBtn').addEventListener('click',applyToLocalSource);
+  document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
   document.getElementById('prepareDirectEditBtn').addEventListener('click',prepareDirectSourceEdit);
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
