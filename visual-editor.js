@@ -2789,6 +2789,34 @@
     return path;
   }
 
+  function selectedContrastPayload(element){
+    if(!element||element.children.length!==0||!String(element.textContent||'').trim())return {available:false};
+    const cs=getComputedStyle(element);
+    const fg=parseRgb(cs.color),bgInfo=resolvedBackground(element);
+    if(!fg||!bgInfo||!bgInfo.color)return {available:false};
+    const threshold=wcagTextThreshold(parseFloat(cs.fontSize),cs.fontWeight);
+    if(bgInfo.complex){
+      return {
+        available:true,uncertain:true,
+        aaMinimum:threshold.aa,aaaMinimum:threshold.aaa,largeText:threshold.large,
+        fontSize:parseFloat(cs.fontSize)||0,fontWeight:cs.fontWeight||''
+      };
+    }
+    const bg=bgInfo.color;
+    const effectiveFg=fg.a<1?compositeRgb(fg,bg):fg;
+    const ratio=contrastRatio(effectiveFg,bg);
+    return {
+      available:true,uncertain:false,
+      ratio:Math.round(ratio*100)/100,
+      aaMinimum:threshold.aa,aaaMinimum:threshold.aaa,
+      passesAA:ratio>=threshold.aa,
+      passesAAA:ratio>=threshold.aaa,
+      largeText:threshold.large,
+      fontSize:parseFloat(cs.fontSize)||0,
+      fontWeight:cs.fontWeight||''
+    };
+  }
+
   function mediaAssetSummary(){
     const byPath=new Map();
     touched.forEach(function(state){
@@ -2854,6 +2882,7 @@
       mediaPositionX: mediaPercent(state.mediaPositionX,50),
       mediaPositionY: mediaPercent(state.mediaPositionY,50),
       mediaAssets: mediaAssetSummary(),
+      contrast: selectedContrastPayload(selected),
       svgEditable: mediaKindForElement(selected)==='svg'&&!state.mediaAdjusted,
       svgTintAdjusted: !!state.svgTintAdjusted,
       svgTintColor: state.svgTintColor || '#000000',
