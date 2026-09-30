@@ -360,6 +360,13 @@ expect(html,"generatedNodes=project&&project.snapshot","Git structural patch pay
 expect(html,"structure : '+result.jsPath","structural patch host feedback");
 expect(preload,"applyCssToSource: payload => ipcRenderer.invoke('source:apply-css', payload)","structural patch bridge");
 if(html.includes("ne les injecte pas encore"))throw new Error("Legacy structural limitation warning still present");
+expect(main,"const patches=","generated DOM patch payload");
+expect(main,"if(item.textAdjusted)element.textContent=item.textContent;","generated text patch");
+expect(main,'element.setAttribute("aria-label",item.accessibilityLabel)',"generated accessibility patch");
+expect(main,"function start(){apply();setTimeout(apply,0);}","post-DOMContentLoaded patch reapply");
+expect(html,"function projectDomPatches(project)","project DOM patch extraction");
+expect(html,"domPatches:domPatches","local DOM patch payload");
+expect(html,"modification(s) DOM","DOM patch host feedback");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -367,4 +374,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.25 feature checks passed.');
+console.log('App Interface Studio 6.26 feature checks passed.');
