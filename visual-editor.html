@@ -1265,7 +1265,10 @@ body.desktop .desktop-badge{display:inline-flex}
       <button class="btn" id="copyChatGPTBtn" style="width:100%;margin-top:7px">Copier le projet pour ChatGPT</button>
       <button class="btn" id="applySourceBtn" style="width:100%;margin-top:7px">Appliquer au code local (réversible)</button>
       <button class="btn danger" id="rollbackSourceBtn" style="width:100%;margin-top:7px">Annuler le dernier patch local</button>
-      <p>Chaque application locale crée une transaction avec sauvegarde de l’HTML et des patchs générés précédents. Les annulations peuvent être répétées pour remonter plusieurs applications.</p>
+      <div class="toolbar" style="margin-top:7px"><button class="btn wide" id="refreshTransactionsBtn">Actualiser l’historique des patches</button></div>
+      <div class="compare-status" id="transactionHistoryStatus">Aucune transaction chargée.</div>
+      <div class="version-list" id="transactionHistoryList"><div class="hint">Ouvre une source HTML locale pour afficher l’historique.</div></div>
+      <p>Chaque application locale crée une transaction avec sauvegarde de l’HTML et des patchs générés précédents. L’historique indique clairement le prochain rollback.</p>
     </section>
 
     <section class="card">
@@ -1442,6 +1445,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var regressionStatus=document.getElementById('regressionStatus');
   var regressionDiff=document.getElementById('regressionDiff');
   var gitStatusText=document.getElementById('gitStatusText');
+  var transactionHistoryStatus=document.getElementById('transactionHistoryStatus');
+  var transactionHistoryList=document.getElementById('transactionHistoryList');
+  var rollbackSourceBtn=document.getElementById('rollbackSourceBtn');
   var patchPreviewModal=document.getElementById('patchPreviewModal');
   var patchHtmlDiff=document.getElementById('patchHtmlDiff');
   var patchCssDiff=document.getElementById('patchCssDiff');
@@ -3001,6 +3007,57 @@ body.desktop .desktop-badge{display:inline-flex}
     syncPatchPreviewSections();
   }
 
+  function transactionPartsText(item){
+    var parts=[];
+    if(item.cssChanged||item.applyParts&&item.applyParts.css)parts.push('CSS');
+    if(item.structureChanged||item.applyParts&&item.applyParts.structure)parts.push('DOM');
+    if(item.assetCount)parts.push(item.assetCount+' asset'+(item.assetCount>1?'s':''));
+    if(item.domPatchCount)parts.push(item.domPatchCount+' modif. DOM');
+    if(item.generatedCount)parts.push(item.generatedCount+' duplication'+(item.generatedCount>1?'s':''));
+    return parts.join(' · ')||'HTML';
+  }
+
+  function renderLocalTransactions(result){
+    transactionHistoryList.innerHTML='';
+    if(!result||!result.ok){
+      transactionHistoryStatus.textContent=result&&result.error||'Historique indisponible.';
+      transactionHistoryList.innerHTML='<div class="hint">Aucune transaction disponible.</div>';
+      rollbackSourceBtn.disabled=true;
+      return;
+    }
+    var items=Array.isArray(result.transactions)?result.transactions:[];
+    var active=items.filter(function(item){return !item.rolledBack});
+    rollbackSourceBtn.disabled=!active.length;
+    transactionHistoryStatus.textContent=items.length+' transaction(s) · '+active.length+' active(s)'+(active.length?' · le patch encadré sera annulé ensuite':'');
+    if(!items.length){
+      transactionHistoryList.innerHTML='<div class="hint">Aucun patch local enregistré pour cette source.</div>';
+      return;
+    }
+    items.forEach(function(item){
+      var row=document.createElement('div');row.className='version-item';
+      if(item.path===result.nextRollbackPath)row.style.boxShadow='inset 0 0 0 1px var(--accent)';
+      var info=document.createElement('div');
+      var strong=document.createElement('strong');
+      var date=item.createdAt?new Date(item.createdAt).toLocaleString():'Date inconnue';
+      strong.textContent=(item.path===result.nextRollbackPath?'↶ Prochain rollback · ':'')+date;
+      var small=document.createElement('small');
+      small.textContent=(item.rolledBack?'Annulé':'Actif')+' · '+transactionPartsText(item)+(item.rolledBackAt?' · annulé '+new Date(item.rolledBackAt).toLocaleString():'');
+      info.append(strong,small);row.appendChild(info);transactionHistoryList.appendChild(row);
+    });
+  }
+
+  async function refreshLocalTransactions(){
+    if(!desktop||!desktop.listTransactions){
+      renderLocalTransactions({ok:false,error:'Historique disponible dans l’application Windows.'});return
+    }
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){
+      renderLocalTransactions({ok:false,error:'Historique disponible pour une source HTML locale.'});return
+    }
+    transactionHistoryStatus.textContent='Lecture de l’historique…';
+    var result=await desktop.listTransactions(currentSource);
+    renderLocalTransactions(result);
+  }
+
   async function previewLocalPatch(){
     if(!desktop||!desktop.previewPatch){setStatus('Fonction disponible dans l’application Windows.',true);return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local.',true);return}
@@ -4283,6 +4340,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('applyPatchPreviewBtn').addEventListener('click',applyPreviewedLocalPatch);
   document.getElementById('closePatchPreviewBtn').addEventListener('click',function(){patchPreviewModal.classList.remove('visible')});
   document.getElementById('rollbackSourceBtn').addEventListener('click',rollbackLastLocalPatch);
+  document.getElementById('refreshTransactionsBtn').addEventListener('click',refreshLocalTransactions);
   document.getElementById('prepareDirectEditBtn').addEventListener('click',prepareDirectSourceEdit);
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
