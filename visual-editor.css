@@ -241,6 +241,15 @@ body.ve-active .ve-constraint-badge{
   padding:4px 7px;border-radius:7px;background:#6f49f5;color:#fff;
   font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 5px 14px #2d205c33
 }
+body.ve-active .ve-constraint-line{
+  position:fixed;z-index:2147483644;display:none;pointer-events:none;
+  background:#6f49f5;opacity:.78;box-shadow:0 0 0 1px #fff8
+}
+body.ve-active .ve-constraint-line.horizontal{height:1px}
+body.ve-active .ve-constraint-line.vertical{width:1px}
+body.ve-active .ve-constraint-line.center{background:transparent;box-shadow:none;border-color:#6f49f5;border-style:dashed;opacity:.72}
+body.ve-active .ve-constraint-line.center.horizontal{border-top-width:1px}
+body.ve-active .ve-constraint-line.center.vertical{border-left-width:1px}
 body.ve-active .ve-alt-target{
   position:fixed;z-index:2147483646;display:none;pointer-events:none;
   border:2px dashed #ff4fad;background:#ff4fad0c;border-radius:4px
