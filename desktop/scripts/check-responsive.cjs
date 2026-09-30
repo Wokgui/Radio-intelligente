@@ -336,6 +336,19 @@ expect(html,"showGridOverlay:false","grid visibility preference");
 expect(html,"prefs.gridStep=Number(grid.value)||1","grid step persistence");
 expect(html,"layoutGridOverlay.classList.toggle('visible'","grid visibility application");
 expect(html,"Afficher / masquer la grille d’accrochage","grid command palette action");
+expect(engine,"let layoutGuidesX = []","column guide engine state");
+expect(engine,"data.type === 'layout-guides'","column guide engine command");
+expect(engine,"Grille de colonnes","column guide snapping labels");
+expect(html,'id="columnGridOverlay"','column grid overlay');
+expect(html,'id="columnGridToggle"','column grid toggle');
+expect(html,'id="columnGridCount"','column count control');
+expect(html,'id="columnGridMargin"','column margin control');
+expect(html,'id="columnGridGutter"','column gutter control');
+expect(html,"function columnGridGeometry()","column grid geometry");
+expect(html,"function renderColumnGrid()","column grid rendering");
+expect(html,"function applyColumnGridPreset()","column grid automatic preset");
+expect(html,"post('layout-guides'","column grid snapping feed");
+expect(html,"Afficher / masquer la grille de colonnes","column grid command palette action");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -343,4 +356,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.23 feature checks passed.');
+console.log('App Interface Studio 6.24 feature checks passed.');
