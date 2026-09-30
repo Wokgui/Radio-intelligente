@@ -2133,6 +2133,161 @@ ipcMain.handle('layout:open-project',async ()=>{
   }
 });
 
+
+function portableSafeName(value,fallback){
+  const cleaned=String(value||'').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90);
+  return cleaned||fallback||'file';
+}
+
+function portableWalkMediaPaths(value,visitor,seen){
+  if(!value||typeof value!=='object')return;
+  seen=seen||new Set();
+  if(seen.has(value))return;
+  seen.add(value);
+  if(Array.isArray(value)){
+    value.forEach(item=>portableWalkMediaPaths(item,visitor,seen));
+    return;
+  }
+  Object.keys(value).forEach(key=>{
+    if(key==='mediaAssetPath'&&typeof value[key]==='string'&&value[key])visitor(value,key,value[key]);
+    else portableWalkMediaPaths(value[key],visitor,seen);
+  });
+}
+
+function copyPortableSource(root,target){
+  const skip=new Set(['.git','node_modules','.next','dist','build','coverage','.gradle','.idea','.vscode']);
+  const stats={files:0,bytes:0,skipped:[]};
+  const maxFiles=20000,maxBytes=300*1024*1024,maxSingle=40*1024*1024;
+  function walk(src,dst){
+    if(stats.files>=maxFiles||stats.bytes>=maxBytes)return;
+    fs.mkdirSync(dst,{recursive:true});
+    let names=[];
+    try{names=fs.readdirSync(src)}catch(_){return}
+    for(const name of names){
+      if(stats.files>=maxFiles||stats.bytes>=maxBytes)break;
+      if(skip.has(name)){stats.skipped.push(path.join(src,name));continue}
+      const from=path.join(src,name),to=path.join(dst,name);
+      let stat=null;try{stat=fs.statSync(from)}catch(_){continue}
+      if(stat.isDirectory()){walk(from,to);continue}
+      if(!stat.isFile())continue;
+      if(stat.size>maxSingle||stats.bytes+stat.size>maxBytes){stats.skipped.push(from);continue}
+      fs.mkdirSync(path.dirname(to),{recursive:true});
+      fs.copyFileSync(from,to);
+      stats.files+=1;stats.bytes+=stat.size;
+    }
+  }
+  walk(root,target);
+  return stats;
+}
+
+function resolvePortableStrings(value,bundle,seen){
+  if(!value||typeof value!=='object')return;
+  seen=seen||new Set();
+  if(seen.has(value))return;
+  seen.add(value);
+  if(Array.isArray(value)){value.forEach(item=>resolvePortableStrings(item,bundle,seen));return}
+  Object.keys(value).forEach(key=>{
+    const current=value[key];
+    if(typeof current==='string'&&current.startsWith('portable://')){
+      const rel=current.slice('portable://'.length).split('/').filter(Boolean).map(decodeURIComponent);
+      const resolved=path.resolve(bundle,...rel);
+      const base=path.resolve(bundle)+path.sep;
+      if(resolved===path.resolve(bundle)||resolved.startsWith(base))value[key]=resolved;
+    }else resolvePortableStrings(current,bundle,seen);
+  });
+}
+
+ipcMain.handle('layout:export-portable',async (_event,project)=>{
+  const result=await dialog.showSaveDialog({
+    title:'Exporter un projet portable',
+    defaultPath:'interface.ais-portable',
+    filters:[{name:'Projet portable App Interface Studio',extensions:['ais-portable']}]
+  });
+  if(result.canceled||!result.filePath)return {ok:false,canceled:true};
+  const bundle=path.resolve(result.filePath);
+  const clone=JSON.parse(JSON.stringify(project||{}));
+  const temp=bundle+'.tmp-'+Date.now()+'-'+crypto.randomBytes(3).toString('hex');
+  try{
+    fs.rmSync(temp,{recursive:true,force:true});
+    fs.mkdirSync(temp,{recursive:true});
+    const assetsDir=path.join(temp,'assets');
+    fs.mkdirSync(assetsDir,{recursive:true});
+    const assetMap=new Map();
+    let assetCount=0,assetBytes=0;
+    portableWalkMediaPaths(clone,(holder,key,source)=>{
+      if(String(source).startsWith('portable://'))return;
+      const absolute=path.resolve(source);
+      if(!fs.existsSync(absolute))return;
+      let stat=null;try{stat=fs.statSync(absolute)}catch(_){return}
+      if(!stat.isFile()||stat.size>40*1024*1024)return;
+      let rel=assetMap.get(absolute);
+      if(!rel){
+        const bytes=fs.readFileSync(absolute);
+        const hash=crypto.createHash('sha1').update(bytes).digest('hex').slice(0,12);
+        const ext=path.extname(absolute).toLowerCase();
+        const name=portableSafeName(path.basename(absolute,ext),'asset')+'-'+hash+ext;
+        fs.writeFileSync(path.join(assetsDir,name),bytes);
+        rel='assets/'+encodeURIComponent(name);
+        assetMap.set(absolute,rel);assetCount+=1;assetBytes+=bytes.length;
+      }
+      holder[key]='portable://'+rel;
+    });
+
+    let sourceStats={files:0,bytes:0,skipped:[]};
+    const local=localSourceEntry(clone.source);
+    if(local&&fs.existsSync(local.root||path.dirname(local.html))){
+      const sourceRoot=path.resolve(local.root||path.dirname(local.html));
+      const sourceDir=path.join(temp,'source');
+      sourceStats=copyPortableSource(sourceRoot,sourceDir);
+      const entryRel=path.relative(sourceRoot,path.resolve(local.html)).replace(/\\/g,'/');
+      if(clone.source&&clone.source.type==='html'){
+        clone.source.root='portable://source';
+        clone.source.path='portable://source/'+entryRel.split('/').map(encodeURIComponent).join('/');
+      }else if(clone.source){
+        clone.source.path='portable://source';
+        clone.source.root='portable://source';
+        clone.source.entry=entryRel||clone.source.entry||'index.html';
+      }
+      if(clone.source)clone.source.url='';
+    }
+
+    clone.portable={
+      format:'app-interface-studio-portable',
+      version:1,
+      exportedAt:new Date().toISOString(),
+      assetCount,assetBytes,
+      sourceFiles:sourceStats.files,sourceBytes:sourceStats.bytes,
+      sourceSkipped:sourceStats.skipped.length
+    };
+    fs.writeFileSync(path.join(temp,'project.json'),JSON.stringify(clone,null,2),'utf8');
+    fs.rmSync(bundle,{recursive:true,force:true});
+    fs.renameSync(temp,bundle);
+    return {ok:true,path:bundle,assetCount,assetBytes,sourceFiles:sourceStats.files,sourceBytes:sourceStats.bytes,sourceSkipped:sourceStats.skipped.length};
+  }catch(error){
+    try{fs.rmSync(temp,{recursive:true,force:true})}catch(_){}
+    return {ok:false,error:'Export portable impossible : '+String(error&&error.message||error)};
+  }
+});
+
+ipcMain.handle('layout:import-portable',async ()=>{
+  const result=await dialog.showOpenDialog({
+    title:'Ouvrir un projet portable',
+    properties:['openDirectory']
+  });
+  if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};
+  const bundle=path.resolve(result.filePaths[0]);
+  const manifest=path.join(bundle,'project.json');
+  if(!fs.existsSync(manifest))return {ok:false,error:'Ce dossier ne contient pas project.json.'};
+  try{
+    const project=JSON.parse(fs.readFileSync(manifest,'utf8'));
+    if(!project.portable||project.portable.format!=='app-interface-studio-portable')return {ok:false,error:'Projet portable invalide.'};
+    resolvePortableStrings(project,bundle);
+    return {ok:true,path:bundle,project,portable:project.portable};
+  }catch(error){
+    return {ok:false,error:'Ouverture du projet portable impossible : '+String(error&&error.message||error)};
+  }
+});
+
 ipcMain.handle('layout:save-chatgpt',async (_event,payload)=>{
   const project=payload&&payload.project?payload.project:payload;
   const text=(payload&&payload.text)||projectPrompt(project);
