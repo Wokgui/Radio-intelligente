@@ -834,6 +834,7 @@ body.desktop .desktop-badge{display:inline-flex}
       <div style="margin-top:10px"><label class="hint">Assets déjà utilisés</label><div class="component-list" id="mediaAssetLibrary"><div class="hint">Aucun asset réutilisable dans ce projet.</div></div></div>
       <button class="btn" id="resetMediaBtn" type="button" style="width:100%;margin-top:8px">Rétablir le visuel d’origine</button>
       <div class="hint" id="mediaStatus" style="margin-top:8px">Sélectionne un objet. Une image remplace directement un &lt;img&gt;, un SVG ou le fond du bloc sélectionné.</div>
+      <p>Tu peux aussi glisser une image depuis Windows directement sur l’élément. Une fois l’image placée, déplace la cible ◎ directement dans l’aperçu pour régler le point focal.</p>
       <p>Pour une source HTML locale, l’asset est copié dans <code>app-interface-studio-assets</code> lors de l’application du patch et suit le rollback.</p>
     </section>
 
@@ -1141,7 +1142,8 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="gitStatusBtn">Vérifier Git</button>
         <button class="btn primary wide" id="gitPublishBtn">Publier branche et PR</button>
       </div>
-      <div class="compare-status" id="gitStatusText">Disponible pour une application ouverte depuis un dossier Git local.</div>
+      <button class="btn" id="cleanAssetsBtn" style="width:100%;margin-top:7px">Nettoyer les assets inutilisés</button>
+      <div class="compare-status" id="gitStatusText">Disponible pour une application ouverte depuis un dossier Git local. Le nettoyage des assets orphelins est aussi automatique avant publication.</div>
     </section>
 
     <section class="card">
@@ -3197,6 +3199,14 @@ body.desktop .desktop-badge{display:inline-flex}
     gitStatusText.textContent='Branche : '+(result.branch||'—')+' · '+(result.status?'modifications locales détectées':'propre')+(result.ghAvailable?' · GitHub CLI disponible':' · GitHub CLI absent');
   }
 
+  async function cleanGeneratedAssetsNow(){
+    if(!desktop||!desktop.cleanGeneratedAssets){gitStatusText.textContent='Nettoyage disponible dans l’application Windows.';return}
+    if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre une source HTML locale avant le nettoyage.';return}
+    var result=await desktop.cleanGeneratedAssets(currentSource);
+    if(!result||!result.ok){gitStatusText.textContent=(result&&result.error)||'Nettoyage impossible.';return}
+    gitStatusText.textContent=(result.removed||[]).length+' asset(s) inutilisé(s) supprimé(s) · '+(result.kept||[]).length+' conservé(s).';
+  }
+
   async function publishGit(){
     if(!desktop||!desktop.gitPublish){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre le dépôt en dossier/fichier HTML local pour publier.';return}
@@ -3217,7 +3227,8 @@ body.desktop .desktop-badge{display:inline-flex}
       body:'Modifications visuelles générées avec App Interface Studio 6.38.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
-    gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
+    var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
+    gitStatusText.textContent=(result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.')+cleanNote;
     if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
   }
 
@@ -3517,6 +3528,22 @@ body.desktop .desktop-badge{display:inline-flex}
   window.addEventListener('keydown',sendKeyboard,true);
   window.addEventListener('keyup',finishKeyboard,true);
 
+  async function handleDroppedMedia(payload){
+    payload=payload||{};
+    if(!desktop||!desktop.stageAssetData){setStatus('Glisser-déposer disponible dans l’application Windows.',true);return}
+    setStatus('Import de '+(payload.name||'image')+'…');
+    var staged=await desktop.stageAssetData({name:payload.name||'image',type:payload.type||'',size:payload.size||0,dataUrl:payload.dataUrl||''});
+    if(!staged||!staged.ok){setStatus((staged&&staged.error)||'Import du fichier déposé impossible.',true);return}
+    if(payload.selector)post('select-selector',{selector:payload.selector});
+    post('media-set',{
+      source:staged.dataUrl,path:staged.path,name:payload.name||staged.name||'image',
+      fit:mediaFit.value||'contain',
+      positionX:Number(mediaPositionX.value),
+      positionY:Number(mediaPositionY.value)
+    });
+    setStatus('Image déposée : '+(payload.name||staged.name||'asset')+'.');
+  }
+
   window.addEventListener('message',function(event){
     var multiRec=multiFrameRecord(event.source);
     if(event.source!==frame.contentWindow&&!multiRec)return;
@@ -3575,8 +3602,10 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='media-updated'){
       if(p.reset){mediaStatus.textContent='Visuel d’origine restauré.';setStatus('Image / icône d’origine restaurée.');}
+      else if(p.positionOnly){mediaStatus.textContent='Point focal : '+Math.round(Number(p.positionX)||0)+' % × '+Math.round(Number(p.positionY)||0)+' %.';}
       else{mediaStatus.textContent='Visuel remplacé : '+(p.name||'asset')+' · '+(p.kind||'image')+'.';setStatus('Image / icône remplacée dans l’aperçu.');}
     }
+    if(data.type==='media-drop')handleDroppedMedia(p);
     if(data.type==='media-error')setStatus(p.message||'Remplacement du visuel impossible.',true);
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
@@ -3993,6 +4022,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('compareRegressionBtn').addEventListener('click',compareRegression);
   document.getElementById('gitStatusBtn').addEventListener('click',checkGit);
   document.getElementById('gitPublishBtn').addEventListener('click',publishGit);
+  document.getElementById('cleanAssetsBtn').addEventListener('click',cleanGeneratedAssetsNow);
 
   function sendEnvironment(){
     post('environment-set',{
