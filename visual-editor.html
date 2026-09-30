@@ -1297,7 +1297,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   var PREF_KEY='app-interface-studio.preferences.v1';
   var RECOVERY_KEY='app-interface-studio.recovery.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5,customGuidesX:[],customGuidesY:[]};
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5,customGuidesX:[],customGuidesY:[],nudgeStep:1};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1321,8 +1321,9 @@ body.desktop .desktop-badge{display:inline-flex}
     autoRecovery.checked=prefs.autoRecovery!==false;
     smartGuidesPref.checked=prefs.smartGuides!==false;
     guideThresholdPref.value=String(Number(prefs.guideThreshold)||5);
+    step.value=String(Number(prefs.nudgeStep)||1);
     renderPersistentGuides();
-    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5});
+    post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5,nudgeStep:Number(prefs.nudgeStep)||1});
     post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
   }
 
@@ -1353,7 +1354,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.11.0'};
+      project.studio={name:'App Interface Studio',version:'6.12.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1776,6 +1777,28 @@ body.desktop .desktop-badge{display:inline-flex}
     applyCanvasPan();
     if(workspace){workspace.scrollLeft=0;workspace.scrollTop=0}
     setStatus('Canevas recentré.');
+  }
+
+  function zoomToSelection(){
+    if(!lastState||!lastState.selected){setStatus('Sélectionne un objet avant de zoomer dessus.',true);return}
+    var availW=Math.max(180,(workspace&&workspace.clientWidth||window.innerWidth)-150);
+    var availH=Math.max(180,(workspace&&workspace.clientHeight||window.innerHeight)-150);
+    var z=Math.min(2,Math.max(.25,Math.min(availW/Math.max(40,Number(lastState.width)||40),availH/Math.max(40,Number(lastState.height)||40))));
+    canvasPanX=0;canvasPanY=0;applyCanvasPan();
+    setRuntimeZoom(z);
+    requestAnimationFrame(function(){
+      if(!workspace)return;
+      var wr=workspace.getBoundingClientRect();
+      var dr=device.getBoundingClientRect();
+      var scale=currentZoomScale();
+      var cx=(Number(lastState.x)||0)+(Number(lastState.width)||0)/2;
+      var cy=(Number(lastState.y)||0)+(Number(lastState.height)||0)/2;
+      var screenX=dr.left-wr.left+cx*scale;
+      var screenY=dr.top-wr.top+cy*scale;
+      workspace.scrollLeft+=screenX-workspace.clientWidth/2;
+      workspace.scrollTop+=screenY-workspace.clientHeight/2;
+    });
+    setStatus('Zoom centré sur la sélection.');
   }
 
   function setDevice(){
@@ -2588,7 +2611,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.11.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.12.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2633,7 +2656,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.11.0'};
+    project.studio={name:'App Interface Studio',version:'6.12.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2691,7 +2714,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.11.0'};
+    project.studio={name:'App Interface Studio',version:'6.12.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2721,6 +2744,12 @@ body.desktop .desktop-badge{display:inline-flex}
     if(modifier&&lower==='0'){
       event.preventDefault();zoom.value='fit';setDevice();setStatus('Zoom ajusté à l’écran.');return;
     }
+    if(modifier&&lower==='1'){
+      event.preventDefault();setRuntimeZoom(1);setStatus('Zoom 100 %.');return;
+    }
+    if(modifier&&lower==='2'){
+      event.preventDefault();zoomToSelection();return;
+    }
     if(modifier&&lower==='o'){
       event.preventDefault();sourceModal.hidden=false;return;
     }
@@ -2728,6 +2757,10 @@ body.desktop .desktop-badge{display:inline-flex}
     var tag=(event.target&&event.target.tagName)||'';
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
     if(key==='?'){event.preventDefault();openCommandPalette('raccourci');return}
+    if(!modifier&&(key==='+'||key==='=')){event.preventDefault();setRuntimeZoom(currentZoomScale()+.1);return}
+    if(!modifier&&key==='-'){event.preventDefault();setRuntimeZoom(currentZoomScale()-.1);return}
+    if(modifier&&key===']'){event.preventDefault();post('selection-z',{mode:'front'});return}
+    if(modifier&&key==='['){event.preventDefault();post('selection-z',{mode:'back'});return}
     if(event.altKey&&key.indexOf('Arrow')===0){
       event.preventDefault();
       var navDirection=key==='ArrowUp'?'parent':key==='ArrowDown'?'child':key==='ArrowLeft'?'prev':'next';
@@ -2744,7 +2777,8 @@ body.desktop .desktop-badge{display:inline-flex}
     if(modifier&&key.toLowerCase()==='z'){post(event.shiftKey?'redo':'undo');return}
     if(modifier&&key.toLowerCase()==='y'){post('redo');return}
     if(key==='Delete'||key==='Backspace'){post('delete');return}
-    var amount=modifier?10:1;
+    var baseStep=Math.max(1,Number(step.value)||1);
+    var amount=baseStep*(modifier?10:1);
     if(event.shiftKey){
       if(key==='ArrowLeft')post('resize',{dw:-amount,dh:0,commit:false});
       if(key==='ArrowRight')post('resize',{dw:amount,dh:0,commit:false});
@@ -2761,7 +2795,9 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Ouvrir une application',hint:'Ctrl+O',run:function(){sourceModal.hidden=false}},
     {label:'Enregistrer le projet',hint:'Ctrl+S',run:saveProject},
     {label:'Ajuster le zoom à l’écran',hint:'Ctrl+0',run:function(){zoom.value='fit';setDevice()}},
-    {label:'Zoom avant',hint:'Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
+    {label:'Zoom 100 %',hint:'Ctrl+1',run:function(){setRuntimeZoom(1)}},
+    {label:'Zoom sur la sélection',hint:'Ctrl+2',run:zoomToSelection},
+    {label:'Zoom avant',hint:'+ / Ctrl+molette ↑',run:function(){setRuntimeZoom(currentZoomScale()+.1)}},
     {label:'Zoom arrière',hint:'Ctrl+molette ↓',run:function(){setRuntimeZoom(currentZoomScale()-.1)}},
     {label:'Recentrer le canevas',hint:'',run:resetCanvasPosition},
     {label:'Mode Édition',hint:'',run:function(){setPreviewMode('edit')}},
@@ -2780,8 +2816,8 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
     {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
     {label:'Coller',hint:'Ctrl+V',run:function(){post('selection-paste')}},
-    {label:'Mettre au premier plan',hint:'',run:function(){post('selection-z',{mode:'front'})}},
-    {label:'Mettre à l’arrière-plan',hint:'',run:function(){post('selection-z',{mode:'back'})}},
+    {label:'Mettre au premier plan',hint:'Ctrl+]',run:function(){post('selection-z',{mode:'front'})}},
+    {label:'Mettre à l’arrière-plan',hint:'Ctrl+[',run:function(){post('selection-z',{mode:'back'})}},
     {label:'Sélectionner le parent',hint:'Alt+↑',run:function(){post('navigate-selection',{direction:'parent'})}},
     {label:'Sélectionner le premier enfant',hint:'Alt+↓',run:function(){post('navigate-selection',{direction:'child'})}},
     {label:'Sélectionner le frère précédent',hint:'Alt+←',run:function(){post('navigate-selection',{direction:'prev'})}},
@@ -2973,6 +3009,11 @@ body.desktop .desktop-badge{display:inline-flex}
   customDeviceWidth.addEventListener('input',function(){screenCustomW.value=customDeviceWidth.value;if(selectedDeviceKind==='custom')setDevice()});
   customDeviceHeight.addEventListener('input',function(){screenCustomH.value=customDeviceHeight.value;if(selectedDeviceKind==='custom')setDevice()});
   grid.addEventListener('change',function(){post('grid',{grid:Number(grid.value)})});
+  step.addEventListener('change',function(){
+    prefs.nudgeStep=Number(step.value)||1;
+    savePrefs();
+    post('preferences',{nudgeStep:prefs.nudgeStep});
+  });
 
   document.getElementById('reloadBtn').addEventListener('click',function(){
     if(desktop&&desktop.injectEditor)desktop.injectEditor();
