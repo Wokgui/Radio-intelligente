@@ -2081,13 +2081,94 @@ function simpleUnifiedDiff(oldText,newText,label){
   return lines.join('\n');
 }
 
-function cssDeclarationsFromRule(css,selector){
+function splitCssSelectorList(text){
+  const out=[];let start=0,depth=0,quote='';
+  const input=String(text||'');
+  for(let i=0;i<input.length;i+=1){
+    const ch=input[i];
+    if(quote){if(ch===quote&&input[i-1]!=='\\')quote='';continue}
+    if(ch==='"'||ch==="'"){quote=ch;continue}
+    if(ch==='('||ch==='[')depth+=1;
+    else if(ch===')'||ch===']')depth=Math.max(0,depth-1);
+    else if(ch===','&&depth===0){out.push(input.slice(start,i).trim());start=i+1}
+  }
+  out.push(input.slice(start).trim());
+  return out.filter(Boolean);
+}
+
+function parseCssBlocks(content){
+  const text=String(content||''),blocks=[],stack=[];
+  let boundary=0,quote='',comment=false;
+  for(let i=0;i<text.length;i+=1){
+    const ch=text[i],next=text[i+1];
+    if(comment){
+      if(ch==='*'&&next==='/'){comment=false;i+=1}
+      continue;
+    }
+    if(quote){
+      if(ch===quote&&text[i-1]!=='\\')quote='';
+      continue;
+    }
+    if(ch==='/'&&next==='*'){comment=true;i+=1;continue}
+    if(ch==='"'||ch==="'"){quote=ch;continue}
+    if(ch==='{'){
+      const prelude=text.slice(boundary,i).trim();
+      const parent=stack.length?stack[stack.length-1]:null;
+      const ancestors=stack.filter(x=>x.prelude&&x.prelude.trim().startsWith('@')).map(x=>x.prelude.trim());
+      const block={prelude,open:i,bodyStart:i+1,close:-1,parent,context:ancestors.join(' · ')};
+      stack.push(block);boundary=i+1;
+      continue;
+    }
+    if(ch==='}'){
+      const block=stack.pop();
+      if(block){block.close=i;blocks.push(block)}
+      boundary=i+1;
+      continue;
+    }
+    if(ch===';')boundary=i+1;
+  }
+  return blocks.filter(x=>x.close>=0);
+}
+
+function normalizeCssContext(value){
+  return String(value||'').replace(/\s+/g,' ').replace(/\s*·\s*/g,' · ').trim();
+}
+
+function cssContextScore(context,preferred){
+  const ctx=normalizeCssContext(context),pref=normalizeCssContext(preferred);
+  if(!pref)return ctx?0:100;
+  if(ctx===pref)return 1000;
+  if(ctx&&pref&&(ctx.includes(pref)||pref.includes(ctx)))return 700;
+  const parts=pref.split(' · ').filter(Boolean);
+  return parts.reduce((score,part)=>score+(ctx.includes(part)?120:0),0);
+}
+
+function findCssRuleBlocks(content,selector){
+  const target=String(selector||'').trim();
+  if(!target)return [];
+  return parseCssBlocks(content).filter(block=>{
+    const prelude=String(block.prelude||'').trim();
+    if(!prelude||prelude.startsWith('@'))return false;
+    return splitCssSelectorList(prelude).includes(target)||prelude===target;
+  });
+}
+
+function chooseCssRuleBlock(content,selector,preferredContext){
+  const matches=findCssRuleBlocks(content,selector);
+  if(!matches.length)return null;
+  return matches.slice().sort((a,b)=>{
+    const sa=cssContextScore(a.context,preferredContext),sb=cssContextScore(b.context,preferredContext);
+    return sb-sa||a.open-b.open;
+  })[0];
+}
+
+function cssDeclarationsFromRule(css,selector,preferredContext){
   const text=String(css||'');
-  const re=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
-  const m=text.match(re);
-  if(!m)return null;
+  const block=chooseCssRuleBlock(text,selector,preferredContext);
+  if(!block)return null;
+  const body=text.slice(block.bodyStart,block.close);
   const out={};
-  String(m[2]||'').split(';').forEach(part=>{
+  String(body||'').split(';').forEach(part=>{
     const i=part.indexOf(':');
     if(i<0)return;
     const key=part.slice(0,i).trim(),value=part.slice(i+1).replace(/!important/g,'').trim();
@@ -2096,31 +2177,60 @@ function cssDeclarationsFromRule(css,selector){
   return out;
 }
 
-function mergeCssRule(content,selector,properties){
-  const direct=new RegExp('(^|})\\s*'+escapeRegex(selector)+'\\s*\\{([^{}]*)\\}','m');
-  const match=content.match(direct);
+function mergeCssRule(content,selector,properties,preferredContext){
+  const text=String(content||'');
   function declarationBlock(existing){
     const map={};
     String(existing||'').split(';').forEach(part=>{
       const i=part.indexOf(':');if(i<0)return;
       const key=part.slice(0,i).trim(),value=part.slice(i+1).trim();if(key&&value)map[key]=value;
     });
-    Object.keys(properties||{}).forEach(key=>{map[key]=String(properties[key]).replace(/\\s*!important\\s*$/,'').trim()});
+    Object.keys(properties||{}).forEach(key=>{map[key]=String(properties[key]).replace(/\s*!important\s*$/,'').trim()});
     return Object.keys(map).map(key=>'  '+key+': '+map[key]+';').join('\n');
   }
-  if(match){
-    const whole=match[0],open=whole.indexOf('{'),close=whole.lastIndexOf('}');
-    const replaced=whole.slice(0,open+1)+'\n'+declarationBlock(whole.slice(open+1,close))+'\n'+whole.slice(close);
-    return {content:content.replace(whole,replaced),created:false};
+  const block=chooseCssRuleBlock(text,selector,preferredContext);
+  if(block){
+    const before=text.slice(0,block.bodyStart),after=text.slice(block.close);
+    const existing=text.slice(block.bodyStart,block.close);
+    return {
+      content:before+'\n'+declarationBlock(existing)+'\n'+after,
+      created:false,
+      context:block.context||'',
+      contextMatched:cssContextScore(block.context,preferredContext)>0||!preferredContext
+    };
   }
-  return {content:content+'\n\n'+selector+' {\n'+declarationBlock('')+'\n}\n',created:true};
+
+  if(preferredContext){
+    const groups=parseCssBlocks(text).filter(block=>String(block.prelude||'').trim().startsWith('@'));
+    const group=groups.slice().sort((a,b)=>{
+      const ca=normalizeCssContext([a.context,a.prelude].filter(Boolean).join(' · '));
+      const cb=normalizeCssContext([b.context,b.prelude].filter(Boolean).join(' · '));
+      const sa=cssContextScore(ca,preferredContext),sb=cssContextScore(cb,preferredContext);
+      return sb-sa||b.open-a.open;
+    })[0];
+    if(group){
+      const fullContext=normalizeCssContext([group.context,group.prelude].filter(Boolean).join(' · '));
+      if(cssContextScore(fullContext,preferredContext)>0){
+        const indent='  ';
+        const rule='\n'+indent+selector+' {\n'+declarationBlock('').split('\n').map(line=>indent+line).join('\n')+'\n'+indent+'}\n';
+        return {
+          content:text.slice(0,group.close)+rule+text.slice(group.close),
+          created:true,
+          context:fullContext,
+          contextMatched:true
+        };
+      }
+    }
+  }
+
+  return {content:text+'\n\n'+selector+' {\n'+declarationBlock('')+'\n}\n',created:true,context:'',contextMatched:!preferredContext};
 }
 
-function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,selectedProperties){
+function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,selectedProperties,preferredContext){
   const local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Édition source directe disponible uniquement pour une application locale.'};
-  const allProps=cssDeclarationsFromRule(css,String(sourceSelector||selector));
-  if(!allProps||!Object.keys(allProps).length)return {ok:false,error:'Aucune propriété exploitable pour la sélection actuelle.'};
+  const allProps=cssDeclarationsFromRule(css,String(sourceSelector||selector),preferredContext);
+  if(!allProps||!Object.keys(allProps).length)return {ok:false,error:'Aucune propriété exploitable pour la sélection actuelle dans ce contexte CSS.'};
   selectedProperties=Array.isArray(selectedProperties)?selectedProperties.map(String):null;
   const props={};
   Object.keys(allProps).forEach(key=>{
@@ -2140,15 +2250,16 @@ function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,
   }
   for(const file of files){
     let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){continue}
-    let score=new RegExp(escapeRegex(selector)+'\\s*\\{').test(text)?100:(text.includes(selector)?20:0);
+    const block=chooseCssRuleBlock(text,selector,preferredContext);
+    let score=block?100+cssContextScore(block.context,preferredContext):(text.includes(selector)?20:0);
     if(preferredPath&&path.resolve(file)===path.resolve(preferredPath))score+=1000;
-    if(score>bestScore){bestScore=score;chosen={file,text}}
+    if(score>bestScore){bestScore=score;chosen={file,text,block}}
   }
   if(!chosen){
     const fallback=path.join(path.dirname(local.html),'app-interface-studio.direct.css');
-    chosen={file:fallback,text:fs.existsSync(fallback)?fs.readFileSync(fallback,'utf8'):''};
+    chosen={file:fallback,text:fs.existsSync(fallback)?fs.readFileSync(fallback,'utf8'):'',block:null};
   }
-  const merged=mergeCssRule(chosen.text,selector,props);
+  const merged=mergeCssRule(chosen.text,selector,props,preferredContext);
   return {
     ok:true,
     root:local.root,
@@ -2157,6 +2268,9 @@ function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,
     selector,
     sourceSelector:String(sourceSelector||selector),
     preferredHref:String(preferredHref||''),
+    preferredContext:String(preferredContext||''),
+    matchedContext:String(merged.context||''),
+    contextMatched:merged.contextMatched!==false,
     properties:props,
     allProperties:allProps,
     selectedProperties:Object.keys(props),
@@ -2169,7 +2283,15 @@ function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,
 }
 
 ipcMain.handle('source:prepare-direct-edit',async (_event,payload)=>{
-  try{return directSourceCandidate(payload&&payload.source,String(payload&&payload.selector||''),String(payload&&payload.css||''),String(payload&&payload.sourceSelector||''),String(payload&&payload.preferredHref||''),payload&&payload.selectedProperties)}
+  try{return directSourceCandidate(
+    payload&&payload.source,
+    String(payload&&payload.selector||''),
+    String(payload&&payload.css||''),
+    String(payload&&payload.sourceSelector||''),
+    String(payload&&payload.preferredHref||''),
+    payload&&payload.selectedProperties,
+    String(payload&&payload.preferredContext||'')
+  )}
   catch(error){return {ok:false,error:'Préparation du diff impossible : '+String(error&&error.message||error)}}
 });
 
