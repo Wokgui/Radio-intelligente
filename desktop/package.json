@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.28.0",
+  "version": "6.31.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec export local des liens de prototype, sélecteurs source stables, patch DOM réversible, grille de colonnes magnétique et outils de précision",
+  "description": "Éditeur visuel universel Windows avec box model manipulable, édition directe du texte, diff complet HTML/CSS/JS avant application, rollback transactionnel et outils de précision",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
