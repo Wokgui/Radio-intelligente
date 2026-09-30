@@ -1136,6 +1136,8 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="applyVariantBtn">Appliquer variante</button>
         <button class="btn wide" id="applyVariantAllBtn">Variante à toutes</button>
       </div>
+      <button class="btn" id="testComponentsBtn" style="width:100%;margin-top:7px">Tester composants et variantes</button>
+      <div class="compare-status" id="componentTestStatus">Aucun test de composants lancé.</div>
       <div class="component-list" id="componentList"><div class="hint">Aucun composant.</div></div>
     </section>
 
@@ -1271,6 +1273,14 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="toolbar" style="margin-top:7px"><button class="btn wide" id="repairAssistantBtn">Réparer avec aperçu</button><button class="btn wide desktop-only" id="testMatrixBtn">Tester 12 configurations</button></div>
       <div class="audit-summary" id="auditSummary"></div>
       <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Contrôle final <small>bilan avant livraison</small></h2>
+      <button class="btn primary" id="runFinalControlBtn" style="width:100%">Lancer le contrôle complet</button>
+      <div class="compare-status" id="finalControlStatus">Aucun contrôle final lancé.</div>
+      <div class="version-list" id="finalControlList"><div class="hint">Le bilan regroupera audit, responsive, composants, cohérence, assets et surcharges.</div></div>
+      <p>Ce bilan n’attribue pas de note arbitraire : il liste les anomalies réellement détectées et les contrôles passés.</p>
     </section>
 
     <section class="card desktop-only">
@@ -1569,6 +1579,12 @@ body.desktop .desktop-badge{display:inline-flex}
   var consistencyStatus=document.getElementById('consistencyStatus');
   var consistencyList=document.getElementById('consistencyList');
   var autoLayoutStatus=document.getElementById('autoLayoutStatus');
+  var componentTestStatus=document.getElementById('componentTestStatus');
+  var finalControlStatus=document.getElementById('finalControlStatus');
+  var finalControlList=document.getElementById('finalControlList');
+  var lastAuditPayload=null;
+  var lastConsistencyPayload=null;
+  var lastComponentTestsPayload=null;
 
   var hasSelection=false;
   var lastState=null;
@@ -1684,7 +1700,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.54.0'};
+      project.studio={name:'App Interface Studio',version:'6.55.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2704,6 +2720,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function renderAudit(payload){
     payload=payload||{};
+    lastAuditPayload=payload;
     var summary=payload.summary||{};
     auditSummary.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>'+
       '<span class="audit-chip">Contraste testé : '+(summary.contrastTested||0)+'</span>'+
@@ -2744,6 +2761,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function renderConsistency(payload){
     payload=payload||{};
+    lastConsistencyPayload=payload;
     var issues=payload.issues||[];
     consistencyList.innerHTML='';
     consistencyStatus.textContent=issues.length?issues.length+' incohérence(s) ou valeur(s) rare(s) détectée(s).':'Aucune incohérence significative détectée.';
@@ -3473,6 +3491,17 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function renderComponentTests(payload){
+    lastComponentTestsPayload=payload||{};
+    var summary=lastComponentTestsPayload.summary||{};
+    componentTestStatus.textContent=(summary.tested||0)+' composant(s) testés · '+(summary.failed||0)+' en échec · '+(summary.issues||0)+' problème(s).';
+    (lastComponentTestsPayload.results||[]).forEach(function(result){
+      var item=componentCatalog.find(function(x){return x.name===result.name});
+      if(item)item.testResult=result;
+    });
+    renderComponents(componentCatalog);
+  }
+
   function renderComponents(items){
     componentCatalog=Array.isArray(items)?items:[];
     componentList.innerHTML='';
@@ -3482,7 +3511,8 @@ body.desktop .desktop-badge{display:inline-flex}
       var text=document.createElement('button');text.style.cssText='min-width:0;border:0;background:transparent;text-align:left;color:inherit';
       text.innerHTML='<strong></strong><small></small>';
       text.querySelector('strong').textContent=item.name;
-      text.querySelector('small').textContent=(item.count||0)+' instance(s) · '+((item.variants||[]).length)+' variante(s)';
+      var testNote=item.testResult?(item.testResult.ok?' · test OK':' · '+item.testResult.issues.length+' problème(s)'):'';
+      text.querySelector('small').textContent=(item.count||0)+' instance(s) · '+((item.variants||[]).length)+' variante(s)'+testNote;
       text.addEventListener('click',function(){document.getElementById('componentName').value=item.name});
       var actions=document.createElement('div');actions.className='mini-actions';
       var del=document.createElement('button');del.textContent='×';del.title='Supprimer le composant';
@@ -3808,12 +3838,86 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.54.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.55.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
     gitStatusText.textContent=(result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.')+cleanNote;
     if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
+  }
+
+  function finalControlRow(title,detail,ok){
+    var row=document.createElement('div');row.className='version-item';
+    row.style.gridTemplateColumns='minmax(0,1fr) auto';
+    var text=document.createElement('div');
+    var strong=document.createElement('strong');strong.textContent=title;
+    var small=document.createElement('small');small.textContent=detail||'';
+    var badge=document.createElement('span');badge.className='audit-chip '+(ok?'':'warning');badge.textContent=ok?'OK':'À vérifier';
+    text.append(strong,small);row.append(text,badge);return row;
+  }
+
+  async function runFinalControl(){
+    if(!currentSource){finalControlStatus.textContent='Charge d’abord une application.';return}
+    finalControlStatus.textContent='Contrôle en cours…';
+    finalControlList.innerHTML='';
+    post('audit');post('design-consistency');post('test-components');
+    await new Promise(function(resolve){setTimeout(resolve,550)});
+    var project=await requestProject();
+    var matrixResult=desktop&&desktop.runTestMatrix
+      ?await desktop.runTestMatrix({source:currentSource,css:project&&project.css||cssOut.value})
+      :null;
+    var assetsResult=desktop&&desktop.auditAssets&&['folder','html'].indexOf(currentSource.type)>=0
+      ?await desktop.auditAssets(currentSource)
+      :null;
+    var overridesResult=desktop&&desktop.analyzeOverrides&&['folder','html'].indexOf(currentSource.type)>=0
+      ?await desktop.analyzeOverrides(currentSource)
+      :null;
+
+    var auditSummary=(lastAuditPayload&&lastAuditPayload.summary)||{};
+    var consistencyIssues=(lastConsistencyPayload&&lastConsistencyPayload.issues)||[];
+    var componentSummary=(lastComponentTestsPayload&&lastComponentTestsPayload.summary)||{};
+    var matrixSummary=(matrixResult&&matrixResult.summary)||{};
+    var overrideItems=(overridesResult&&overridesResult.items)||[];
+
+    var checks=[
+      {
+        title:'Audit écran actuel',
+        detail:(auditSummary.errors||0)+' erreur(s) · '+(auditSummary.warnings||0)+' avertissement(s) · AA '+(auditSummary.contrastAaFailures||0)+' échec(s)',
+        ok:!(auditSummary.errors||0)&&!(auditSummary.contrastAaFailures||0)
+      },
+      {
+        title:'Responsive · 12 configurations',
+        detail:(matrixSummary.tested||0)+' testées · '+(matrixSummary.failed||0)+' avec anomalie · '+(matrixSummary.totalIssues||0)+' problème(s)',
+        ok:!!(matrixResult&&matrixResult.ok)&&!(matrixSummary.failed||0)
+      },
+      {
+        title:'Composants et variantes',
+        detail:(componentSummary.tested||0)+' composant(s) · '+(componentSummary.failed||0)+' en échec · '+(componentSummary.issues||0)+' problème(s)',
+        ok:!(componentSummary.failed||0)
+      },
+      {
+        title:'Cohérence du design',
+        detail:consistencyIssues.length+' valeur(s) rare(s) ou incohérence(s) détectée(s)',
+        ok:consistencyIssues.length===0
+      }
+    ];
+    if(assetsResult&&assetsResult.ok){
+      checks.push({
+        title:'Assets',
+        detail:(assetsResult.scanned||0)+' analysé(s) · '+(assetsResult.orphanCount||0)+' orphelin(s) · '+(assetsResult.duplicateCount||0)+' doublon(s) · '+(assetsResult.largeCount||0)+' lourd(s)',
+        ok:!(assetsResult.orphanCount||0)&&!(assetsResult.duplicateCount||0)&&!(assetsResult.largeCount||0)
+      });
+    }
+    if(overridesResult&&overridesResult.ok){
+      checks.push({
+        title:'Surcharges historiques',
+        detail:overrideItems.length+' règle(s) ou fichier(s) nettoyable(s) en toute sécurité',
+        ok:overrideItems.length===0
+      });
+    }
+    checks.forEach(function(check){finalControlList.appendChild(finalControlRow(check.title,check.detail,check.ok))});
+    var failed=checks.filter(function(x){return !x.ok}).length;
+    finalControlStatus.textContent=checks.length+' contrôles · '+(checks.length-failed)+' sans anomalie · '+failed+' à vérifier.';
   }
 
   function requestProject(){
@@ -3861,7 +3965,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.54.0'};
+    project.studio={name:'App Interface Studio',version:'6.55.0'};
     return project;
   }
 
@@ -3958,7 +4062,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.54.0'};
+    project.studio={name:'App Interface Studio',version:'6.55.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4310,6 +4414,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='layers')renderLayers(p.tree||[]);
     if(data.type==='components')renderComponents(p.items||[]);
+    if(data.type==='component-tests')renderComponentTests(p);
     if(data.type==='selection-groups')renderSelectionGroups(p.items||[]);
     if(data.type==='selection-group-created'){
       selectionGroupName.value='';
@@ -4639,6 +4744,8 @@ body.desktop .desktop-badge{display:inline-flex}
     grid.value=String(unit);post('grid',{grid:unit});setStatus('Accrochage réglé sur '+unit+' px.');
   });
 
+  document.getElementById('testComponentsBtn').addEventListener('click',function(){post('test-components')});
+  document.getElementById('runFinalControlBtn').addEventListener('click',runFinalControl);
   document.getElementById('createComponentBtn').addEventListener('click',function(){
     var name=document.getElementById('componentName').value.trim();
     if(!name){setStatus('Donne un nom au composant.',true);return}
