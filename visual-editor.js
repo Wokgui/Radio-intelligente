@@ -6,7 +6,7 @@
 
   const params = new URLSearchParams(location.search);
   const hosted = params.get('visual-editor') === '1' || window.__APP_INTERFACE_STUDIO_HOSTED__ === true;
-  const GUIDE_THRESHOLD = 5;
+  let guideThreshold = 5;
 
   const launcher = document.createElement('button');
   launcher.id = 'veLauncher';
@@ -758,6 +758,24 @@
     const parent = element.parentElement;
 
     if (parent) {
+      const parentRect = (parent === document.body || parent === document.documentElement)
+        ? {left:0,top:0,right:innerWidth,bottom:innerHeight,width:innerWidth,height:innerHeight}
+        : parent.getBoundingClientRect();
+      if (parentRect && parentRect.width > 0 && parentRect.height > 0) {
+        x.push({value:parentRect.left,label:'Bord gauche parent'});
+        x.push({value:parentRect.left + parentRect.width / 2,label:'Centre parent'});
+        x.push({value:parentRect.right,label:'Bord droit parent'});
+        y.push({value:parentRect.top,label:'Haut parent'});
+        y.push({value:parentRect.top + parentRect.height / 2,label:'Milieu parent'});
+        y.push({value:parentRect.bottom,label:'Bas parent'});
+
+        if (isViewportParent(parent,parentRect) && (safeArea.top || safeArea.right || safeArea.bottom || safeArea.left)) {
+          x.push({value:safeArea.left,label:'Zone sûre gauche'});
+          x.push({value:innerWidth - safeArea.right,label:'Zone sûre droite'});
+          y.push({value:safeArea.top,label:'Zone sûre haute'});
+          y.push({value:innerHeight - safeArea.bottom,label:'Zone sûre basse'});
+        }
+      }
       Array.from(parent.children).forEach(function (el) {
         if (el !== element && !selectedSet.has(el)) candidates.push(el);
       });
@@ -807,7 +825,7 @@
       candidates.x.forEach(function (candidate) {
         const diff = candidate.value - anchor;
         const abs = Math.abs(diff);
-        if (abs <= GUIDE_THRESHOLD && (!bestX || abs < bestX.abs || (abs === bestX.abs && candidate.label === 'Centre écran'))) {
+        if (abs <= guideThreshold && (!bestX || abs < bestX.abs || (abs === bestX.abs && candidate.label === 'Centre écran'))) {
           bestX = { abs: abs, diff: diff, value: candidate.value, label: candidate.label };
         }
       });
@@ -817,7 +835,7 @@
       candidates.y.forEach(function (candidate) {
         const diff = candidate.value - anchor;
         const abs = Math.abs(diff);
-        if (abs <= GUIDE_THRESHOLD && (!bestY || abs < bestY.abs || (abs === bestY.abs && candidate.label === 'Milieu écran'))) {
+        if (abs <= guideThreshold && (!bestY || abs < bestY.abs || (abs === bestY.abs && candidate.label === 'Milieu écran'))) {
           bestY = { abs: abs, diff: diff, value: candidate.value, label: candidate.label };
         }
       });
@@ -2038,6 +2056,24 @@
   }
 
 
+  function selectionPath(element) {
+    const path = [];
+    let node = element;
+    let guard = 0;
+    while (node && node.nodeType === 1 && node !== document.body && node !== document.documentElement && guard < 10) {
+      if (!isEditorNode(node)) {
+        path.unshift({
+          selector: selectorFor(node),
+          title: layerTitle(node),
+          tag: node.tagName.toLowerCase()
+        });
+      }
+      node = node.parentElement;
+      guard += 1;
+    }
+    return path;
+  }
+
   function currentPayload() {
     if (!selected || !document.documentElement.contains(selected)) {
       return { active: active, selected: false, css: cssText(), grid: grid };
@@ -2075,6 +2111,7 @@
       dy: state.dy,
       selectionCount: selectionElements().length,
       selectedSelectors: selectionElements().map(selectorFor).filter(Boolean),
+      selectionPath: selectionPath(selected),
       responsive: cloneResponsive(state.responsive),
       responsiveEffective: effectiveResponsive(state),
       activeBreakpoint: viewportBreakpoint(),
@@ -2797,6 +2834,7 @@
     if (data.type === 'preferences') {
       if (payload.defaultResponsive !== undefined) defaultResponsive = !!payload.defaultResponsive;
       if (payload.smartGuides !== undefined) smartGuidesEnabled = !!payload.smartGuides;
+      if (payload.guideThreshold !== undefined) guideThreshold = Math.max(1, Math.min(20, Number(payload.guideThreshold) || 5));
       if (!smartGuidesEnabled) hideGuides();
     }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
