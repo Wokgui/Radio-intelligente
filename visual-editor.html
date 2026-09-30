@@ -848,6 +848,14 @@ body.desktop .desktop-badge{display:inline-flex}
         <div class="field"><label>Point focal vertical <span id="mediaPositionYValue">50 %</span></label><input id="mediaPositionY" type="range" min="0" max="100" step="1" value="50"></div>
       </div>
       <div class="hint" style="margin-top:7px">Avec « Couvrir », déplace le point focal pour choisir précisément la zone conservée.</div>
+      <div id="svgTintControls" style="display:none;margin-top:10px;padding:9px;border:1px solid var(--line);border-radius:10px;background:#faf8fc">
+        <div class="hint" style="margin-bottom:7px"><b>SVG inline</b> · recolore l’icône sans la convertir en image.</div>
+        <div class="fields">
+          <div class="field"><label>Couleur SVG</label><input id="svgTintColor" type="color" value="#000000"></div>
+          <div class="field"><label>Appliquer à</label><select id="svgTintMode"><option value="both">Remplissage + contour</option><option value="fill">Remplissage</option><option value="stroke">Contour</option></select></div>
+        </div>
+        <div class="toolbar" style="margin-top:7px"><button class="btn primary wide" id="applySvgTintBtn">Appliquer la teinte</button><button class="btn wide" id="resetSvgTintBtn">Rétablir</button></div>
+      </div>
       <div style="margin-top:10px"><label class="hint">Assets déjà utilisés</label><div class="component-list" id="mediaAssetLibrary"><div class="hint">Aucun asset réutilisable dans ce projet.</div></div></div>
       <button class="btn" id="resetMediaBtn" type="button" style="width:100%;margin-top:8px">Rétablir le visuel d’origine</button>
       <div class="hint" id="mediaStatus" style="margin-top:8px">Sélectionne un objet. Une image remplace directement un &lt;img&gt;, un SVG ou le fond du bloc sélectionné.</div>
@@ -1312,6 +1320,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var mediaPositionYValue=document.getElementById('mediaPositionYValue');
   var mediaAssetLibrary=document.getElementById('mediaAssetLibrary');
   var mediaStatus=document.getElementById('mediaStatus');
+  var svgTintControls=document.getElementById('svgTintControls');
+  var svgTintColor=document.getElementById('svgTintColor');
+  var svgTintMode=document.getElementById('svgTintMode');
+  var applySvgTintBtn=document.getElementById('applySvgTintBtn');
+  var resetSvgTintBtn=document.getElementById('resetSvgTintBtn');
   var replaceMediaBtn=document.getElementById('replaceMediaBtn');
   var resetMediaBtn=document.getElementById('resetMediaBtn');
   var textContent=document.getElementById('textContent');
@@ -2362,6 +2375,12 @@ body.desktop .desktop-badge{display:inline-flex}
     mediaPositionXValue.textContent=mediaPositionX.value+' %';
     mediaPositionYValue.textContent=mediaPositionY.value+' %';
     renderMediaAssetLibrary(p.mediaAssets||[],p.mediaAssetPath||'');
+    var svgEditable=mediaEditable&&!!p.svgEditable;
+    svgTintControls.style.display=svgEditable?'block':'none';
+    applySvgTintBtn.disabled=!svgEditable;
+    resetSvgTintBtn.disabled=!svgEditable||!p.svgTintAdjusted;
+    if(/^#[0-9a-f]{6}$/i.test(String(p.svgTintColor||'')))svgTintColor.value=p.svgTintColor;
+    if(['fill','stroke','both'].indexOf(p.svgTintMode)>=0)svgTintMode.value=p.svgTintMode;
     if(!mediaEditable)mediaStatus.textContent='Sélectionne un seul objet pour remplacer son image ou son icône.';
     else if(p.mediaAdjusted)mediaStatus.textContent='Visuel remplacé : '+(p.mediaName||'asset')+' · '+(p.mediaKind||'image')+'.';
     else mediaStatus.textContent='Objet prêt : le remplacement utilisera '+(p.mediaKind==='background'?'une image de fond':p.mediaKind==='svg'?'le SVG sélectionné':p.mediaKind==='svg-image'?'l’image SVG sélectionnée':'la source de l’image')+'.';
@@ -2891,7 +2910,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   function projectDomPatches(project){
     var items=project&&project.snapshot&&Array.isArray(project.snapshot.items)?project.snapshot.items:[];
-    return items.filter(function(item){return item&&item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted)}).map(function(item){
+    return items.filter(function(item){return item&&item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted||item.svgTintAdjusted)}).map(function(item){
       return {
         selector:item.selector,
         textAdjusted:!!item.textAdjusted,
@@ -2905,7 +2924,10 @@ body.desktop .desktop-badge{display:inline-flex}
         mediaName:item.mediaName||'',
         mediaFit:item.mediaFit||'contain',
         mediaPositionX:Math.max(0,Math.min(100,Number.isFinite(Number(item.mediaPositionX))?Number(item.mediaPositionX):50)),
-        mediaPositionY:Math.max(0,Math.min(100,Number.isFinite(Number(item.mediaPositionY))?Number(item.mediaPositionY):50))
+        mediaPositionY:Math.max(0,Math.min(100,Number.isFinite(Number(item.mediaPositionY))?Number(item.mediaPositionY):50)),
+        svgTintAdjusted:!!item.svgTintAdjusted,
+        svgTintColor:item.svgTintColor||'#000000',
+        svgTintMode:['fill','stroke','both'].indexOf(item.svgTintMode)>=0?item.svgTintMode:'both'
       };
     });
   }
@@ -3773,6 +3795,8 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='media-drop')handleDroppedMedia(p);
     if(data.type==='media-error')setStatus(p.message||'Remplacement du visuel impossible.',true);
+    if(data.type==='svg-tint-updated')setStatus(p.enabled?'Teinte SVG appliquée ('+(p.mode||'both')+').':'Teinte SVG d’origine restaurée.');
+    if(data.type==='svg-tint-error')setStatus(p.message||'Modification SVG impossible.',true);
     if(data.type==='marquee-mode'){
       marqueeModeActive=!!p.active;
       var marqueeButton=document.getElementById('marqueeModeBtn');
@@ -3964,6 +3988,10 @@ body.desktop .desktop-badge{display:inline-flex}
   mediaPositionX.addEventListener('input',postMediaPosition);
   mediaPositionY.addEventListener('input',postMediaPosition);
   resetMediaBtn.addEventListener('click',function(){post('media-reset')});
+  applySvgTintBtn.addEventListener('click',function(){post('svg-tint',{enabled:true,color:svgTintColor.value,mode:svgTintMode.value})});
+  resetSvgTintBtn.addEventListener('click',function(){post('svg-tint',{enabled:false})});
+  svgTintColor.addEventListener('input',function(){if(lastState&&lastState.svgTintAdjusted)post('svg-tint',{enabled:true,color:svgTintColor.value,mode:svgTintMode.value})});
+  svgTintMode.addEventListener('change',function(){if(lastState&&lastState.svgTintAdjusted)post('svg-tint',{enabled:true,color:svgTintColor.value,mode:svgTintMode.value})});
   fontFamily.addEventListener('change',function(){post('text-style',{kind:'family',value:fontFamily.value})});
   fontSize.addEventListener('change',function(){post('text-style',{kind:'size',value:Number(fontSize.value)})});
   boldBtn.addEventListener('click',function(){post('text-style',{kind:'weight',value:(lastState&&(Number(lastState.fontWeight)>=600||String(lastState.fontWeight).toLowerCase()==='bold'))?'400':'700'})});
