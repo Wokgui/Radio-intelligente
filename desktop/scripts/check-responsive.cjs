@@ -4,6 +4,7 @@ const path=require('path');
 const root=path.resolve(__dirname,'..','..');
 const html=fs.readFileSync(path.join(root,'visual-editor.html'),'utf8');
 const engine=fs.readFileSync(path.join(root,'visual-editor.js'),'utf8');
+const css=fs.readFileSync(path.join(root,'visual-editor.css'),'utf8');
 const runtime=fs.readFileSync(path.join(root,'app-runtime.html'),'utf8');
 const main=fs.readFileSync(path.join(root,'desktop','main.cjs'),'utf8');
 const preload=fs.readFileSync(path.join(root,'desktop','preload.cjs'),'utf8');
