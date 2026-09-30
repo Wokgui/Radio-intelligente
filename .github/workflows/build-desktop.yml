@@ -11,7 +11,9 @@ on:
       - 'visual-editor.css'
       - '.github/workflows/build-desktop.yml'
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feature/interface-studio-*'
     paths:
       - 'desktop/**'
       - 'visual-editor.html'
