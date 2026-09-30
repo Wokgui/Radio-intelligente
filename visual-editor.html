@@ -1404,7 +1404,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.24.0'};
+      project.studio={name:'App Interface Studio',version:'6.25.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2577,13 +2577,19 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!desktop||!desktop.applyCssToSource){setStatus('Fonction disponible dans l’application Windows.',true);return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){setStatus('Ouvre un dossier ou fichier HTML local pour appliquer directement les changements.',true);return}
     var project=await requestProject();
-    var generatedCount=project&&project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes.length:0;
-    var message='Créer un patch CSS réversible dans le dossier source et l’ajouter à la page HTML ? Une sauvegarde du HTML sera créée.';
-    if(generatedCount)message+='\n\nAttention : '+generatedCount+' duplication(s) structurelle(s) sont conservées dans le projet et l’export ChatGPT, mais ce bouton CSS ne les injecte pas encore dans le HTML source.';
+    if(!project){setStatus('Projet non récupéré.',true);return}
+    var generatedNodes=project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
+    var message='Appliquer un patch réversible au code local ? Le CSS sera écrit dans un fichier généré et les duplications dans un patch structurel JavaScript. Une sauvegarde du HTML sera créée.';
+    if(generatedNodes.length)message+='\n\nDuplications à appliquer : '+generatedNodes.length+'.';
     if(!confirm(message))return;
-    var result=await desktop.applyCssToSource({source:currentSource,css:cssOut.value});
-    if(result&&result.ok)setStatus('Patch CSS appliqué : '+result.cssPath+' · sauvegarde : '+result.backupPath+(generatedCount?' · '+generatedCount+' duplication(s) restent à reporter structurellement.':''));
-    else setStatus((result&&result.error)||'Application au code impossible.',true);
+    var result=await desktop.applyCssToSource({source:currentSource,css:project.css||cssOut.value,generatedNodes:generatedNodes});
+    if(result&&result.ok){
+      var parts=[];
+      if(result.cssApplied&&result.cssPath)parts.push('CSS : '+result.cssPath);
+      if(result.structureApplied&&result.jsPath)parts.push('structure : '+result.jsPath+' · '+(result.generatedCount||0)+' duplication(s)');
+      parts.push('sauvegarde : '+result.backupPath);
+      setStatus('Patch appliqué · '+parts.join(' · '));
+    }else setStatus((result&&result.error)||'Application au code impossible.',true);
   }
 
 
@@ -2748,14 +2754,15 @@ body.desktop .desktop-badge{display:inline-flex}
     gitStatusText.textContent='Préparation du patch puis publication…';
     if(desktop.applyCssToSource){
       var project=await requestProject();
-      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value});
+      var generatedNodes=project&&project.snapshot&&Array.isArray(project.snapshot.generatedNodes)?project.snapshot.generatedNodes:[];
+      var applied=await desktop.applyCssToSource({source:currentSource,css:project&&project.css||cssOut.value,generatedNodes:generatedNodes});
       if(!applied||!applied.ok){gitStatusText.textContent=applied&&applied.error||'Impossible de préparer le patch local.';return}
     }
     var result=await desktop.gitPublish({
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.24.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.25.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2805,7 +2812,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.24.0'};
+    project.studio={name:'App Interface Studio',version:'6.25.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2863,7 +2870,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.24.0'};
+    project.studio={name:'App Interface Studio',version:'6.25.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
