@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec édition source directe, Android natif, auto-layout, guides intelligents actifs, navigation structurelle, récupération automatique et palette de commandes",
+  "description": "Éditeur visuel universel Windows avec guides intelligents réglables, hiérarchie de sélection, navigation structurelle, récupération automatique, Android natif et édition source directe",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
