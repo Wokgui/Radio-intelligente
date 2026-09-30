@@ -676,6 +676,10 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool" id="pasteSelectionBtn" title="Coller · Ctrl+V">Coller</button>
       </div>
       <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" id="copyStyleBtn" title="Copier uniquement le style · Ctrl+Alt+C">Copier style</button>
+        <button class="tool wide" id="pasteStyleBtn" title="Coller uniquement le style · Ctrl+Alt+V">Coller style</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
         <button class="tool wide" data-selection-z="front" title="Mettre devant">⇧ Avant-plan</button>
         <button class="tool wide" data-selection-z="back" title="Mettre derrière">⇩ Arrière-plan</button>
       </div>
@@ -695,7 +699,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
         <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
-      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>←↑↓→</kbd> déplace · les poignées des coins et des côtés redimensionnent toute la sélection · <kbd>Maj</kbd> conserve les proportions · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
+      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>Ctrl+Alt+C</kbd>/<kbd>Ctrl+Alt+V</kbd> copie/colle seulement le style · <kbd>←↑↓→</kbd> déplace · les poignées des coins et des côtés redimensionnent toute la sélection · <kbd>Maj</kbd> conserve les proportions · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
     </section>
 
     <section class="card">
@@ -1355,7 +1359,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.18.0'};
+      project.studio={name:'App Interface Studio',version:'6.19.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2642,7 +2646,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.18.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.19.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2692,7 +2696,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.18.0'};
+    project.studio={name:'App Interface Studio',version:'6.19.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2750,7 +2754,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.18.0'};
+    project.studio={name:'App Interface Studio',version:'6.19.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2807,6 +2811,8 @@ body.desktop .desktop-badge{display:inline-flex}
       return;
     }
     if(modifier&&lower==='a'&&hasSelection){event.preventDefault();post('selection-related',{mode:event.shiftKey?'similar':'siblings'});return}
+    if(modifier&&event.altKey&&lower==='c'&&hasSelection){event.preventDefault();post('style-copy');return}
+    if(modifier&&event.altKey&&lower==='v'){event.preventDefault();post('style-paste');return}
     if(modifier&&lower==='d'){event.preventDefault();post('selection-duplicate');return}
     if(modifier&&lower==='c'&&hasSelection){event.preventDefault();post('selection-copy');return}
     if(modifier&&lower==='v'){event.preventDefault();post('selection-paste');return}
@@ -2860,6 +2866,8 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
     {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
     {label:'Coller',hint:'Ctrl+V',run:function(){post('selection-paste')}},
+    {label:'Copier le style',hint:'Ctrl+Alt+C',run:function(){post('style-copy')}},
+    {label:'Coller le style',hint:'Ctrl+Alt+V',run:function(){post('style-paste')}},
     {label:'Mettre au premier plan',hint:'Ctrl+]',run:function(){post('selection-z',{mode:'front'})}},
     {label:'Mettre à l’arrière-plan',hint:'Ctrl+[',run:function(){post('selection-z',{mode:'back'})}},
     {label:'Sélectionner le parent',hint:'Alt+↑',run:function(){post('navigate-selection',{direction:'parent'})}},
@@ -2982,6 +2990,8 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='selection-copied')setStatus((p.count||0)+' objet(s) copié(s).');
     if(data.type==='selection-pasted')setStatus((p.count||0)+' objet(s) collé(s).');
+    if(data.type==='style-copied')setStatus('Style copié depuis '+(p.selector||'la sélection')+'.');
+    if(data.type==='style-pasted')setStatus('Style appliqué à '+(p.count||0)+' objet(s).');
     if(data.type==='selection-duplicated')setStatus((p.count||0)+' objet(s) dupliqué(s).');
     if(data.type==='selection-z')setStatus((p.count||0)+' objet(s) déplacé(s) '+(p.mode==='back'?'à l’arrière-plan.':'au premier plan.'));
     if(data.type==='selection-bulk')setStatus((p.count||0)+' objet(s) sélectionné(s) '+(p.mode==='similar'?'par similarité.':'dans le même conteneur.'));
@@ -3181,6 +3191,9 @@ body.desktop .desktop-badge{display:inline-flex}
   document.querySelectorAll('[data-selection-related]').forEach(function(btn){
     btn.addEventListener('click',function(){post('selection-related',{mode:btn.dataset.selectionRelated})});
   });
+
+  document.getElementById('copyStyleBtn').addEventListener('click',function(){post('style-copy')});
+  document.getElementById('pasteStyleBtn').addEventListener('click',function(){post('style-paste')});
 
   document.getElementById('duplicateSelectionBtn').addEventListener('click',function(){post('selection-duplicate')});
   document.getElementById('copySelectionBtn').addEventListener('click',function(){post('selection-copy')});
