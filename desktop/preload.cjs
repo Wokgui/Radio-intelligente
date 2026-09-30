@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   runTestMatrix: payload => ipcRenderer.invoke('capture:test-matrix', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
+  exportPortableProject: project => ipcRenderer.invoke('layout:export-portable', project),
+  importPortableProject: () => ipcRenderer.invoke('layout:import-portable'),
   saveChatGPTExport: payload => ipcRenderer.invoke('layout:save-chatgpt', payload),
   copyText: text => ipcRenderer.invoke('layout:copy-text', String(text || '')),
   appInfo: () => ipcRenderer.invoke('layout:app-info'),
