@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.9.0",
+  "version": "6.10.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec viewport logique exact, repères personnalisés cliquables, sélections en masse, isolation, filtres/repli de calques, groupes persistants et duplication",
+  "description": "Éditeur visuel universel Windows avec repères personnalisés déplaçables, mesures de déplacement, viewport exact, sélections en masse, isolation, groupes persistants et duplication",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
