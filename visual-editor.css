@@ -153,6 +153,23 @@ body.ve-active .ve-selection{
 .ve-handle-ne{right:-7px;top:-7px;cursor:nesw-resize}
 .ve-handle-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
 .ve-handle-se{right:-7px;bottom:-7px;cursor:nwse-resize}
+.ve-anchor-pin{
+  position:absolute;z-index:4;display:none;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:1px solid #7c3aed;border-radius:7px;
+  background:#fff;color:#6f49f5;font:900 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 2px 8px #0003;pointer-events:auto;touch-action:manipulation;cursor:pointer!important
+}
+.ve-anchor-pin:hover,.ve-anchor-pin.active{background:#6f49f5;color:#fff}
+.ve-anchor-left{left:-29px;top:50%;transform:translateY(-50%)}
+.ve-anchor-right{right:-29px;top:50%;transform:translateY(-50%)}
+.ve-anchor-top{top:-29px;left:50%;transform:translateX(-50%)}
+.ve-anchor-bottom{bottom:-29px;left:50%;transform:translateX(-50%)}
+.ve-anchor-hcenter{top:-29px;left:25%;transform:translateX(-50%)}
+.ve-anchor-vcenter{left:-29px;top:25%;transform:translateY(-50%)}
+.ve-anchor-hstretch{bottom:-29px;left:38%;transform:translateX(-50%)}
+.ve-anchor-vstretch{bottom:-29px;left:62%;transform:translateX(-50%)}
+body.ve-active .ve-selection.ve-single-selection .ve-anchor-pin{display:flex}
+.ve-selection-secondary .ve-anchor-pin{display:none!important}
 
 body.ve-active .ve-marquee{
   position:fixed;
