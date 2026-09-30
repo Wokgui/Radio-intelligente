@@ -277,6 +277,7 @@
       tokenStyles: {},
       advancedAdjusted: false,
       advancedStyles: {},
+      stateStyles: {hover:{},active:{},focus:{},disabled:{}},
       accessibilityAdjusted: false,
       accessibilityLabel: element.getAttribute('aria-label') || '',
       mediaAdjusted: false,
@@ -1326,6 +1327,7 @@
         tokenStyles: Object.assign({}, state.tokenStyles || {}),
         advancedAdjusted: !!state.advancedAdjusted,
         advancedStyles: Object.assign({}, state.advancedStyles || {}),
+        stateStyles: JSON.parse(JSON.stringify(state.stateStyles || {hover:{},active:{},focus:{},disabled:{}})),
         accessibilityAdjusted: !!state.accessibilityAdjusted,
         accessibilityLabel: state.accessibilityLabel || '',
         mediaAdjusted: !!state.mediaAdjusted,
@@ -1428,6 +1430,7 @@
         tokenStyles: Object.assign({}, saved.tokenStyles || {}),
         advancedAdjusted: !!saved.advancedAdjusted,
         advancedStyles: Object.assign({}, saved.advancedStyles || {}),
+        stateStyles: JSON.parse(JSON.stringify(saved.stateStyles || {hover:{},active:{},focus:{},disabled:{}})),
         accessibilityAdjusted: !!saved.accessibilityAdjusted,
         accessibilityLabel: saved.accessibilityLabel || '',
         mediaAdjusted: !!saved.mediaAdjusted,
@@ -1599,6 +1602,17 @@
         }
       }
       if (declarations.length) rules.push(state.selector + ' {\n' + declarations.join('\n') + '\n}');
+      const pseudoMap={hover:':hover',active:':active',focus:':focus-visible',disabled:':disabled'};
+      const stateStyles=state.stateStyles||{};
+      Object.keys(pseudoMap).forEach(function(name){
+        const styles=stateStyles[name]||{};
+        const stateDecl=[];
+        if(styles.color)stateDecl.push('  color: '+styles.color+' !important;');
+        if(styles.backgroundColor)stateDecl.push('  background-color: '+styles.backgroundColor+' !important;');
+        if(styles.borderColor)stateDecl.push('  border-color: '+styles.borderColor+' !important;');
+        if(styles.opacity!==undefined&&styles.opacity!=='')stateDecl.push('  opacity: '+Math.max(0,Math.min(1,Number(styles.opacity)))+' !important;');
+        if(stateDecl.length)rules.push(state.selector+pseudoMap[name]+' {\n'+stateDecl.join('\n')+'\n}');
+      });
     });
     const mediaMap = {
       phone:'@media (max-width: 599px)',
@@ -2437,6 +2451,20 @@
       });
     }
     Array.from(document.styleSheets||[]).forEach(function(sheet){try{walkRules(sheet.cssRules)}catch(_){}});
+    touched.forEach(function(state){
+      const selector=state&&state.selector;
+      if(!selector)return;
+      const stateStyles=state.stateStyles||{};
+      [['hover','ais-state-hover'],['active','ais-state-active'],['focus','ais-state-focus'],['disabled','ais-state-disabled']].forEach(function(pair){
+        const values=stateStyles[pair[0]]||{};
+        const decl=[];
+        if(values.color)decl.push('color:'+values.color+'!important');
+        if(values.backgroundColor)decl.push('background-color:'+values.backgroundColor+'!important');
+        if(values.borderColor)decl.push('border-color:'+values.borderColor+'!important');
+        if(values.opacity!==undefined&&values.opacity!=='')decl.push('opacity:'+Math.max(0,Math.min(1,Number(values.opacity)))+'!important');
+        if(decl.length)chunks.push(selector+'.'+pair[1]+'{'+decl.join(';')+'}');
+      });
+    });
     chunks.push('.ais-state-focus{outline:2px solid #6f49f5!important;outline-offset:2px!important}');
     chunks.push('.ais-state-disabled{opacity:.5!important;filter:grayscale(.25)}');
     style.textContent=chunks.join('\n');
@@ -2464,6 +2492,7 @@
         else el.removeAttribute('aria-disabled');
       }
     });
+    buildForcedStateStyle();
     emit('interactive-state',{state:activeInteractiveState});
   }
 
@@ -2900,6 +2929,8 @@
       componentInstance: !!state.componentInstance,
       prototypeTarget: state.prototypeTarget || '',
       interactiveState: activeInteractiveState,
+      stateStyles: JSON.parse(JSON.stringify(state.stateStyles || {hover:{},active:{},focus:{},disabled:{}})),
+      activeStateStyle: Object.assign({}, (state.stateStyles&&state.stateStyles[activeInteractiveState]) || {}),
       tokens: Object.assign({}, designTokens),
       components: componentSummary(),
       css: cssText(),
@@ -3769,6 +3800,18 @@
     if (!active || !selected) return;
     const state = remember(selected);
     if (state.locked) return;
+    if(activeInteractiveState!=='normal'&&['hover','active','focus','disabled'].indexOf(activeInteractiveState)>=0){
+      state.stateStyles=state.stateStyles||{hover:{},active:{},focus:{},disabled:{}};
+      const target=state.stateStyles[activeInteractiveState]||(state.stateStyles[activeInteractiveState]={});
+      if(kind==='color')target.color=String(value||'');
+      if(kind==='background')target.backgroundColor=String(value||'');
+      if(kind==='border')target.borderColor=String(value||'');
+      buildForcedStateStyle();
+      updateOverlay();
+      commitHistory();
+      emit('state-style-updated',{state:activeInteractiveState,styles:Object.assign({},target)});
+      return;
+    }
     if (kind === 'color') {
       state.color = String(value || '');
       state.colorAdjusted = true;
@@ -3783,6 +3826,23 @@
     }
     applyState(selected, state);
     commitHistory();
+  }
+
+  function setInteractiveStateStyle(payload){
+    if(!active||!selected)return;
+    const state=remember(selected);
+    if(!state||state.locked)return;
+    const name=String(payload&&payload.state||activeInteractiveState||'normal');
+    if(name==='normal')return;
+    if(['hover','active','focus','disabled'].indexOf(name)<0)return;
+    state.stateStyles=state.stateStyles||{hover:{},active:{},focus:{},disabled:{}};
+    const target=state.stateStyles[name]||(state.stateStyles[name]={});
+    if(payload&&payload.opacity!==undefined)target.opacity=Math.max(0,Math.min(1,Number(payload.opacity)));
+    if(payload&&payload.reset)state.stateStyles[name]={};
+    buildForcedStateStyle();
+    updateOverlay();
+    commitHistory();
+    emit('state-style-updated',{state:name,styles:Object.assign({},state.stateStyles[name]||{})});
   }
 
   function adjustZ(delta) {
@@ -4644,6 +4704,7 @@
     if (data.type === 'token-apply') applyTokenToSelection(String(payload.kind||''));
     if (data.type === 'animation-set') setAnimation(payload);
     if (data.type === 'interactive-state') setInteractiveState(payload.state);
+    if (data.type === 'interactive-state-style') setInteractiveStateStyle(payload);
     if (data.type === 'stress-test') stressTest(payload.mode);
     if (data.type === 'component-create') createComponent(payload.name);
     if (data.type === 'component-link') linkComponentInstance(payload.name);
@@ -4754,6 +4815,7 @@
     applyTokenToSelection: applyTokenToSelection,
     setAnimation: setAnimation,
     setInteractiveState: setInteractiveState,
+    setInteractiveStateStyle: setInteractiveStateStyle,
     stressTest: stressTest,
     createComponent: createComponent,
     linkComponentInstance: linkComponentInstance,
