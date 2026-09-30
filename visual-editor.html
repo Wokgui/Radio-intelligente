@@ -2660,8 +2660,12 @@ body.desktop .desktop-badge{display:inline-flex}
       return;
     }
     var rules=payload.rules||[];
+    var meta=payload.meta||{};
     var winningRules=rules.filter(function(r){return (r.winningProperties||[]).length>0}).length;
-    cascadeSummary.innerHTML='<span class="audit-chip">'+rules.length+' règle(s)</span><span class="audit-chip">'+winningRules+' contributive(s)</span><span class="audit-chip">Sélecteur : '+String(payload.selector||'')+'</span>';
+    cascadeSummary.innerHTML='<span class="audit-chip">'+rules.length+' règle(s)</span><span class="audit-chip">'+winningRules+' contributive(s)</span><span class="audit-chip">'+(meta.scannedRules||0)+' règles parcourues</span><span class="audit-chip">'+Number(meta.elapsedMs||0).toFixed(1)+' ms</span><span class="audit-chip">Sélecteur : '+String(payload.selector||'')+'</span>'+
+      ((meta.layers||[]).length?'<span class="audit-chip">'+meta.layers.length+' couche(s) @layer</span>':'')+
+      ((meta.unreadableSheets||[]).length?'<span class="audit-chip warning">'+meta.unreadableSheets.length+' feuille(s) inaccessible(s)</span>':'')+
+      (meta.truncated?'<span class="audit-chip warning">analyse tronquée</span>':'');
     var computed=payload.computed||{};
     Object.keys(computed).forEach(function(prop){
       var b=document.createElement('b');b.textContent=prop;
@@ -2678,12 +2682,22 @@ body.desktop .desktop-badge{display:inline-flex}
         cascadeVariables.append(b,v);
       });
     }
-    if(!rules.length){cascadeList.innerHTML='<div class="hint">Aucune règle CSS accessible ne correspond à cet objet.</div>';return}
+    if((meta.unreadableSheets||[]).length){
+      var warning=document.createElement('div');warning.className='cascade-item';
+      var wb=document.createElement('b');wb.textContent='Feuilles CSS non lisibles';
+      var wm=document.createElement('div');wm.className='cascade-meta';
+      wm.textContent=(meta.unreadableSheets||[]).map(function(x){return cascadeFileLabel(x.href||'')+' · '+(x.reason||'accès refusé')}).join(' | ');
+      warning.append(wb,wm);cascadeList.appendChild(warning);
+    }
+    if(!rules.length){
+      if(!(meta.unreadableSheets||[]).length)cascadeList.innerHTML='<div class="hint">Aucune règle CSS accessible ne correspond à cet objet.</div>';
+      return;
+    }
     rules.forEach(function(rule){
       var row=document.createElement('div');row.className='cascade-item '+((rule.winningProperties||[]).length?'winner':'');
       var title=document.createElement('b');title.textContent=rule.selectorText||rule.selector||'règle';
       var meta=document.createElement('div');meta.className='cascade-meta';
-      meta.textContent='Spécificité '+(rule.specificity||[]).join(' / ')+' · ordre '+(rule.order||0)+' · '+cascadeFileLabel(rule.href)+(rule.context?' · '+rule.context:'');
+      meta.textContent='Spécificité '+(rule.specificity||[]).join(' / ')+' · ordre '+(rule.order||0)+(rule.layer?' · couche '+rule.layer+' (#'+(rule.layerOrder||0)+')':' · hors couche')+' · '+cascadeFileLabel(rule.href)+(rule.context?' · '+rule.context:'');
       var decls=document.createElement('div');decls.className='cascade-decls';
       (rule.declarations||[]).forEach(function(dec){
         var line=document.createElement('div');line.className='cascade-decl '+(dec.winner?'win':'lose');
@@ -2706,7 +2720,9 @@ body.desktop .desktop-badge{display:inline-flex}
     var list=document.getElementById('layoutDiagnosticList');
     var summaryEl=document.getElementById('layoutDiagnosticSummary');
     if(!list||!summaryEl)return;
-    summaryEl.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>';
+    var scan=payload.scan||{};
+    summaryEl.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>'+
+      (scan.total?'<span class="audit-chip '+(scan.truncated?'warning':'')+'">scan '+(scan.inspected||0)+' / '+scan.total+'</span>':'');
     list.innerHTML='';
     var items=payload.items||[];
     if(!items.length){list.innerHTML='<div class="hint">'+(payload.cleared?'Surlignages effacés.':'Aucun problème structurel détecté sur ce périmètre.')+'</div>';return}
@@ -2736,7 +2752,8 @@ body.desktop .desktop-badge{display:inline-flex}
       '<span class="audit-chip">Contraste testé : '+(summary.contrastTested||0)+'</span>'+
       '<span class="audit-chip warning">AA : '+(summary.contrastAaFailures||0)+' échec(s)</span>'+
       '<span class="audit-chip">AAA : '+(summary.contrastAaaFailures||0)+' sous le seuil</span>'+
-      (summary.contrastUncertain?'<span class="audit-chip">'+summary.contrastUncertain+' fond(s) complexe(s)</span>':'');
+      (summary.contrastUncertain?'<span class="audit-chip">'+summary.contrastUncertain+' fond(s) complexe(s)</span>':'')+
+      (summary.totalNodes?'<span class="audit-chip '+(summary.scanTruncated?'warning':'')+'">scan '+(summary.scannedNodes||0)+' / '+summary.totalNodes+'</span>':'');
     auditList.innerHTML='';
     var issues=payload.issues||[];
     if(!issues.length){auditList.innerHTML='<div class="hint">Aucun problème détecté sur ce viewport.</div>';return}
@@ -2774,7 +2791,9 @@ body.desktop .desktop-badge{display:inline-flex}
     lastConsistencyPayload=payload;
     var issues=payload.issues||[];
     consistencyList.innerHTML='';
-    consistencyStatus.textContent=issues.length?issues.length+' incohérence(s) ou valeur(s) rare(s) détectée(s).':'Aucune incohérence significative détectée.';
+    var scan=payload.scan||{};
+    consistencyStatus.textContent=(issues.length?issues.length+' incohérence(s) ou valeur(s) rare(s) détectée(s).':'Aucune incohérence significative détectée.')+
+      (scan.truncated?' Analyse partielle : '+(scan.inspected||0)+' éléments inspectés sur '+(scan.total||0)+'.':'');
     if(!issues.length)return;
     issues.slice(0,80).forEach(function(issue){
       var row=document.createElement('div');row.className='consistency-item';
@@ -3049,6 +3068,15 @@ body.desktop .desktop-badge{display:inline-flex}
       var title=document.createElement('b');title.textContent=(cfg.name||'écran')+' · '+cfg.width+'×'+cfg.height+' · texte '+Math.round((cfg.fontScale||1)*100)+' %'+(cfg.keyboard?' · clavier':'');
       var detail=document.createElement('div');detail.textContent=(item.issues||[]).length?(item.issues.map(function(x){return x.type+(x.count?' ×'+x.count:'')}).join(' · ')):'OK';
       row.append(title,detail);
+      var diag=item.diagnostics||{};
+      if(diag.truncatedNodes||(diag.unreadableSheets||[]).length){
+        var scanNote=document.createElement('div');scanNote.className='matrix-cause';
+        var messages=[];
+        if(diag.truncatedNodes)messages.push('DOM volumineux : '+(diag.scannedNodes||0)+' / '+(diag.totalNodes||0)+' éléments scannés');
+        if((diag.unreadableSheets||[]).length)messages.push((diag.unreadableSheets||[]).length+' feuille(s) CSS non lisible(s)');
+        scanNote.textContent=messages.join(' · ');
+        row.appendChild(scanNote);
+      }
       (item.issues||[]).forEach(function(issue){
         (issue.culprits||[]).slice(0,3).forEach(function(culprit){
           var cause=document.createElement('div');cause.className='matrix-cause';
@@ -3955,7 +3983,7 @@ body.desktop .desktop-badge{display:inline-flex}
       {
         title:'Audit écran actuel',
         detail:(auditSummary.errors||0)+' erreur(s) · '+(auditSummary.warnings||0)+' avertissement(s) · AA '+(auditSummary.contrastAaFailures||0)+' échec(s)',
-        ok:!(auditSummary.errors||0)&&!(auditSummary.contrastAaFailures||0)
+        ok:!(auditSummary.errors||0)&&!(auditSummary.contrastAaFailures||0)&&!auditSummary.scanTruncated
       },
       {
         title:'Responsive · 12 configurations',
@@ -3970,7 +3998,7 @@ body.desktop .desktop-badge{display:inline-flex}
       {
         title:'Cohérence du design',
         detail:consistencyIssues.length+' valeur(s) rare(s) ou incohérence(s) détectée(s)',
-        ok:consistencyIssues.length===0
+        ok:consistencyIssues.length===0&&!(lastConsistencyPayload&&lastConsistencyPayload.scan&&lastConsistencyPayload.scan.truncated)
       }
     ];
     if(assetsResult&&assetsResult.ok){
