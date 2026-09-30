@@ -2516,21 +2516,21 @@
     }
 
     const rect = selected.getBoundingClientRect();
+    const count = selectionElements().length;
+    const groupRect = count > 1 ? selectionBounds() : rect;
     const cfg = effectiveResponsive(state);
     constraintBadge.style.display = 'block';
-    constraintBadge.style.left = Math.max(4, rect.left) + 'px';
-    constraintBadge.style.top = Math.max(4, rect.top - 25) + 'px';
+    constraintBadge.style.left = Math.max(4, groupRect.left) + 'px';
+    constraintBadge.style.top = Math.max(4, groupRect.top - 25) + 'px';
     const hIcon = cfg.hAnchor === 'left' ? '←' : cfg.hAnchor === 'right' ? '→' : cfg.hAnchor === 'center' ? '↔' : cfg.hAnchor === 'stretch' ? '⇆' : '·';
     const vIcon = cfg.vAnchor === 'top' ? '↑' : cfg.vAnchor === 'bottom' ? '↓' : cfg.vAnchor === 'center' ? '↕' : cfg.vAnchor === 'stretch' ? '⇅' : '·';
     constraintBadge.textContent = hIcon + ' ' + vIcon + ' · ' + viewportBreakpoint();
     outline.style.display = 'block';
-    outline.style.left = rect.left + 'px';
-    outline.style.top = rect.top + 'px';
-    outline.style.width = rect.width + 'px';
-    outline.style.height = rect.height + 'px';
+    outline.style.left = groupRect.left + 'px';
+    outline.style.top = groupRect.top + 'px';
+    outline.style.width = groupRect.width + 'px';
+    outline.style.height = groupRect.height + 'px';
     syncSecondaryOutlines();
-    const count = selectionElements().length;
-    const groupRect = count > 1 ? selectionBounds() : rect;
     targetLabel.textContent = count > 1 ? (count + ' objets sélectionnés') : state.selector;
     metrics.textContent = 'X ' + Math.round(groupRect.left) + ' · Y ' + Math.round(groupRect.top) +
       ' · L ' + Math.round(groupRect.width) + ' · H ' + Math.round(groupRect.height) +
@@ -2683,12 +2683,66 @@
     commitHistory();
   }
 
+  function resizeSnapshots(items) {
+    return items.map(function(element){
+      const rect=element.getBoundingClientRect();
+      return {element:element,rect:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height}};
+    });
+  }
+
+  function scaleSelectionToRect(snapshots,startBounds,targetBounds) {
+    if(!snapshots||!snapshots.length||!startBounds)return;
+    const startW=Math.max(1,startBounds.width);
+    const startH=Math.max(1,startBounds.height);
+    const targetW=Math.max(1,targetBounds.width);
+    const targetH=Math.max(1,targetBounds.height);
+    const sx=targetW/startW;
+    const sy=targetH/startH;
+
+    snapshots.forEach(function(item){
+      const element=item.element;
+      const state=remember(element);
+      if(!state||state.locked)return;
+      const r=item.rect;
+      const targetLeft=targetBounds.left+(r.left-startBounds.left)*sx;
+      const targetTop=targetBounds.top+(r.top-startBounds.top)*sy;
+      state.resized=true;
+      state.width=Math.max(1,snapGrid(r.width*sx));
+      state.height=Math.max(1,snapGrid(r.height*sy));
+      if(state.responsive&&state.responsive.enabled){
+        const cfg=editableResponsive(state,editingBreakpoint);
+        cfg.widthMode='fixed';
+        cfg.heightMode='fixed';
+      }
+      applyState(element,state,false);
+      const current=element.getBoundingClientRect();
+      moveResponsiveState(element,state,targetLeft-current.left,targetTop-current.top);
+    });
+  }
+
   function adjustSize(dw, dh, commit, proportional) {
     if (!active || !selected) return;
-    const state = remember(selected);
-    if (state.locked) return;
-    state.resized = true;
+    const items=selectionElements();
+    if(items.some(function(element){const st=remember(element);return !st||st.locked}))return;
 
+    if(items.length>1){
+      const bounds=selectionBounds();
+      const snapshots=resizeSnapshots(items);
+      let width=Math.max(1,bounds.width+dw);
+      let height=Math.max(1,bounds.height+dh);
+      if(proportional){
+        const ratio=Math.max(.0001,bounds.width/Math.max(1,bounds.height));
+        if(Math.abs(dw/Math.max(1,bounds.width))>=Math.abs(dh/Math.max(1,bounds.height)))height=width/ratio;
+        else width=height*ratio;
+      }
+      scaleSelectionToRect(snapshots,bounds,{left:bounds.left,top:bounds.top,width:width,height:height,right:bounds.left+width,bottom:bounds.top+height});
+      updateOverlay();
+      if(commit!==false)commitHistory();
+      return;
+    }
+
+    const state = remember(selected);
+    state.resized = true;
     const square = proportional || Math.abs(state.width - state.height) <= Math.max(4, Math.min(state.width, state.height) * 0.12);
     if (square && dw === dh) {
       const size = Math.max(1, snapGrid(Math.max(state.width, state.height) + dw));
