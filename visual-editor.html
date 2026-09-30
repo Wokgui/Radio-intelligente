@@ -1124,6 +1124,14 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
       </div>
       <button class="btn" id="applyAnimationBtn" style="width:100%;margin-top:8px">Appliquer animation</button>
+      <div id="interactiveStateEditor" style="margin-top:9px;padding:9px;border:1px solid var(--line);border-radius:10px;background:#faf8fc">
+        <div class="hint" id="interactiveStateHint">État normal : les couleurs d’Apparence modifient le style de base.</div>
+        <div class="fields" style="margin-top:7px">
+          <div class="field"><label>Opacité de cet état</label><input id="interactiveStateOpacity" type="range" min="0" max="1" step=".05" value="1"></div>
+          <div class="field"><label>Valeur</label><input id="interactiveStateOpacityValue" type="text" value="1.00" readonly></div>
+        </div>
+        <button class="btn" id="resetInteractiveStateStyleBtn" style="width:100%;margin-top:7px">Rétablir cet état</button>
+      </div>
       <div class="field" style="margin-top:9px"><label>Cible du clic · sélecteur</label><input id="prototypeTarget" type="text" placeholder="#settings ou .page-player"></div>
       <button class="btn" id="setPrototypeBtn" style="width:100%;margin-top:7px">Créer le lien de prototype</button>
       <button class="btn" id="openFlowBtn" style="width:100%;margin-top:7px">Ouvrir le flow de navigation</button>
@@ -1316,6 +1324,10 @@ body.desktop .desktop-badge{display:inline-flex}
   var colorBg=document.getElementById('colorBg');
   var colorBorder=document.getElementById('colorBorder');
   var selectedContrastStatus=document.getElementById('selectedContrastStatus');
+  var interactiveStateHint=document.getElementById('interactiveStateHint');
+  var interactiveStateOpacity=document.getElementById('interactiveStateOpacity');
+  var interactiveStateOpacityValue=document.getElementById('interactiveStateOpacityValue');
+  var resetInteractiveStateStyleBtn=document.getElementById('resetInteractiveStateStyleBtn');
   var textCard=document.getElementById('textCard');
   var mediaCard=document.getElementById('mediaCard');
   var mediaFit=document.getElementById('mediaFit');
@@ -2352,9 +2364,10 @@ body.desktop .desktop-badge{display:inline-flex}
       sizeW.value=Math.round(p.width);
       sizeH.value=Math.round(p.height);
       zIndex.value=Number(p.zIndex)||0;
-      colorText.value=rgbToHex(p.color,'#000000');
-      colorBg.value=rgbToHex(p.backgroundColor,'#ffffff');
-      colorBorder.value=rgbToHex(p.borderColor,'#dddddd');
+      var activeStyle=p.interactiveState&&p.interactiveState!=='normal'?(p.activeStateStyle||{}):{};
+      colorText.value=rgbToHex(activeStyle.color||p.color,'#000000');
+      colorBg.value=rgbToHex(activeStyle.backgroundColor||p.backgroundColor,'#ffffff');
+      colorBorder.value=rgbToHex(activeStyle.borderColor||p.borderColor,'#dddddd');
       lockBtn.textContent=p.locked?'🔒 Déverrouiller':'🔓 Verrouiller';
 
       var editable=!!p.textEditable&&selectionCount<=1;
@@ -2420,6 +2433,21 @@ body.desktop .desktop-badge{display:inline-flex}
       if(easingOptions.some(function(o){return o.value===p.animation.easing}))document.getElementById('animationEasing').value=p.animation.easing;
     }
     if(p.interactiveState)document.getElementById('interactiveState').value=p.interactiveState;
+    var stateName=p.interactiveState||'normal';
+    var stateStyle=p.activeStateStyle||{};
+    var stateLabels={normal:'Normal',hover:'Survol',active:'Appuyé',focus:'Focus',disabled:'Désactivé'};
+    if(stateName==='normal'){
+      interactiveStateHint.textContent='État normal : les couleurs d’Apparence modifient le style de base.';
+      interactiveStateOpacity.disabled=true;
+      resetInteractiveStateStyleBtn.disabled=true;
+      interactiveStateOpacity.value='1';
+    }else{
+      interactiveStateHint.textContent='État '+(stateLabels[stateName]||stateName)+' : les couleurs d’Apparence modifient uniquement cet état et seront exportées en pseudo-classe CSS.';
+      interactiveStateOpacity.disabled=false;
+      resetInteractiveStateStyleBtn.disabled=!Object.keys(stateStyle).length;
+      interactiveStateOpacity.value=stateStyle.opacity===undefined?'1':String(stateStyle.opacity);
+    }
+    interactiveStateOpacityValue.value=Number(interactiveStateOpacity.value||1).toFixed(2);
     document.getElementById('prototypeTarget').value=p.prototypeTarget||'';
     if(p.componentName)document.getElementById('componentName').value=p.componentName;
     if(selectionCount>1){
@@ -4297,6 +4325,15 @@ body.desktop .desktop-badge{display:inline-flex}
   });
 
   document.getElementById('interactiveState').addEventListener('change',function(){post('interactive-state',{state:this.value})});
+  interactiveStateOpacity.addEventListener('input',function(){
+    interactiveStateOpacityValue.value=Number(this.value||1).toFixed(2);
+    var state=document.getElementById('interactiveState').value;
+    if(state!=='normal')post('interactive-state-style',{state:state,opacity:Number(this.value)});
+  });
+  resetInteractiveStateStyleBtn.addEventListener('click',function(){
+    var state=document.getElementById('interactiveState').value;
+    if(state!=='normal')post('interactive-state-style',{state:state,reset:true});
+  });
   document.getElementById('applyAnimationBtn').addEventListener('click',function(){
     post('animation-set',{
       property:document.getElementById('animationProperty').value,
