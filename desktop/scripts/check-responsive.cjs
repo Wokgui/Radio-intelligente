@@ -276,6 +276,16 @@ expect(engine,"showSpacingVisuals(rect,visual)","equal spacing visual feedback")
 expect(engine,"emit('equal-spacing'","equal spacing event");
 expect(html,"aux espacements égaux","equal spacing help");
 expect(html,"data.type==='equal-spacing'","equal spacing host status");
+expect(css,".ve-anchor-pin","direct anchor controls CSS");
+expect(css,".ve-constraint-line","constraint relationship lines CSS");
+expect(engine,"data-anchor-axis=\"h\"","horizontal anchor buttons");
+expect(engine,"data-anchor-axis=\"v\"","vertical anchor buttons");
+expect(engine,"function syncAnchorPins(cfg,count)","direct anchor state sync");
+expect(engine,"function syncConstraintLines(element,cfg,count,rect)","constraint line rendering");
+expect(engine,"setResponsiveConfig(payload)","direct responsive anchor application");
+expect(engine,"emit('constraint-direct'","direct anchor event");
+expect(html,"les lignes violettes montrent la relation avec le parent","direct anchor help");
+expect(html,"data.type==='constraint-direct'","direct anchor host status");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -283,4 +293,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.16 feature checks passed.');
+console.log('App Interface Studio 6.17 feature checks passed.');
