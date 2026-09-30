@@ -1743,11 +1743,25 @@
       const aw=a.winningProperties.length?1:0,bw=b.winningProperties.length?1:0;
       return bw-aw||b.order-a.order;
     });
+    const variableNames=new Set();
+    candidates.forEach(function(rule){
+      rule.declarations.forEach(function(dec){
+        const refs=String(dec.value||'').match(/var\(\s*(--[\w-]+)/g)||[];
+        refs.forEach(function(ref){
+          const m=ref.match(/--[\w-]+/);if(m)variableNames.add(m[0]);
+        });
+        if(String(dec.property||'').indexOf('--')===0)variableNames.add(dec.property);
+      });
+    });
+    const variables=Array.from(variableNames).sort().map(function(name){
+      return {name:name,value:cs.getPropertyValue(name).trim()};
+    });
     emit('css-cascade',{
       selected:true,
       selector:selectorFor(element),
       rules:candidates.slice(0,120),
-      computed:computed
+      computed:computed,
+      variables:variables
     });
   }
 
@@ -2513,6 +2527,26 @@
     commitHistory();updateOverlay();
     analyzeLayoutDiagnostics('screen');
     emit('layout-diagnostic-applied',{id:id,selector:item.targetSelector||item.selector});
+  }
+
+  function applyAllLayoutDiagnostics() {
+    const applicable=layoutDiagnostics.filter(function(item){return !!item.action});
+    let count=0;
+    applicable.forEach(function(item){
+      let el=null;try{el=document.querySelector(item.targetSelector||item.selector)}catch(_){}
+      if(!el)return;
+      const st=remember(el);if(!st||st.locked)return;
+      st.advancedAdjusted=true;st.advancedStyles=st.advancedStyles||{};
+      Object.assign(st.advancedStyles,item.action);
+      applyState(el,st,false);
+      count+=1;
+    });
+    if(count){
+      commitHistory();
+      updateOverlay();
+      analyzeLayoutDiagnostics('screen');
+    }
+    emit('layout-diagnostic-batch',{count:count});
   }
 
   function analyzeDesignConsistency() {
@@ -5105,6 +5139,7 @@
     if (data.type === 'layout-diagnostic') analyzeLayoutDiagnostics(payload.scope||'screen');
     if (data.type === 'layout-diagnostic-clear') clearLayoutDiagnostics();
     if (data.type === 'layout-diagnostic-apply') applyLayoutDiagnostic(payload.id);
+    if (data.type === 'layout-diagnostic-apply-all') applyAllLayoutDiagnostics();
     if (data.type === 'repair-suggest') makeRepairSuggestions();
     if (data.type === 'repair-preview') previewRepair(payload.id);
     if (data.type === 'repair-preview-clear') clearRepairPreview();
