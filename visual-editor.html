@@ -390,6 +390,12 @@ body.desktop .desktop-badge{display:inline-flex}
 .modal-head strong{font-size:.94rem}.modal-head span{font-size:.7rem;color:#cfc4da}.modal-head .btn:first-of-type{margin-left:auto}
 .modal-body{min-height:0;overflow:auto;padding:14px}
 .diff-code{width:100%;min-height:60vh;white-space:pre;overflow:auto;padding:14px;border:1px solid #ffffff1f;border-radius:12px;background:#0f0d13;color:#ece6f3;font:600 11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+.source-property-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.source-property-chip{display:flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid #ffffff22;border-radius:8px;background:#18151e;color:#eee;font:700 10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}
+.source-property-chip input{accent-color:#8f6df7}
+.matrix-cause{margin-top:7px;padding:7px;border-radius:7px;background:#f7f3fb;border:1px solid var(--line);font-size:.62rem;line-height:1.35}
+.matrix-cause b{display:block;margin-bottom:3px}
+.matrix-cause code{display:block;white-space:normal;overflow-wrap:anywhere;color:#5e456f}
 .patch-diff-section{margin-bottom:16px;transition:opacity .15s}.patch-diff-section.disabled{opacity:.42}.patch-diff-section h3{display:flex;gap:8px;align-items:baseline;margin:0 0 6px}.patch-diff-section .diff-code{min-height:180px;max-height:38vh}.patch-diff-section small{color:#b8aac8}
 .source-edit-status,.smart-status,.native-status,.consistency-status,.matrix-status{font-size:.68rem;line-height:1.42;color:var(--muted);margin-top:7px}
 .advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -547,7 +553,10 @@ body.desktop .desktop-badge{display:inline-flex}
     <button class="btn primary" id="applyDirectDiffBtn">Appliquer au fichier</button>
     <button class="btn" id="closeDirectDiffBtn">Fermer</button>
   </div>
-  <div class="modal-body"><pre class="diff-code" id="sourceDiffCode"></pre></div>
+  <div class="modal-body">
+    <div class="source-property-list" id="sourcePropertyList"></div>
+    <pre class="diff-code" id="sourceDiffCode"></pre>
+  </div>
 </div>
 
 <div class="flow-modal" id="flowModal">
@@ -1557,6 +1566,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var sourceDiffModal=document.getElementById('sourceDiffModal');
   var sourceDiffCode=document.getElementById('sourceDiffCode');
   var sourceDiffFile=document.getElementById('sourceDiffFile');
+  var sourcePropertyList=document.getElementById('sourcePropertyList');
   var flowModal=document.getElementById('flowModal');
   var flowCanvas=document.getElementById('flowCanvas');
   var matrixModal=document.getElementById('matrixModal');
@@ -1700,7 +1710,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.55.0'};
+      project.studio={name:'App Interface Studio',version:'6.56.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2795,6 +2805,47 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function renderDirectPropertyToggles(result){
+    sourcePropertyList.innerHTML='';
+    var props=result&&result.allProperties||{};
+    var selected=new Set(result&&result.selectedProperties||Object.keys(props));
+    Object.keys(props).sort().forEach(function(prop){
+      var label=document.createElement('label');label.className='source-property-chip';
+      var check=document.createElement('input');check.type='checkbox';check.checked=selected.has(prop);check.dataset.sourceProperty=prop;
+      var text=document.createElement('span');text.textContent=prop;
+      check.addEventListener('change',refreshDirectPropertyDiff);
+      label.append(check,text);sourcePropertyList.appendChild(label);
+    });
+  }
+
+  async function refreshDirectPropertyDiff(){
+    if(!pendingDirectDiff||!desktop||!desktop.prepareDirectEdit)return;
+    var selected=Array.from(sourcePropertyList.querySelectorAll('input[data-source-property]:checked')).map(function(x){return x.dataset.sourceProperty});
+    if(!selected.length){
+      sourceDiffCode.textContent='Sélectionne au moins une propriété à appliquer.';
+      document.getElementById('applyDirectDiffBtn').disabled=true;
+      return;
+    }
+    document.getElementById('applyDirectDiffBtn').disabled=true;
+    var result=await desktop.prepareDirectEdit({
+      source:currentSource,
+      selector:pendingDirectDiff.selector,
+      sourceSelector:pendingDirectDiff.sourceSelector||lastState.selector,
+      preferredHref:pendingDirectDiff.preferredHref||'',
+      selectedProperties:selected,
+      css:lastState.css||cssOut.value
+    });
+    if(!result||!result.ok){
+      sourceDiffCode.textContent=result&&result.error||'Recalcul du diff impossible.';
+      return;
+    }
+    pendingDirectDiff=result;
+    sourceDiffFile.textContent=result.relativePath||result.file;
+    sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    renderDirectPropertyToggles(result);
+    document.getElementById('applyDirectDiffBtn').disabled=false;
+  }
+
   async function prepareDirectSourceEdit(cascadeRule){
     if(!desktop||!desktop.prepareDirectEdit){directSourceStatus.textContent='Fonction disponible dans l’application Windows.';return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){directSourceStatus.textContent='Ouvre une application HTML/PWA depuis un dossier local.';return}
@@ -2812,6 +2863,8 @@ body.desktop .desktop-badge{display:inline-flex}
     pendingDirectDiff=result;pendingNativeDiff=null;pendingDiffKind='direct';
     sourceDiffFile.textContent=result.relativePath||result.file;
     sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    renderDirectPropertyToggles(result);
+    document.getElementById('applyDirectDiffBtn').disabled=false;
     sourceDiffModal.classList.add('visible');
     directSourceStatus.textContent='Diff prêt : '+(result.relativePath||result.file)+'.';
   }
@@ -2858,6 +2911,8 @@ body.desktop .desktop-badge{display:inline-flex}
     pendingNativeDiff=result;pendingDirectDiff=null;pendingDiffKind='native';
     sourceDiffFile.textContent=result.file;
     sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    sourcePropertyList.innerHTML='';
+    document.getElementById('applyDirectDiffBtn').disabled=false;
     sourceDiffModal.classList.add('visible');
     nativeStatus.textContent='Diff Android prêt.';
   }
@@ -2994,6 +3049,23 @@ body.desktop .desktop-badge{display:inline-flex}
       var title=document.createElement('b');title.textContent=(cfg.name||'écran')+' · '+cfg.width+'×'+cfg.height+' · texte '+Math.round((cfg.fontScale||1)*100)+' %'+(cfg.keyboard?' · clavier':'');
       var detail=document.createElement('div');detail.textContent=(item.issues||[]).length?(item.issues.map(function(x){return x.type+(x.count?' ×'+x.count:'')}).join(' · ')):'OK';
       row.append(title,detail);
+      (item.issues||[]).forEach(function(issue){
+        (issue.culprits||[]).slice(0,3).forEach(function(culprit){
+          var cause=document.createElement('div');cause.className='matrix-cause';
+          var head=document.createElement('b');head.textContent=(issue.type||'problème')+' · '+(culprit.selector||'élément');
+          var reason=document.createElement('div');reason.textContent=culprit.reason||'';
+          cause.append(head,reason);
+          var rules=culprit.rules||[];
+          rules.slice().reverse().slice(0,4).forEach(function(rule){
+            var code=document.createElement('code');
+            var source=cascadeFileLabel(rule.href);
+            var props=Object.keys(rule.properties||{}).map(function(k){return k+': '+rule.properties[k]}).join('; ');
+            code.textContent=(rule.context?rule.context+' · ':'')+(rule.selectorText||rule.selector)+' · '+source+' · '+props;
+            cause.appendChild(code);
+          });
+          row.appendChild(cause);
+        });
+      });
       if(item.screenshot){
         var img=document.createElement('img');img.src=item.screenshot;img.alt='Capture';img.style.cssText='display:block;width:120px;max-height:160px;object-fit:contain;margin-top:6px;border-radius:7px;border:1px solid var(--line)';row.appendChild(img);
       }
@@ -3838,7 +3910,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.55.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.56.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3965,7 +4037,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.55.0'};
+    project.studio={name:'App Interface Studio',version:'6.56.0'};
     return project;
   }
 
@@ -4062,7 +4134,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.55.0'};
+    project.studio={name:'App Interface Studio',version:'6.56.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
