@@ -83,6 +83,7 @@
   let pasteSequence = 0;
   let grid = 1;
   let smartGuidesEnabled = true;
+  let customGuides = {x:[],y:[]};
   let keyboardCommitTimer = null;
   let safeArea = { top: 0, right: 0, bottom: 0, left: 0, profile: 'none' };
   let defaultResponsive = true;
@@ -767,6 +768,8 @@
   function alignmentCandidates(element) {
     const x = [{ value: window.innerWidth / 2, label: 'Centre écran' }];
     const y = [{ value: window.innerHeight / 2, label: 'Milieu écran' }];
+    (customGuides.x||[]).forEach(function(value){x.push({value:Number(value)||0,label:'Repère vertical '+Math.round(Number(value)||0)+' px'})});
+    (customGuides.y||[]).forEach(function(value){y.push({value:Number(value)||0,label:'Repère horizontal '+Math.round(Number(value)||0)+' px'})});
     const candidates = [];
     const parent = element.parentElement;
 
@@ -3364,6 +3367,13 @@
       if (payload.guideThreshold !== undefined) guideThreshold = Math.max(1, Math.min(20, Number(payload.guideThreshold) || 5));
       if (!smartGuidesEnabled) hideGuides();
     }
+    if (data.type === 'custom-guides') {
+      customGuides={
+        x:Array.isArray(payload.x)?payload.x.map(Number).filter(Number.isFinite):[],
+        y:Array.isArray(payload.y)?payload.y.map(Number).filter(Number.isFinite):[]
+      };
+      emit('custom-guides',{x:customGuides.x.slice(),y:customGuides.y.slice()});
+    }
     if (data.type === 'font-size') adjustFont(Number(payload.delta) || 0);
     if (data.type === 'set-size') setExactSize(payload.width, payload.height, !!payload.keepRatio);
     if (data.type === 'set-position') setExactPosition(payload.x, payload.y);
@@ -3480,6 +3490,10 @@
     setSelectionZ: setSelectionZ,
     smartSnapSelection: smartSnapSelection,
     setMarqueeMode: setMarqueeMode,
+    setCustomGuides: function(value){
+      value=value||{};
+      customGuides={x:Array.isArray(value.x)?value.x.slice():[],y:Array.isArray(value.y)?value.y.slice():[]};
+    },
     setParentLayout: setParentLayout,
     inferAutoLayout: inferAutoLayout,
     inferSmartConstraints: inferSmartConstraints,
