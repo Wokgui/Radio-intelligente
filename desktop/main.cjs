@@ -1109,22 +1109,13 @@ async function rollbackLocalPatch(payload){
   if(!local)return {ok:false,error:'Rollback disponible uniquement pour une source HTML locale.'};
   const dir=path.dirname(local.html);
   try{
-    const files=fs.readdirSync(dir)
-      .filter(name=>/^app-interface-studio\.transaction-.*\.json$/i.test(name))
-      .sort().reverse();
-
+    const history=listLocalTransactions({source:payload&&payload.source});
+    if(!history.ok)return history;
+    const chosenPath=history.nextRollbackPath;
+    if(!chosenPath)return {ok:false,error:'Aucun patch local à annuler pour cette source.'};
     let chosen=null;
-    let chosenPath=null;
-    for(const name of files){
-      const candidatePath=path.join(dir,name);
-      try{
-        const tx=JSON.parse(fs.readFileSync(candidatePath,'utf8'));
-        if(tx&&path.resolve(tx.sourceHtml||'')===path.resolve(local.html)&&!tx.rolledBack){
-          chosen=tx;chosenPath=candidatePath;break;
-        }
-      }catch(_){}
-    }
-    if(!chosen)return {ok:false,error:'Aucun patch local à annuler pour cette source.'};
+    try{chosen=JSON.parse(fs.readFileSync(chosenPath,'utf8'))}catch(_){}
+    if(!chosen)return {ok:false,error:'Transaction du prochain rollback introuvable ou invalide.'};
     if(!chosen.htmlBackupPath||!fs.existsSync(chosen.htmlBackupPath))return {ok:false,error:'Sauvegarde HTML du dernier patch introuvable.'};
 
     fs.copyFileSync(chosen.htmlBackupPath,local.html);
@@ -1194,6 +1185,37 @@ function listLocalTransactions(payload){
 }
 
 ipcMain.handle('source:list-transactions',async (_event,payload)=>listLocalTransactions(payload));
+
+async function rollbackThroughLocalTransaction(payload){
+  const source=payload&&payload.source;
+  const targetPath=path.resolve(String(payload&&payload.transactionPath||''));
+  if(!targetPath)return {ok:false,error:'Transaction cible manquante.'};
+  const initial=listLocalTransactions({source});
+  if(!initial.ok)return initial;
+  const active=initial.transactions.filter(item=>!item.rolledBack);
+  const target=active.find(item=>path.resolve(item.path)===targetPath);
+  if(!target)return {ok:false,error:'La transaction choisie est introuvable ou déjà annulée.'};
+  const targetIndex=active.findIndex(item=>path.resolve(item.path)===targetPath);
+  if(targetIndex<0)return {ok:false,error:'Transaction cible non active.'};
+
+  const rolledBack=[];
+  for(let i=0;i<=targetIndex;i++){
+    const current=listLocalTransactions({source});
+    if(!current.ok)return current;
+    if(!current.nextRollbackPath)return {ok:false,error:'Pile de rollback interrompue avant la transaction cible.',rolledBack};
+    const expected=path.resolve(current.nextRollbackPath);
+    const result=await rollbackLocalPatch({source});
+    if(!result.ok)return Object.assign({},result,{rolledBack});
+    rolledBack.push(result.transactionPath);
+    if(path.resolve(result.transactionPath)===targetPath){
+      return {ok:true,count:rolledBack.length,rolledBack,targetPath:result.transactionPath,restoredAt:result.restoredAt};
+    }
+    if(i===targetIndex&&expected!==targetPath)break;
+  }
+  return {ok:false,error:'La transaction cible n’a pas été atteinte.',rolledBack};
+}
+
+ipcMain.handle('source:rollback-through',async (_event,payload)=>rollbackThroughLocalTransaction(payload));
 
 async function inspectSmokeFixture(url){
   const win=new BrowserWindow({
