@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.15.0",
+  "version": "6.16.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec redimensionnement géométrique des sélections multiples, ancrage correct des coins, palette clavier, sauvegardes sérialisées et mesures visuelles",
+  "description": "Éditeur visuel universel Windows avec accrochage aux espacements égaux, redimensionnement géométrique de groupe, palette clavier, sauvegardes sérialisées, repères et mesures visuelles",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
