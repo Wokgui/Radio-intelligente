@@ -62,6 +62,13 @@
 
   const constraintBadge = document.createElement('div');
   constraintBadge.className = 've-constraint-badge';
+  const constraintLines = ['left','right','top','bottom','center-x','center-y'].map(function(kind){
+    const line=document.createElement('div');
+    const horizontal=kind==='left'||kind==='right'||kind==='center-y';
+    line.className='ve-constraint-line '+(horizontal?'horizontal':'vertical')+(kind.indexOf('center-')===0?' center':'');
+    line.dataset.kind=kind;
+    return line;
+  });
   const altTargetOutline = document.createElement('div');
   altTargetOutline.className = 've-alt-target';
   const altMeasureLabel = document.createElement('div');
@@ -81,6 +88,7 @@
   });
 
   document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
+  constraintLines.forEach(function(line){document.body.appendChild(line)});
   spacingVisuals.forEach(function(item){document.body.append(item.line,item.label)});
 
   const targetLabel = toolbar.querySelector('.ve-target');
@@ -785,6 +793,7 @@
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
       node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
       node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox ||
+      constraintLines.includes(node) ||
       spacingVisuals.some(function(item){return node===item.line||node===item.label});
   }
 
@@ -2577,6 +2586,54 @@
     });
   }
 
+  function hideConstraintLines(){
+    constraintLines.forEach(function(line){line.style.display='none'});
+  }
+
+  function syncConstraintLines(element,cfg,count,rect){
+    hideConstraintLines();
+    if(count!==1||!element||!cfg||!cfg.enabled||!rect)return;
+    const state=remember(element);
+    if(!state)return;
+    const bounds=responsiveBounds(element,state);
+    const byKind={};
+    constraintLines.forEach(function(line){byKind[line.dataset.kind]=line});
+
+    function showH(kind,left,right,y){
+      const line=byKind[kind];if(!line)return;
+      line.style.display='block';
+      line.style.left=Math.round(Math.min(left,right))+'px';
+      line.style.top=Math.round(y)+'px';
+      line.style.width=Math.max(0,Math.round(Math.abs(right-left)))+'px';
+    }
+    function showV(kind,top,bottom,x){
+      const line=byKind[kind];if(!line)return;
+      line.style.display='block';
+      line.style.left=Math.round(x)+'px';
+      line.style.top=Math.round(Math.min(top,bottom))+'px';
+      line.style.height=Math.max(0,Math.round(Math.abs(bottom-top)))+'px';
+    }
+
+    const cy=rect.top+rect.height/2;
+    const cx=rect.left+rect.width/2;
+    if(cfg.hAnchor==='left'||cfg.hAnchor==='stretch')showH('left',bounds.left,rect.left,cy);
+    if(cfg.hAnchor==='right'||cfg.hAnchor==='stretch')showH('right',rect.right,bounds.right,cy);
+    if(cfg.vAnchor==='top'||cfg.vAnchor==='stretch')showV('top',bounds.top,rect.top,cx);
+    if(cfg.vAnchor==='bottom'||cfg.vAnchor==='stretch')showV('bottom',rect.bottom,bounds.bottom,cx);
+    if(cfg.hAnchor==='center'){
+      const line=byKind['center-x'];line.style.display='block';
+      line.style.left=Math.round(bounds.left+bounds.width/2)+'px';
+      line.style.top=Math.round(bounds.top)+'px';
+      line.style.height=Math.max(0,Math.round(bounds.height))+'px';
+    }
+    if(cfg.vAnchor==='center'){
+      const line=byKind['center-y'];line.style.display='block';
+      line.style.left=Math.round(bounds.left)+'px';
+      line.style.top=Math.round(bounds.top+bounds.height/2)+'px';
+      line.style.width=Math.max(0,Math.round(bounds.width))+'px';
+    }
+  }
+
   function updateOverlay() {
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
@@ -2585,6 +2642,7 @@
       altMeasureLabel.style.display = 'none';
       clearSecondaryOutlines();
       syncAnchorPins(null,0);
+      hideConstraintLines();
       targetLabel.textContent = 'Clique un élément';
       metrics.textContent = 'X — · Y — · L — · H —';
       emit('state', currentPayload());
@@ -2604,6 +2662,7 @@
     const groupRect = count > 1 ? selectionBounds() : rect;
     const cfg = effectiveResponsive(state);
     syncAnchorPins(cfg,count);
+    syncConstraintLines(selected,cfg,count,groupRect);
     constraintBadge.style.display = 'block';
     constraintBadge.style.left = Math.max(4, groupRect.left) + 'px';
     constraintBadge.style.top = Math.max(4, groupRect.top - 25) + 'px';
@@ -3240,6 +3299,7 @@
     document.body.classList.remove('ve-active','ve-space-pan','ve-canvas-panning');
     outline.style.display = 'none';
     constraintBadge.style.display = 'none';
+    hideConstraintLines();
     clearAltMeasure();
     hideDragMeasure();
     clearSpacingVisuals();
