@@ -102,6 +102,7 @@
 
   let active = false;
   let selected = null;
+  let lastPointerPoint = {x:Math.round(innerWidth/2),y:Math.round(innerHeight/2)};
   const selectedSet = new Set();
   const secondaryOutlines = new Map();
   let drag = null;
@@ -1774,6 +1775,49 @@
     return isolationActive;
   }
 
+  function overlapCandidatesAt(x,y) {
+    let list=[];
+    try{list=document.elementsFromPoint(Number(x)||0,Number(y)||0)}catch(_){}
+    return list.filter(function(el){
+      if(!el||el===document.body||el===document.documentElement||isEditorNode(el))return false;
+      if(/^SCRIPT|STYLE|LINK|META|NOSCRIPT$/i.test(el.tagName))return false;
+      const state=touched.get(el);
+      if(state&&state.deleted)return false;
+      const cs=getComputedStyle(el);
+      const r=el.getBoundingClientRect();
+      return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity)!==0&&r.width>=2&&r.height>=2;
+    }).filter(function(el,index,arr){return arr.indexOf(el)===index}).slice(0,40);
+  }
+
+  function cycleOverlapSelection(direction) {
+    if(!active)return false;
+    direction=Number(direction)<0?-1:1;
+    let x=lastPointerPoint.x,y=lastPointerPoint.y;
+    if(selected){
+      const r=selected.getBoundingClientRect();
+      const pointInside=x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+      if(!pointInside){x=r.left+r.width/2;y=r.top+r.height/2}
+    }
+    const candidates=overlapCandidatesAt(x,y);
+    if(!candidates.length){
+      emit('selection-cycle',{ok:false,count:0});
+      return false;
+    }
+    let index=selected?candidates.indexOf(selected):-1;
+    if(index<0)index=direction>0?-1:0;
+    index=(index+direction+candidates.length)%candidates.length;
+    const target=candidates[index];
+    select(target,false);
+    emit('selection-cycle',{
+      ok:true,
+      index:index+1,
+      count:candidates.length,
+      selector:selectorFor(target),
+      title:layerTitle(target)
+    });
+    return true;
+  }
+
   function navigateSelection(direction) {
     if (!active || !selected) return;
     let target = null;
@@ -3383,6 +3427,10 @@
     emit('state', currentPayload());
   }
 
+  window.addEventListener('pointermove',function(event){
+    if(!isEditorNode(event.target))lastPointerPoint={x:event.clientX,y:event.clientY};
+  },true);
+
   window.addEventListener('pointerdown', function (event) {
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
@@ -3720,6 +3768,11 @@
       deleteSelected();
       return true;
     }
+    if (key === 'Tab') {
+      event.preventDefault();
+      cycleOverlapSelection(event.shiftKey?-1:1);
+      return true;
+    }
     if (!selected || !key.startsWith('Arrow')) return false;
 
     if (event.altKey) {
@@ -3824,6 +3877,7 @@
     if (data.type === 'get-layers') emitLayers();
     if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
     if (data.type === 'navigate-selection') navigateSelection(String(payload.direction || ''));
+    if (data.type === 'cycle-selection') cycleOverlapSelection(payload.direction);
     if (data.type === 'selection-copy') copySelection();
     if (data.type === 'style-copy') copySelectionStyle();
     if (data.type === 'style-paste') pasteSelectionStyle();
@@ -3923,6 +3977,7 @@
     measureSpacing: measureSpacing,
     emitLayers: emitLayers,
     navigateSelection: navigateSelection,
+    cycleOverlapSelection: cycleOverlapSelection,
     setResponsiveConfig: setResponsiveConfig,
     copySelection: copySelection,
     copySelectionStyle: copySelectionStyle,
