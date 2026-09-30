@@ -347,15 +347,17 @@ function createWindow(){
             const shot=await api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'});
             const captureOk=!!(shot&&shot.ok&&typeof shot.dataUrl==='string'&&shot.dataUrl.indexOf('data:image/png')===0);
             const roundtrip=await api.smokeTransactionRoundtrip();
+            const portableRoundtrip=await api.smokePortableRoundtrip();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&roundtrip&&roundtrip.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok),
               version:info&&info.version,
               bridge:true,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
               captureSize:shot&&shot.width+'x'+shot.height,
-              transactionRoundtrip:roundtrip
+              transactionRoundtrip:roundtrip,
+              portableRoundtrip:portableRoundtrip
             };
           })()
         `,true);
