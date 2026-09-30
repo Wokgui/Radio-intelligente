@@ -196,7 +196,7 @@ body.ve-active .ve-selection.ve-single-selection .ve-anchor-pin{display:flex}
 .ve-box-handle.padding[data-side="right"]{right:7px;top:50%;transform:translateY(-50%)}
 body.ve-active .ve-selection.ve-single-selection.ve-box-model-visible .ve-box-handle{display:flex}
 .ve-box-ring-margin,.ve-box-ring-padding{
-  position:fixed;z-index:2147483643;display:none;pointer-events:none;border-style:solid
+  position:fixed;z-index:2147483643;display:none;pointer-events:none;border-style:solid;box-sizing:border-box
 }
 .ve-box-ring-margin{border-color:#e67e2288;background:#e67e2212}
 .ve-box-ring-padding{border-color:#16a08588;background:#16a08512}
