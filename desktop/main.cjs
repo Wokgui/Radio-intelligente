@@ -789,7 +789,9 @@ function computeLocalPatchPlan(payload,parts){
 
 ipcMain.handle('source:preview-patch',async (_event,payload)=>{
   try{
-    const plan=computeLocalPatchPlan(payload,{css:true,structure:true});
+    const requested=payload&&payload.applyParts;
+    const parts=requested?{css:requested.css!==false,structure:requested.structure!==false}:{css:true,structure:true};
+    const plan=computeLocalPatchPlan(payload,parts);
     return {
       ok:true,
       files:{
