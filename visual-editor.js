@@ -3458,6 +3458,8 @@
       y: event.clientY,
       lastDx: 0,
       lastDy: 0,
+      axisLock: null,
+      startSnapshot: snapshot(),
       startBounds: selectionElements().length>1 ? selectionBounds() : selected.getBoundingClientRect()
     };
     updateDragMeasure(event);
@@ -3477,8 +3479,17 @@
     if (updateMarquee(event)) { event.preventDefault(); return; }
     if (!drag || event.pointerId !== drag.pointerId || !selected) return;
     event.preventDefault();
-    const totalDx = snapGrid(event.clientX - drag.x);
-    const totalDy = snapGrid(event.clientY - drag.y);
+    let rawDx = event.clientX - drag.x;
+    let rawDy = event.clientY - drag.y;
+    if(event.shiftKey){
+      if(!drag.axisLock)drag.axisLock=Math.abs(rawDx)>=Math.abs(rawDy)?'x':'y';
+      if(drag.axisLock==='x')rawDy=0;
+      else rawDx=0;
+    }else{
+      drag.axisLock=null;
+    }
+    const totalDx = snapGrid(rawDx);
+    const totalDy = snapGrid(rawDy);
     const stepDx = totalDx - drag.lastDx;
     const stepDy = totalDy - drag.lastDy;
     if (stepDx || stepDy) {
@@ -3515,6 +3526,7 @@
     dragMeasureLabel.style.left=Math.min(innerWidth-235,Math.max(6,(event&&event.clientX||r.right)+12))+'px';
     dragMeasureLabel.style.top=Math.min(innerHeight-42,Math.max(6,(event&&event.clientY||r.bottom)+12))+'px';
     dragMeasureLabel.textContent='ΔX '+(dx>=0?'+':'')+dx+' · ΔY '+(dy>=0?'+':'')+dy+
+      (drag.axisLock?' · axe '+drag.axisLock.toUpperCase():'')+
       ' · X '+Math.round(r.left)+' · Y '+Math.round(r.top)+' · '+Math.round(r.width)+'×'+Math.round(r.height);
     emit('drag-measure',{dx:dx,dy:dy,x:Math.round(r.left),y:Math.round(r.top),width:Math.round(r.width),height:Math.round(r.height)});
   }
@@ -3610,6 +3622,7 @@
         handle: handle.dataset.handle,
         startX: event.clientX,
         startY: event.clientY,
+        startSnapshot: snapshot(),
         startBounds: {
           left:bounds.left,top:bounds.top,right:bounds.right,bottom:bounds.bottom,
           width:bounds.width,height:bounds.height
@@ -3691,6 +3704,20 @@
     event.stopImmediatePropagation();
   }, true);
 
+  function cancelActiveInteraction() {
+    const kind=drag?'move':(resizeDrag?'resize':'');
+    const snap=drag&&drag.startSnapshot?drag.startSnapshot:(resizeDrag&&resizeDrag.startSnapshot?resizeDrag.startSnapshot:null);
+    if(!snap)return false;
+    drag=null;
+    resizeDrag=null;
+    hideGuides();
+    hideDragMeasure();
+    clearSpacingVisuals();
+    loadSnapshot(snap);
+    emit('interaction-cancelled',{kind:kind});
+    return true;
+  }
+
   function handleKeyboard(event) {
     if (!active) return false;
 
@@ -3754,6 +3781,10 @@
     if (modifier && key.toLowerCase() === 'v' && clipboardNodes.length) {
       event.preventDefault();
       pasteSelection();
+      return true;
+    }
+    if (key === 'Escape' && cancelActiveInteraction()) {
+      event.preventDefault();
       return true;
     }
     if (key === 'Escape' && (marqueeMode || marqueeDrag)) {
@@ -3847,6 +3878,7 @@
     if (data.type === 'delete') deleteSelected();
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0, payload.commit !== false);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
+    if (data.type === 'interaction-cancel') cancelActiveInteraction();
     if (data.type === 'keyboard-commit') flushKeyboardCommit();
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
     if (data.type === 'breakpoint-edit') setEditingBreakpoint(payload.breakpoint);
@@ -3978,6 +4010,7 @@
     emitLayers: emitLayers,
     navigateSelection: navigateSelection,
     cycleOverlapSelection: cycleOverlapSelection,
+    cancelActiveInteraction: cancelActiveInteraction,
     setResponsiveConfig: setResponsiveConfig,
     copySelection: copySelection,
     copySelectionStyle: copySelectionStyle,
