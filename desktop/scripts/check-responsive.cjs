@@ -450,6 +450,16 @@ expect(main,"createdAssets","transaction-created media tracking");
 expect(main,"mediaKind:String(item&&item.mediaKind||'')","media structure patch");
 expect(main,'element.setAttribute("src",item.mediaSource)',"runtime image replacement");
 expect(main,'document.createElementNS("http://www.w3.org/2000/svg","image")',"runtime SVG replacement");
+expect(main,"const ext=/^\\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)","media extension preservation");
+const generatedStructureStart=main.indexOf("function generatedStructureScript");
+const generatedStructureEnd=main.indexOf("function ensureGeneratedTag",generatedStructureStart);
+if(generatedStructureStart<0||generatedStructureEnd<0)throw new Error("generatedStructureScript block missing");
+const generatedStructureFactory=new Function(main.slice(generatedStructureStart,generatedStructureEnd)+";return generatedStructureScript;");
+const generatedStructure=generatedStructureFactory();
+const generatedMediaScript=generatedStructure([],[
+  {selector:"#hero",mediaAdjusted:true,mediaKind:"background",mediaSource:"./app-interface-studio-assets/hero.png",mediaFit:"cover"}
+],[{selector:"#hero",key:"s-demo"}],{});
+new Function(generatedMediaScript);
 const syncAnchorStart=engine.indexOf("function syncAnchorPins(cfg,count)");
 const syncAnchorEnd=engine.indexOf("function hideConstraintLines()",syncAnchorStart);
 if(syncAnchorStart<0||syncAnchorEnd<0)throw new Error("syncAnchorPins block missing");
