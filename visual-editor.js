@@ -742,8 +742,8 @@
     if(state.mediaAdjusted&&state.mediaSource){
       const kind=state.mediaKind||mediaKindForElement(element);
       const fit=state.mediaFit||'contain';
-      const px=Math.max(0,Math.min(100,Number(state.mediaPositionX)||50));
-      const py=Math.max(0,Math.min(100,Number(state.mediaPositionY)||50));
+      const px=mediaPercent(state.mediaPositionX,50);
+      const py=mediaPercent(state.mediaPositionY,50);
       const ax=px<34?'xMin':px>66?'xMax':'xMid';
       const ay=py<34?'YMin':py>66?'YMax':'YMid';
       if(kind==='img'){
@@ -1324,8 +1324,8 @@
         mediaAssetPath: state.mediaAssetPath || '',
         mediaName: state.mediaName || '',
         mediaFit: state.mediaFit || 'contain',
-        mediaPositionX: Math.max(0,Math.min(100,Number(state.mediaPositionX)||50)),
-        mediaPositionY: Math.max(0,Math.min(100,Number(state.mediaPositionY)||50)),
+        mediaPositionX: mediaPercent(state.mediaPositionX,50),
+        mediaPositionY: mediaPercent(state.mediaPositionY,50),
         animationAdjusted: !!state.animationAdjusted,
         animation: Object.assign({}, state.animation || {}),
         prototypeTarget: state.prototypeTarget || '',
@@ -1423,8 +1423,8 @@
         mediaAssetPath: saved.mediaAssetPath || '',
         mediaName: saved.mediaName || '',
         mediaFit: saved.mediaFit || 'contain',
-        mediaPositionX: Math.max(0,Math.min(100,Number(saved.mediaPositionX)||50)),
-        mediaPositionY: Math.max(0,Math.min(100,Number(saved.mediaPositionY)||50)),
+        mediaPositionX: mediaPercent(saved.mediaPositionX,50),
+        mediaPositionY: mediaPercent(saved.mediaPositionY,50),
         animationAdjusted: !!saved.animationAdjusted,
         animation: Object.assign({property:'all',duration:180,easing:'ease',delay:0}, saved.animation || {}),
         prototypeTarget: saved.prototypeTarget || '',
@@ -2786,8 +2786,8 @@
       mediaKind: state.mediaKind || mediaKindForElement(selected),
       mediaName: state.mediaName || '',
       mediaFit: state.mediaFit || 'contain',
-      mediaPositionX: Math.max(0,Math.min(100,Number(state.mediaPositionX)||50)),
-      mediaPositionY: Math.max(0,Math.min(100,Number(state.mediaPositionY)||50)),
+      mediaPositionX: mediaPercent(state.mediaPositionX,50),
+      mediaPositionY: mediaPercent(state.mediaPositionY,50),
       mediaAssets: mediaAssetSummary(),
       boxModel: (function(){
         var cs=getComputedStyle(selected);
@@ -3359,6 +3359,11 @@
     return true;
   }
 
+  function mediaPercent(value,fallback){
+    const n=Number(value);
+    return Math.max(0,Math.min(100,Number.isFinite(n)?n:(fallback===undefined?50:fallback)));
+  }
+
   function mediaKindForElement(element){
     const tag=String(element&&element.tagName||'').toLowerCase();
     if(tag==='img')return 'img';
@@ -3396,8 +3401,8 @@
     state.mediaAssetPath=String(payload&&payload.path||'');
     state.mediaName=String(payload&&payload.name||'image');
     state.mediaFit=['contain','cover','fill','none'].indexOf(String(payload&&payload.fit||''))>=0?String(payload.fit):state.mediaFit||'contain';
-    state.mediaPositionX=Math.max(0,Math.min(100,Number(payload&&payload.positionX)||50));
-    state.mediaPositionY=Math.max(0,Math.min(100,Number(payload&&payload.positionY)||50));
+    state.mediaPositionX=mediaPercent(payload&&payload.positionX,50);
+    state.mediaPositionY=mediaPercent(payload&&payload.positionY,50);
     applyState(selected,state,false);
     updateOverlay();
     commitHistory();
@@ -3420,8 +3425,8 @@
     if(!active||!selected)return;
     const state=remember(selected);
     if(!state||!state.mediaAdjusted)return;
-    if(payload&&payload.x!==undefined)state.mediaPositionX=Math.max(0,Math.min(100,Number(payload.x)||0));
-    if(payload&&payload.y!==undefined)state.mediaPositionY=Math.max(0,Math.min(100,Number(payload.y)||0));
+    if(payload&&payload.x!==undefined)state.mediaPositionX=mediaPercent(payload.x,0);
+    if(payload&&payload.y!==undefined)state.mediaPositionY=mediaPercent(payload.y,0);
     applyState(selected,state,false);
     updateOverlay();
     commitHistory();
