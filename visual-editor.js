@@ -1636,15 +1636,76 @@
   }
 
 
+  function addSpecificity(a,b){return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]}
+  function maxSpecificity(list){
+    return (list||[]).reduce(function(best,item){return compareSpecificity(item,best)>0?item:best},[0,0,0]);
+  }
+  function splitTopLevelSelectorList(text){
+    const out=[];let start=0,depth=0,quote='';
+    for(let i=0;i<String(text||'').length;i+=1){
+      const ch=text[i];
+      if(quote){if(ch===quote&&text[i-1]!=='\\')quote='';continue}
+      if(ch==='"'||ch==="'"){quote=ch;continue}
+      if(ch==='('||ch==='[')depth+=1;
+      else if(ch===')'||ch===']')depth=Math.max(0,depth-1);
+      else if(ch===','&&depth===0){out.push(text.slice(start,i).trim());start=i+1}
+    }
+    out.push(String(text||'').slice(start).trim());
+    return out.filter(Boolean);
+  }
   function cssSpecificity(selectorText) {
-    const selector=String(selectorText||'').replace(/:where\([^)]*\)/g,'');
-    const a=(selector.match(/#[\w-]+/g)||[]).length;
-    const b=(selector.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+(?:\([^)]*\))?/g)||[]).length;
-    const cleaned=selector
-      .replace(/#[\w-]+|\.[\w-]+|\[[^\]]+\]|::[\w-]+|:(?!:)[\w-]+(?:\([^)]*\))?/g,' ')
-      .replace(/[>+~,*]/g,' ');
-    const c=(cleaned.match(/(^|\s)[a-zA-Z][\w-]*/g)||[]).length+(selector.match(/::[\w-]+/g)||[]).length;
-    return [a,b,c];
+    const text=String(selectorText||'');
+    let score=[0,0,0];
+    function identEnd(input,index){while(index<input.length&&/[a-zA-Z0-9_-]/.test(input[index]))index+=1;return index}
+    function balancedEnd(input,index,open,close){
+      let depth=0,quote='';
+      for(let i=index;i<input.length;i+=1){
+        const ch=input[i];
+        if(quote){if(ch===quote&&input[i-1]!=='\\')quote='';continue}
+        if(ch==='"'||ch==="'"){quote=ch;continue}
+        if(ch===open)depth+=1;
+        else if(ch===close){depth-=1;if(depth===0)return i}
+      }
+      return input.length-1;
+    }
+    for(let i=0;i<text.length;){
+      const ch=text[i];
+      if(/\s|[>+~,]/.test(ch)){i+=1;continue}
+      if(ch==='*'||ch==='&'){i+=1;continue}
+      if(ch==='#'){score[0]+=1;i=identEnd(text,i+1);continue}
+      if(ch==='.'){score[1]+=1;i=identEnd(text,i+1);continue}
+      if(ch==='['){score[1]+=1;i=balancedEnd(text,i,'[',']')+1;continue}
+      if(ch===':'){
+        const pseudoElement=text[i+1]===':';
+        let nameStart=i+(pseudoElement?2:1),nameEnd=identEnd(text,nameStart);
+        const name=text.slice(nameStart,nameEnd).toLowerCase();
+        if(pseudoElement)score[2]+=1;
+        if(text[nameEnd]==='('){
+          const close=balancedEnd(text,nameEnd,'(',')');
+          const inner=text.slice(nameEnd+1,close);
+          if(pseudoElement){
+            if(name==='slotted')score=addSpecificity(score,maxSpecificity(splitTopLevelSelectorList(inner).map(cssSpecificity)));
+          }else if(name==='where'){
+            // :where() a toujours une spécificité nulle.
+          }else if(name==='is'||name==='not'||name==='has'){
+            score=addSpecificity(score,maxSpecificity(splitTopLevelSelectorList(inner).map(cssSpecificity)));
+          }else if(name==='nth-child'||name==='nth-last-child'){
+            score[1]+=1;
+            const match=inner.match(/\bof\b([\s\S]*)$/i);
+            if(match)score=addSpecificity(score,maxSpecificity(splitTopLevelSelectorList(match[1]).map(cssSpecificity)));
+          }else if(name==='host'||name==='host-context'){
+            score[1]+=1;
+            score=addSpecificity(score,maxSpecificity(splitTopLevelSelectorList(inner).map(cssSpecificity)));
+          }else score[1]+=1;
+          i=close+1;continue;
+        }
+        if(!pseudoElement)score[1]+=1;
+        i=nameEnd;continue;
+      }
+      if(/[a-zA-Z_-]/.test(ch)){score[2]+=1;i=identEnd(text,i+1);continue}
+      i+=1;
+    }
+    return score;
   }
 
   function compareSpecificity(a,b) {
@@ -1657,12 +1718,26 @@
   }
 
   function inspectCssCascade() {
-    if(!selected){emit('css-cascade',{selected:false,rules:[],computed:{}});return}
-    const element=selected;
-    const candidates=[];
-    let order=0;
-    function visitRules(rules,href,context){
+    const started=(window.performance&&performance.now)?performance.now():Date.now();
+    if(!selected){emit('css-cascade',{selected:false,rules:[],computed:{},variables:[],meta:{}});return}
+    const element=selected,candidates=[],unreadableSheets=[],layerOrder=new Map();
+    let order=0,visitedRules=0,truncated=false,nextLayerOrder=1;
+
+    function registerLayer(name){
+      name=String(name||'').trim();
+      if(!name)return 0;
+      if(!layerOrder.has(name))layerOrder.set(name,nextLayerOrder++);
+      return layerOrder.get(name);
+    }
+    function childContext(context,label){return context?(context+' · '+label):label}
+    function visitRules(rules,href,context,currentLayer){
       Array.from(rules||[]).forEach(function(rule){
+        if(visitedRules++>3500){truncated=true;return}
+        const ctor=String(rule&&rule.constructor&&rule.constructor.name||'');
+        if(/CSSLayerStatementRule/.test(ctor)){
+          String(rule.cssText||'').replace(/^\s*@layer\s+/,'').replace(/;\s*$/,'').split(',').forEach(function(name){registerLayer(name)});
+          return;
+        }
         if(rule.type===1&&rule.selectorText){
           order+=1;
           String(rule.selectorText).split(',').map(function(x){return x.trim()}).filter(Boolean).forEach(function(selector){
@@ -1681,6 +1756,8 @@
               selectorText:rule.selectorText,
               href:href||'',
               context:context||'',
+              layer:currentLayer||'',
+              layerOrder:currentLayer?registerLayer(currentLayer):0,
               specificity:cssSpecificity(selector),
               order:order,
               declarations:declarations
@@ -1689,37 +1766,58 @@
           return;
         }
         if(rule.cssRules){
-          let active=true,nextContext=context||'';
+          let active=true,nextContext=context||'',nextLayer=currentLayer||'';
           if(rule.type===4&&rule.conditionText){
             try{active=matchMedia(rule.conditionText).matches}catch(_){active=true}
-            nextContext='@media '+rule.conditionText;
+            nextContext=childContext(nextContext,'@media '+rule.conditionText);
+          }else if(/CSSSupportsRule/.test(ctor)&&rule.conditionText){
+            try{active=CSS.supports(rule.conditionText)}catch(_){active=true}
+            nextContext=childContext(nextContext,'@supports '+rule.conditionText);
+          }else if(/CSSLayerBlockRule/.test(ctor)){
+            const local=String(rule.name||'(anonyme)');
+            nextLayer=nextLayer?(nextLayer+'.'+local):local;
+            registerLayer(nextLayer);
+            nextContext=childContext(nextContext,'@layer '+local);
+          }else if(/CSSScopeRule/.test(ctor)){
+            nextContext=childContext(nextContext,String(rule.cssText||'').split('{')[0].trim()||'@scope');
+          }else if(/CSSContainerRule/.test(ctor)){
+            nextContext=childContext(nextContext,'@container '+String(rule.conditionText||''));
           }else if(rule.conditionText){
-            nextContext=String(rule.conditionText);
+            nextContext=childContext(nextContext,String(rule.conditionText));
           }
-          if(active)visitRules(rule.cssRules,href,nextContext);
+          if(active)visitRules(rule.cssRules,href,nextContext,nextLayer);
         }
       });
     }
-    Array.from(document.styleSheets||[]).forEach(function(sheet){
-      try{visitRules(sheet.cssRules,sheet.href||'','')}catch(_){}
+
+    Array.from(document.styleSheets||[]).slice(0,160).forEach(function(sheet){
+      try{visitRules(sheet.cssRules,sheet.href||'','','')}
+      catch(error){unreadableSheets.push({href:sheet.href||'(feuille inline)',reason:String(error&&error.name||'accès refusé')})}
     });
+    if((document.styleSheets||[]).length>160)truncated=true;
+
     if(element.style&&element.style.length){
       const declarations=[];
       for(let i=0;i<element.style.length;i+=1){
         const property=element.style[i];
         declarations.push({property:property,value:element.style.getPropertyValue(property).trim(),important:element.style.getPropertyPriority(property)==='important'});
       }
-      candidates.push({selector:'style=""',selectorText:'style=""',href:'inline',context:'attribut style',specificity:[1000,0,0],order:1000000,declarations:declarations,inline:true});
+      candidates.push({selector:'style=""',selectorText:'style=""',href:'inline',context:'attribut style',layer:'',layerOrder:0,specificity:[1000,0,0],order:1000000,declarations:declarations,inline:true});
     }
 
+    function layerPriority(rule,important){
+      if(important)return rule.layer?100000-rule.layerOrder:0;
+      return rule.layer?rule.layerOrder:100000;
+    }
     const winners={};
     candidates.forEach(function(rule){
       rule.declarations.forEach(function(dec){
         const previous=winners[dec.property];
-        const rank={important:dec.important?1:0,specificity:rule.specificity,order:rule.order};
+        const rank={important:dec.important?1:0,layer:layerPriority(rule,dec.important),specificity:rule.specificity,order:rule.order};
         let wins=!previous;
         if(previous){
           if(rank.important!==previous.rank.important)wins=rank.important>previous.rank.important;
+          else if(rank.layer!==previous.rank.layer)wins=rank.layer>previous.rank.layer;
           else{
             const cmp=compareSpecificity(rank.specificity,previous.rank.specificity);
             wins=cmp>0||(cmp===0&&rank.order>=previous.rank.order);
@@ -1735,6 +1833,7 @@
       });
       rule.winningProperties=rule.declarations.filter(function(d){return d.winner}).map(function(d){return d.property});
     });
+
     const cs=getComputedStyle(element),computed={};
     ['display','position','width','height','min-width','max-width','min-height','max-height','margin','padding','gap','flex','flex-direction','flex-wrap','justify-content','align-items','grid-template-columns','overflow','overflow-x','overflow-y','font-size','line-height','color','background-color','z-index'].forEach(function(prop){
       computed[prop]=cs.getPropertyValue(prop);
@@ -1754,14 +1853,29 @@
       });
     });
     const variables=Array.from(variableNames).sort().map(function(name){
-      return {name:name,value:cs.getPropertyValue(name).trim()};
+      const chain=[];let node=element,guard=0;
+      while(node&&node.nodeType===1&&guard++<12){
+        const inline=node.style&&node.style.getPropertyValue(name);
+        if(inline)chain.push({selector:selectorFor(node),value:inline.trim(),source:'inline'});
+        node=node.parentElement;
+      }
+      return {name:name,value:cs.getPropertyValue(name).trim(),chain:chain};
     });
+    const elapsed=Math.round((((window.performance&&performance.now)?performance.now():Date.now())-started)*10)/10;
     emit('css-cascade',{
       selected:true,
       selector:selectorFor(element),
-      rules:candidates.slice(0,120),
+      rules:candidates.slice(0,160),
       computed:computed,
-      variables:variables
+      variables:variables,
+      meta:{
+        scannedRules:visitedRules,
+        totalSheets:(document.styleSheets||[]).length,
+        unreadableSheets:unreadableSheets.slice(0,30),
+        layers:Array.from(layerOrder.entries()).map(function(pair){return {name:pair[0],order:pair[1]}}),
+        truncated:truncated||candidates.length>160,
+        elapsedMs:elapsed
+      }
     });
   }
 
