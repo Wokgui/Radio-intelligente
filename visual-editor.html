@@ -98,6 +98,13 @@ main{
 .device.wide:before{display:none}
 .safe-outline{display:none;position:absolute;z-index:4;pointer-events:none;border:1px dashed rgba(111,73,245,.68);border-radius:9px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
 .safe-outline.visible{display:block}
+.persistent-guides{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}
+.persistent-guide-v,.persistent-guide-h{position:absolute;background:#00a7c8;box-shadow:0 0 0 1px #ffffff99}
+.persistent-guide-v{top:0;bottom:0;width:1px}
+.persistent-guide-h{left:0;right:0;height:1px}
+.persistent-guide-v:after,.persistent-guide-h:after{position:absolute;padding:2px 4px;border-radius:5px;background:#007f99;color:#fff;font:800 9px/1 system-ui;white-space:nowrap}
+.persistent-guide-v:after{content:attr(data-label);top:5px;left:3px}
+.persistent-guide-h:after{content:attr(data-label);top:3px;left:5px}
 .safe-outline span{position:absolute;left:7px;top:6px;padding:3px 6px;border-radius:6px;background:rgba(111,73,245,.88);color:#fff;font-size:9px;line-height:1;font-weight:850}
 .android-status,.android-nav{display:none;position:absolute;left:0;right:0;z-index:6;pointer-events:none;color:#fff}
 .device{--android-status:28px;--android-nav:24px;--android-status-color:#6f42c1;--android-nav-color:#000}
@@ -571,6 +578,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <iframe id="appFrame" title="Aperçu de l'application" src="about:blank"></iframe>
         <div class="android-nav" id="androidNav"></div>
         <div class="safe-outline" id="safeOutline"><span>zone sûre</span></div>
+        <div class="persistent-guides" id="persistentGuides"></div>
         <img class="reference-overlay" id="referenceOverlay" alt="Capture de référence">
       </div>
     </div>
@@ -615,6 +623,15 @@ body.desktop .desktop-badge{display:inline-flex}
       </div>
       <label class="checkline"><input id="smartGuidesPref" type="checkbox" checked> Guides intelligents : centre, parent, zone sûre et objets proches</label>
       <div class="fields" style="margin-top:7px">
+        <div class="field"><label>Repère X</label><input id="customGuideX" type="number" min="0" step="1" placeholder="206"></div>
+        <div class="field"><label>Repère Y</label><input id="customGuideY" type="number" min="0" step="1" placeholder="450"></div>
+      </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="addGuideXBtn">+ Vertical</button>
+        <button class="btn wide" id="addGuideYBtn">+ Horizontal</button>
+        <button class="btn wide" id="clearGuidesBtn">Effacer repères</button>
+      </div>
+      <div class="fields" style="margin-top:7px">
         <div class="field" style="grid-column:1/-1"><label>Sensibilité de l’accrochage</label><select id="guideThresholdPref">
           <option value="3">Précise · 3 px</option>
           <option value="5" selected>Normale · 5 px</option>
@@ -627,7 +644,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
         <button class="btn wide" id="resetCanvasBtn">◎ Recentrer le canevas</button>
       </div>
-      <p>Glisse les objets. Les guides roses s’accrochent au centre, au parent, à la zone sûre et aux objets proches. <kbd>Espace</kbd> + glisser déplace le canevas ; <kbd>Ctrl</kbd> + molette zoome.</p>
+      <p>Glisse les objets. Les guides roses s’accrochent au centre, au parent, à la zone sûre et aux objets proches. Clique directement sur la règle du haut ou de gauche pour ajouter un repère permanent. <kbd>Espace</kbd> + glisser déplace le canevas ; <kbd>Ctrl</kbd> + molette zoome.</p>
     </section>
 
     <section class="card">
@@ -1148,6 +1165,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var keepRatio=document.getElementById('keepRatio');
   var safeProfile=document.getElementById('safeProfile');
   var safeOutline=document.getElementById('safeOutline');
+  var persistentGuides=document.getElementById('persistentGuides');
+  var customGuideX=document.getElementById('customGuideX');
+  var customGuideY=document.getElementById('customGuideY');
   var responsiveCard=document.getElementById('responsiveCard');
   var responsiveEnabled=document.getElementById('responsiveEnabled');
   var hAnchor=document.getElementById('hAnchor');
@@ -1272,7 +1292,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
   var PREF_KEY='app-interface-studio.preferences.v1';
   var RECOVERY_KEY='app-interface-studio.recovery.v1';
-  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5};
+  var defaultPrefs={fontScale:100,density:'normal',animations:true,defaultResponsive:true,rememberPanels:false,openPanels:[],autoRecovery:true,smartGuides:true,guideThreshold:5,customGuidesX:[],customGuidesY:[]};
   var prefs=Object.assign({},defaultPrefs);
 
   function loadPrefs(){
@@ -1296,7 +1316,9 @@ body.desktop .desktop-badge{display:inline-flex}
     autoRecovery.checked=prefs.autoRecovery!==false;
     smartGuidesPref.checked=prefs.smartGuides!==false;
     guideThresholdPref.value=String(Number(prefs.guideThreshold)||5);
+    renderPersistentGuides();
     post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5});
+    post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
   }
 
   function recoveryPreview(project){
@@ -1326,7 +1348,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.8.0'};
+      project.studio={name:'App Interface Studio',version:'6.9.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1368,6 +1390,51 @@ body.desktop .desktop-badge{display:inline-flex}
     try{localStorage.removeItem(RECOVERY_KEY)}catch(_){}
     refreshRecoveryStatus();
     setStatus('État de récupération effacé.');
+  }
+
+  function normalizedGuideList(values,limit){
+    return (Array.isArray(values)?values:[]).map(Number).filter(function(v){return Number.isFinite(v)&&v>=0&&v<=limit}).sort(function(a,b){return a-b});
+  }
+
+  function renderPersistentGuides(){
+    if(!persistentGuides)return;
+    var size=currentDeviceSize();
+    prefs.customGuidesX=normalizedGuideList(prefs.customGuidesX,size.width);
+    prefs.customGuidesY=normalizedGuideList(prefs.customGuidesY,size.height);
+    persistentGuides.innerHTML='';
+    prefs.customGuidesX.forEach(function(value){
+      var line=document.createElement('div');
+      line.className='persistent-guide-v';
+      line.style.left=value+'px';
+      line.dataset.label=Math.round(value)+' px';
+      persistentGuides.appendChild(line);
+    });
+    prefs.customGuidesY.forEach(function(value){
+      var line=document.createElement('div');
+      line.className='persistent-guide-h';
+      line.style.top=value+'px';
+      line.dataset.label=Math.round(value)+' px';
+      persistentGuides.appendChild(line);
+    });
+  }
+
+  function syncCustomGuides(){
+    renderPersistentGuides();
+    savePrefs();
+    post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
+  }
+
+  function addCustomGuide(axis,value){
+    var size=currentDeviceSize();
+    var max=axis==='x'?size.width:size.height;
+    value=Math.round(Number(value));
+    if(!Number.isFinite(value)||value<0||value>max){setStatus('Repère hors de la zone de l’écran.',true);return}
+    var key=axis==='x'?'customGuidesX':'customGuidesY';
+    var list=Array.isArray(prefs[key])?prefs[key].slice():[];
+    if(!list.some(function(v){return Math.abs(Number(v)-value)<1}))list.push(value);
+    prefs[key]=list;
+    syncCustomGuides();
+    setStatus('Repère '+(axis==='x'?'vertical':'horizontal')+' ajouté à '+value+' px.');
   }
 
   function cardKey(card,index){
@@ -1650,6 +1717,7 @@ body.desktop .desktop-badge{display:inline-flex}
       device.style.setProperty('--android-nav',a.bottom+'px');
     }
     applySafeArea();
+    renderPersistentGuides();
   }
 
   function setStatus(message,error){
@@ -2422,7 +2490,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.8.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.9.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2467,7 +2535,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.8.0'};
+    project.studio={name:'App Interface Studio',version:'6.9.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2525,7 +2593,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.8.0'};
+    project.studio={name:'App Interface Studio',version:'6.9.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2675,6 +2743,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='ready'){
       post('grid',{grid:Number(grid.value)});
       post('preferences',{defaultResponsive:prefs.defaultResponsive!==false,smartGuides:prefs.smartGuides!==false,guideThreshold:Number(prefs.guideThreshold)||5});
+      post('custom-guides',{x:prefs.customGuidesX||[],y:prefs.customGuidesY||[]});
       applySafeArea();
       post(currentPreviewMode==='edit'?'enable':'disable');
       post('environment-set',{
@@ -2911,6 +2980,12 @@ body.desktop .desktop-badge{display:inline-flex}
     event.preventDefault();
     setRuntimeZoom(currentZoomScale()+(event.deltaY<0?.1:-.1));
   },{passive:false});
+
+  document.getElementById('addGuideXBtn').addEventListener('click',function(){addCustomGuide('x',customGuideX.value)});
+  document.getElementById('addGuideYBtn').addEventListener('click',function(){addCustomGuide('y',customGuideY.value)});
+  document.getElementById('clearGuidesBtn').addEventListener('click',function(){prefs.customGuidesX=[];prefs.customGuidesY=[];syncCustomGuides();setStatus('Repères personnalisés effacés.')});
+  rulerX.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('x',event.offsetX)});
+  rulerY.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('y',event.offsetY)});
 
   document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
   document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
