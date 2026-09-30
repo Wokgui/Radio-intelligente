@@ -1,12 +1,13 @@
 {
   "name": "app-interface-studio",
-  "version": "6.42.0",
+  "version": "6.43.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec édition des SVG inline, restauration sûre des points de contrôle, audit des assets, comparaison côte à côte, glisser-déposer d’images, point focal manipulable et diff interactif HTML/CSS/JS",
+  "description": "Éditeur visuel universel Windows avec smoke test Electron réel, édition des SVG inline, restauration sûre des points de contrôle, audit des assets, comparaison côte à côte, glisser-déposer d’images et diff interactif HTML/CSS/JS",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js && node scripts/check-responsive.cjs",
+    "smoke": "node scripts/run-smoke.cjs",
     "dist:win": "npm run icon && electron-builder --win portable",
     "icon": "node scripts/make-icon.cjs"
   },
