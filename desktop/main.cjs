@@ -548,7 +548,7 @@ function generatedStructureScript(nodes,patches){
     '      const node=createNode(item.html);',
     '      if(!node)return;',
     '      const previous=existingClone(item.cloneId);',
-    '      if(previous){previous.replaceWith(node);return}',
+    '      if(previous)return;',
     '      const children=Array.from(parent.children);',
     '      const before=item.index>=0&&item.index<children.length?children[item.index]:null;',
     '      parent.insertBefore(node,before);',
@@ -564,8 +564,9 @@ function generatedStructureScript(nodes,patches){
     '      }',
     '    });',
     '  }',
-    '  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});',
-    '  else apply();',
+    '  function start(){apply();setTimeout(apply,0);}',
+    '  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});',
+    '  else start();',
     '})();',
     ''
   ].join('\\n');
