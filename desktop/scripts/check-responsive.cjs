@@ -220,6 +220,16 @@ expect(html,"function startGuideDrag(event)","custom guide drag");
 expect(html,"guideValueFromClient","guide pointer coordinate conversion");
 expect(html,"line.addEventListener('pointerdown',startGuideDrag)","draggable custom guide");
 expect(html,"line.addEventListener('dblclick'","double-click guide removal");
+expect(css,".ve-spacing-line","visual spacing lines");
+expect(css,".ve-spacing-label","visual spacing labels");
+expect(engine,"function showSpacingVisuals(rect,spaces)","visual spacing rendering");
+expect(engine,"function clearSpacingVisuals()","visual spacing cleanup");
+expect(engine,"showSpacingVisuals(rect,{left:left,right:right,top:top,bottom:bottom})","spacing measurement visualization");
+expect(html,"rulerX.style.width=(w*z)+'px'","horizontal ruler zoom sync");
+expect(html,"rulerY.style.height=(h*z)+'px'","vertical ruler zoom sync");
+expect(html,"event.offsetX/currentZoomScale()","scaled ruler horizontal coordinate");
+expect(html,"event.offsetY/currentZoomScale()","scaled ruler vertical coordinate");
+expect(html,"Mesurer et afficher autour de la sélection","visual spacing button label");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -227,4 +237,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.10 feature checks passed.');
+console.log('App Interface Studio 6.11 feature checks passed.');
