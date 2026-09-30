@@ -62,8 +62,18 @@
   dragMeasureLabel.className = 've-drag-measure';
   const marqueeBox = document.createElement('div');
   marqueeBox.className = 've-marquee';
+  const spacingVisuals = ['left','right','top','bottom'].map(function(direction){
+    const line=document.createElement('div');
+    line.className='ve-spacing-line '+((direction==='left'||direction==='right')?'horizontal':'vertical');
+    line.dataset.direction=direction;
+    const label=document.createElement('span');
+    label.className='ve-spacing-label';
+    label.dataset.direction=direction;
+    return {direction:direction,line:line,label:label};
+  });
 
   document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, dragMeasureLabel, marqueeBox);
+  spacingVisuals.forEach(function(item){document.body.append(item.line,item.label)});
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
@@ -110,6 +120,7 @@
   let repairPreviewSnapshot = null;
   let stressBackup = null;
   let responsiveResizeTimer = null;
+  let spacingVisualTimer = null;
 
   const history = [];
   let historyIndex = -1;
@@ -764,7 +775,8 @@
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
       node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
-      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox;
+      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === dragMeasureLabel || node === marqueeBox ||
+      spacingVisuals.some(function(item){return node===item.line||node===item.label});
   }
 
   function alignmentCandidates(element) {
@@ -2636,6 +2648,7 @@
     }
 
     hideGuides();
+    clearSpacingVisuals();
     if(isolationActive)refreshIsolation();
     updateOverlay();
     emitLayers();
@@ -2832,6 +2845,57 @@
     });
   }
 
+  function clearSpacingVisuals() {
+    if(spacingVisualTimer){clearTimeout(spacingVisualTimer);spacingVisualTimer=null}
+    spacingVisuals.forEach(function(item){item.line.style.display='none';item.label.style.display='none'});
+  }
+
+  function showSpacingVisuals(rect,spaces) {
+    clearSpacingVisuals();
+    function show(direction,gap){
+      if(!gap||!Number.isFinite(Number(gap.gap)))return;
+      const value=Math.max(0,Number(gap.gap)||0);
+      const item=spacingVisuals.find(function(x){return x.direction===direction});
+      if(!item)return;
+      const line=item.line,label=item.label;
+      line.style.display='block';label.style.display='block';label.textContent=Math.round(value)+' px';
+
+      if(direction==='left'){
+        line.style.left=Math.round(rect.left-value)+'px';
+        line.style.top=Math.round(rect.top+rect.height/2)+'px';
+        line.style.width=Math.round(value)+'px';
+        label.style.left=Math.round(rect.left-value/2-14)+'px';
+        label.style.top=Math.round(rect.top+rect.height/2-18)+'px';
+      }
+      if(direction==='right'){
+        line.style.left=Math.round(rect.right)+'px';
+        line.style.top=Math.round(rect.top+rect.height/2)+'px';
+        line.style.width=Math.round(value)+'px';
+        label.style.left=Math.round(rect.right+value/2-14)+'px';
+        label.style.top=Math.round(rect.top+rect.height/2-18)+'px';
+      }
+      if(direction==='top'){
+        line.style.left=Math.round(rect.left+rect.width/2)+'px';
+        line.style.top=Math.round(rect.top-value)+'px';
+        line.style.height=Math.round(value)+'px';
+        label.style.left=Math.round(rect.left+rect.width/2+6)+'px';
+        label.style.top=Math.round(rect.top-value/2-7)+'px';
+      }
+      if(direction==='bottom'){
+        line.style.left=Math.round(rect.left+rect.width/2)+'px';
+        line.style.top=Math.round(rect.bottom)+'px';
+        line.style.height=Math.round(value)+'px';
+        label.style.left=Math.round(rect.left+rect.width/2+6)+'px';
+        label.style.top=Math.round(rect.bottom+value/2-7)+'px';
+      }
+    }
+    show('left',spaces.left);
+    show('right',spaces.right);
+    show('top',spaces.top);
+    show('bottom',spaces.bottom);
+    spacingVisualTimer=setTimeout(clearSpacingVisuals,6500);
+  }
+
   function measureSpacing() {
     if (!active || !selected) return;
     const rect = selectionElements().length > 1 ? selectionBounds() : selected.getBoundingClientRect();
@@ -2865,6 +2929,7 @@
       }
     });
 
+    showSpacingVisuals(rect,{left:left,right:right,top:top,bottom:bottom});
     emit('spacing', {
       left: left,
       right: right,
@@ -3037,6 +3102,7 @@
     constraintBadge.style.display = 'none';
     clearAltMeasure();
     hideDragMeasure();
+    clearSpacingVisuals();
     clearSecondaryOutlines();
     hideGuides();
     emit('state', currentPayload());
