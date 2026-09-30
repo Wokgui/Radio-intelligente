@@ -651,6 +651,15 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" id="marqueeModeBtn" title="Sélection par rectangle · Ctrl+glisser">▭ Sélection rectangle</button>
       </div>
       <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" id="duplicateSelectionBtn" title="Dupliquer · Ctrl+D">⧉ Dupliquer</button>
+        <button class="tool" id="copySelectionBtn" title="Copier · Ctrl+C">Copier</button>
+        <button class="tool" id="pasteSelectionBtn" title="Coller · Ctrl+V">Coller</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="tool wide" data-selection-z="front" title="Mettre devant">⇧ Avant-plan</button>
+        <button class="tool wide" data-selection-z="back" title="Mettre derrière">⇩ Arrière-plan</button>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
         <button class="tool" data-selection-nav="parent" title="Sélectionner le parent · Alt+↑">↑ Parent</button>
         <button class="tool" data-selection-nav="prev" title="Élément frère précédent · Alt+←">← Frère</button>
         <button class="tool" data-selection-nav="next" title="Élément frère suivant · Alt+→">Frère →</button>
@@ -662,7 +671,7 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="tool wide" id="lockEdit">🔓 Verrouiller</button>
         <button class="tool wide danger" id="deleteEdit">Masquer (garde l’espace)</button>
       </div>
-      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets à la sélection. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute à la sélection. <kbd>←↑↓→</kbd> déplace relativement aux ancrages · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue parent/enfant/frères · <kbd>Alt</kbd> pendant un glisser désactive temporairement l’accrochage · <kbd>Suppr</kbd> masque · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>.</div>
+      <div class="hint" style="margin-top:8px"><kbd>Maj</kbd> + clic ajoute/retire des objets. <kbd>Ctrl</kbd> + glisser trace un rectangle de sélection ; <kbd>Maj</kbd> + rectangle ajoute. <kbd>Ctrl+D</kbd> duplique · <kbd>Ctrl+C</kbd>/<kbd>Ctrl+V</kbd> copie/colle · <kbd>←↑↓→</kbd> déplace · <kbd>Maj</kbd> + flèche redimensionne · <kbd>Alt</kbd> + flèche navigue dans la hiérarchie · <kbd>Alt</kbd> pendant un glisser désactive l’accrochage · <kbd>Suppr</kbd> masque.</div>
     </section>
 
     <section class="card" id="textCard">
@@ -1283,7 +1292,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.4.0'};
+      project.studio={name:'App Interface Studio',version:'6.5.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2321,7 +2330,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.4.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.5.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2345,7 +2354,7 @@ body.desktop .desktop-badge{display:inline-flex}
     return [
       'Projet d’interface — modifications réalisées dans App Interface Studio.',
       '',
-      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid et auto-layout, les contraintes intelligentes, les composants et leurs variantes, les design tokens, l’inspecteur avancé, les animations, les liens de prototype, l’accessibilité, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Pour un projet Android, traduis les intentions vers XML/ConstraintLayout ou Jetpack Compose/WindowInsets. Utilise les diffs source préparés lorsqu’ils existent et préfère les modifications structurelles aux coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
+      'Applique ces modifications proprement dans le code source de l’application indiquée dans le projet. N’empile pas des rustines CSS : reporte les valeurs dans les règles structurelles pertinentes. Respecte les breakpoints téléphone/tablette/grand écran, les règles Flex/Grid et auto-layout, les contraintes intelligentes, les composants et leurs variantes, les éléments dupliqués dans generatedNodes, les design tokens, l’inspecteur avancé, les animations, les liens de prototype, l’accessibilité, les ancrages, marges, largeurs/hauteurs fluides et safe areas. Pour un projet Android, traduis les intentions vers XML/ConstraintLayout ou Jetpack Compose/WindowInsets. Utilise les diffs source préparés lorsqu’ils existent et préfère les modifications structurelles aux coordonnées d’un seul appareil. Préserve les espaces volontaires. Les éléments masqués doivent conserver leur espace sauf indication contraire.',
       '',
       'Données exactes du projet :',
       JSON.stringify(project,null,2)
@@ -2366,7 +2375,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.4.0'};
+    project.studio={name:'App Interface Studio',version:'6.5.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2424,7 +2433,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.4.0'};
+    project.studio={name:'App Interface Studio',version:'6.5.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -2467,6 +2476,9 @@ body.desktop .desktop-badge{display:inline-flex}
       post('navigate-selection',{direction:navDirection});
       return;
     }
+    if(modifier&&lower==='d'){event.preventDefault();post('selection-duplicate');return}
+    if(modifier&&lower==='c'&&hasSelection){event.preventDefault();post('selection-copy');return}
+    if(modifier&&lower==='v'){event.preventDefault();post('selection-paste');return}
     var relevant=key.indexOf('Arrow')===0||key==='Delete'||key==='Backspace'||(modifier&&(key.toLowerCase()==='z'||key.toLowerCase()==='y'));
     if(!relevant)return;
     event.preventDefault();
@@ -2502,6 +2514,11 @@ body.desktop .desktop-badge{display:inline-flex}
     {label:'Flow de navigation',hint:'',run:openFlow},
     {label:'Paramètres de l’application',hint:'',run:function(){settingsModal.hidden=false}},
     {label:'Mode sélection rectangle',hint:'Ctrl+glisser',run:function(){setMarqueeModeHost(!marqueeModeActive)}},
+    {label:'Dupliquer la sélection',hint:'Ctrl+D',run:function(){post('selection-duplicate')}},
+    {label:'Copier la sélection',hint:'Ctrl+C',run:function(){post('selection-copy')}},
+    {label:'Coller',hint:'Ctrl+V',run:function(){post('selection-paste')}},
+    {label:'Mettre au premier plan',hint:'',run:function(){post('selection-z',{mode:'front'})}},
+    {label:'Mettre à l’arrière-plan',hint:'',run:function(){post('selection-z',{mode:'back'})}},
     {label:'Sélectionner le parent',hint:'Alt+↑',run:function(){post('navigate-selection',{direction:'parent'})}},
     {label:'Sélectionner le premier enfant',hint:'Alt+↓',run:function(){post('navigate-selection',{direction:'child'})}},
     {label:'Sélectionner le frère précédent',hint:'Alt+←',run:function(){post('navigate-selection',{direction:'prev'})}},
@@ -2593,6 +2610,10 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='marquee-selection'){
       setStatus((p.count||0)+' objet(s) sélectionné(s) par rectangle.');
     }
+    if(data.type==='selection-copied')setStatus((p.count||0)+' objet(s) copié(s).');
+    if(data.type==='selection-pasted')setStatus((p.count||0)+' objet(s) collé(s).');
+    if(data.type==='selection-duplicated')setStatus((p.count||0)+' objet(s) dupliqué(s).');
+    if(data.type==='selection-z')setStatus((p.count||0)+' objet(s) déplacé(s) '+(p.mode==='back'?'à l’arrière-plan.':'au premier plan.'));
     if(data.type==='canvas-pan-ready'){
       workspace.classList.toggle('canvas-pan-ready',!!p.active);
     }
@@ -2745,6 +2766,13 @@ body.desktop .desktop-badge{display:inline-flex}
   }
 
   document.getElementById('marqueeModeBtn').addEventListener('click',function(){setMarqueeModeHost(!marqueeModeActive)});
+
+  document.getElementById('duplicateSelectionBtn').addEventListener('click',function(){post('selection-duplicate')});
+  document.getElementById('copySelectionBtn').addEventListener('click',function(){post('selection-copy')});
+  document.getElementById('pasteSelectionBtn').addEventListener('click',function(){post('selection-paste')});
+  document.querySelectorAll('[data-selection-z]').forEach(function(btn){
+    btn.addEventListener('click',function(){post('selection-z',{mode:btn.dataset.selectionZ})});
+  });
 
   document.querySelectorAll('[data-selection-nav]').forEach(function(btn){
     btn.addEventListener('click',function(){post('navigate-selection',{direction:btn.dataset.selectionNav})});
