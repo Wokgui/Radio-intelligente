@@ -347,6 +347,15 @@ body.desktop .desktop-badge{display:inline-flex}
 .regression-preview{display:none;width:100%;max-height:220px;object-fit:contain;margin-top:8px;border:1px solid var(--line);border-radius:10px;background:#eee}
 .regression-preview.visible{display:block}
 .prototype-status{padding:8px 9px;border-radius:9px;background:#f5f1fa;color:#665572;font-size:.67rem;line-height:1.4}
+.layout-diagnostic-summary{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.layout-diagnostic-list{display:grid;gap:6px;max-height:280px;overflow:auto;margin-top:8px}
+.layout-diagnostic-item{display:grid;gap:5px;padding:9px;border:1px solid var(--line);border-left:4px solid #d09331;border-radius:9px;background:#fff}
+.layout-diagnostic-item.error{border-left-color:#cc3552}
+.layout-diagnostic-item.info{border-left-color:#3978d8}
+.layout-diagnostic-item b{font-size:.69rem}
+.layout-diagnostic-item span{font-size:.63rem;color:var(--muted);line-height:1.35}
+.layout-diagnostic-cause{padding:6px 7px;border-radius:7px;background:#f7f4fa;color:#5d5068!important}
+.layout-diagnostic-actions{display:flex;gap:5px;flex-wrap:wrap}
 
 .layer-search{width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);outline:none}
 .layer-search:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
@@ -1230,6 +1239,18 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
     <section class="card">
+      <h2>Diagnostic de mise en page <small>Flex / Grid / débordements</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="layoutDiagnosticBtn">Analyser l’écran</button>
+        <button class="btn wide" id="layoutDiagnosticSelectionBtn">Analyser la sélection</button>
+      </div>
+      <button class="btn" id="layoutDiagnosticClearBtn" style="width:100%;margin-top:7px">Effacer les surlignages</button>
+      <div class="layout-diagnostic-summary" id="layoutDiagnosticSummary"></div>
+      <div class="layout-diagnostic-list" id="layoutDiagnosticList"><div class="hint">Aucun diagnostic lancé.</div></div>
+      <p>Repère les débordements, pistes Grid trop rigides, Flex qui ne peut pas rétrécir, objets hors flux et chevauchements. Les corrections proposées modifient les propriétés structurelles et restent annulables avec Undo.</p>
+    </section>
+
+    <section class="card">
       <h2>Vérifier l’interface <small>audit automatique</small></h2>
       <div class="toolbar"><button class="btn primary wide" id="auditBtn">Analyser l’écran actuel</button><button class="btn wide" id="auditFixBtn">Corriger automatiquement</button></div>
       <div class="toolbar" style="margin-top:7px"><button class="btn wide" id="repairAssistantBtn">Réparer avec aperçu</button><button class="btn wide desktop-only" id="testMatrixBtn">Tester 12 configurations</button></div>
@@ -1616,7 +1637,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.50.0'};
+      project.studio={name:'App Interface Studio',version:'6.51.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2540,6 +2561,34 @@ body.desktop .desktop-badge{display:inline-flex}
     add(lastLayerTree);
     if(!frag.childNodes.length)layerTree.innerHTML='<div class="hint">'+((query||filter!=='all')?'Aucun calque ne correspond au filtre.':'Aucun élément visible.')+'</div>';
     else layerTree.appendChild(frag);
+  }
+
+  function renderLayoutDiagnostic(payload){
+    payload=payload||{};
+    var summary=payload.summary||{};
+    var list=document.getElementById('layoutDiagnosticList');
+    var summaryEl=document.getElementById('layoutDiagnosticSummary');
+    if(!list||!summaryEl)return;
+    summaryEl.innerHTML='<span class="audit-chip error">'+(summary.errors||0)+' erreurs</span><span class="audit-chip warning">'+(summary.warnings||0)+' avertissements</span><span class="audit-chip">'+(summary.info||0)+' infos</span><span class="audit-chip">'+(summary.fixable||0)+' corrigeables</span>';
+    list.innerHTML='';
+    var items=payload.items||[];
+    if(!items.length){list.innerHTML='<div class="hint">'+(payload.cleared?'Surlignages effacés.':'Aucun problème structurel détecté sur ce périmètre.')+'</div>';return}
+    items.forEach(function(item,index){
+      var row=document.createElement('div');row.className='layout-diagnostic-item '+(item.severity||'warning');
+      var title=document.createElement('b');title.textContent=(index+1)+'. '+(item.type||'layout')+' · '+(item.selector||'');
+      var msg=document.createElement('span');msg.textContent=item.message||'';
+      var cause=document.createElement('span');cause.className='layout-diagnostic-cause';cause.textContent='Cause : '+(item.cause||'non déterminée');
+      var actions=document.createElement('div');actions.className='layout-diagnostic-actions';
+      var select=document.createElement('button');select.className='btn';select.textContent='Sélectionner';
+      select.addEventListener('click',function(){if(item.selector)post('select-selector',{selector:item.selector})});
+      actions.appendChild(select);
+      if(item.action){
+        var apply=document.createElement('button');apply.className='btn primary';apply.textContent='Appliquer la correction';
+        apply.addEventListener('click',function(){post('layout-diagnostic-apply',{id:item.id})});
+        actions.appendChild(apply);
+      }
+      row.append(title,msg,cause,actions);list.appendChild(row);
+    });
   }
 
   function renderAudit(payload){
@@ -3567,7 +3616,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.50.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.51.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -3620,7 +3669,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.50.0'};
+    project.studio={name:'App Interface Studio',version:'6.51.0'};
     return project;
   }
 
@@ -3717,7 +3766,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.50.0'};
+    project.studio={name:'App Interface Studio',version:'6.51.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4100,6 +4149,8 @@ body.desktop .desktop-badge{display:inline-flex}
       setStatus('Ancrage '+axisLabel+' : '+(names[p.value]||p.value)+'.');
     }
     if(data.type==='design-consistency')renderConsistency(p);
+    if(data.type==='layout-diagnostic')renderLayoutDiagnostic(p);
+    if(data.type==='layout-diagnostic-applied'){setStatus('Correction structurelle appliquée à '+(p.selector||'l’objet')+'.');post('get-css')}
     if(data.type==='repair-suggestions')renderRepairSuggestions(p.items||[]);
     if(data.type==='repair-preview')setStatus('Aperçu de correction actif. Utilise Annuler l’aperçu ou Appliquer.');
     if(data.type==='repair-preview-cleared')setStatus('Aperçu de correction annulé.');
@@ -4470,6 +4521,9 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
   document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
+  document.getElementById('layoutDiagnosticBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'screen'})});
+  document.getElementById('layoutDiagnosticSelectionBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'selection'})});
+  document.getElementById('layoutDiagnosticClearBtn').addEventListener('click',function(){post('layout-diagnostic-clear')});
   document.getElementById('auditBtn').addEventListener('click',function(){post('audit')});
   document.getElementById('auditFixBtn').addEventListener('click',function(){post('audit-fix')});
   document.getElementById('repairAssistantBtn').addEventListener('click',function(){
