@@ -930,7 +930,7 @@ body.desktop .desktop-badge{display:inline-flex}
 
     <section class="card">
       <h2>Espacements <small>mesure</small></h2>
-      <button class="btn" id="measureBtn" style="width:100%">Mesurer autour de la sélection</button>
+      <button class="btn" id="measureBtn" style="width:100%">Mesurer et afficher autour de la sélection</button>
       <div class="spacing-grid">
         <div class="space"><b id="spaceL">—</b><small>gauche</small></div>
         <div class="space"><b id="spaceT">—</b><small>haut</small></div>
@@ -1353,7 +1353,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.10.0'};
+      project.studio={name:'App Interface Studio',version:'6.11.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -1798,8 +1798,10 @@ body.desktop .desktop-badge{display:inline-flex}
     device.style.height=h+'px';
     device.style.transform='scale('+z+')';
     device.classList.toggle('wide',w>=700);
-    rulerX.style.width=w+'px';
-    rulerY.style.height=h+'px';
+    rulerX.style.width=(w*z)+'px';
+    rulerY.style.height=(h*z)+'px';
+    rulerX.style.backgroundSize=Math.max(2,10*z)+'px 7px';
+    rulerY.style.backgroundSize='7px '+Math.max(2,10*z)+'px';
     if(currentPreviewMode==='edit'){
       stage.style.width=(31+w*z+20)+'px';
       stage.style.height=(31+h*z+20)+'px';
@@ -2586,7 +2588,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.10.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.11.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     gitStatusText.textContent=result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.';
@@ -2631,7 +2633,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-    project.studio={name:'App Interface Studio',version:'6.10.0'};
+    project.studio={name:'App Interface Studio',version:'6.11.0'};
     if(desktop){
       var result=await desktop.saveProject(project);
       if(result&&result.ok)setStatus('Projet enregistré : '+result.path);
@@ -2689,7 +2691,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.10.0'};
+    project.studio={name:'App Interface Studio',version:'6.11.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -3080,8 +3082,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('addGuideXBtn').addEventListener('click',function(){addCustomGuide('x',customGuideX.value)});
   document.getElementById('addGuideYBtn').addEventListener('click',function(){addCustomGuide('y',customGuideY.value)});
   document.getElementById('clearGuidesBtn').addEventListener('click',function(){prefs.customGuidesX=[];prefs.customGuidesY=[];syncCustomGuides();setStatus('Repères personnalisés effacés.')});
-  rulerX.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('x',event.offsetX)});
-  rulerY.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('y',event.offsetY)});
+  rulerX.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('x',event.offsetX/currentZoomScale())});
+  rulerY.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('y',event.offsetY/currentZoomScale())});
 
   document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
   document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
