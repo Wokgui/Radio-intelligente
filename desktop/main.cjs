@@ -337,10 +337,11 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
-            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','appFrame'];
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','overrideCleanupList','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
             if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
+            const sourceSafetyBridge=typeof api.validateDirectEdit==='function'&&typeof api.analyzeOverrides==='function'&&typeof api.cleanupOverrides==='function';
             const info=await api.appInfo();
             const demo=await api.openDemo();
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
@@ -353,9 +354,10 @@ function createWindow(){
             const roundtrip=await api.smokeTransactionRoundtrip();
             const portableRoundtrip=await api.smokePortableRoundtrip();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&captureOk&&regressionOk&&matrixOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&captureOk&&regressionOk&&matrixOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok),
               version:info&&info.version,
               bridge:true,
+              sourceSafetyBridge:sourceSafetyBridge,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
