@@ -499,6 +499,28 @@ ipcMain.handle('reference:pick-image',async ()=>{
   }catch(error){return {ok:false,error:String(error&&error.message||error)}}
 });
 
+ipcMain.handle('asset:pick-image',async ()=>{
+  const result=await dialog.showOpenDialog({
+    title:'Choisir une image ou une icône',
+    properties:['openFile'],
+    filters:[{name:'Images et icônes',extensions:['png','jpg','jpeg','webp','gif','svg','avif']}]
+  });
+  if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};
+  const file=result.filePaths[0];
+  try{
+    const stat=fs.statSync(file);
+    if(stat.size>24*1024*1024)return {ok:false,error:'Image trop volumineuse (24 Mo maximum).'};
+    const ext=path.extname(file).toLowerCase();
+    const mime=ext==='.jpg'||ext==='.jpeg'?'image/jpeg':
+      ext==='.webp'?'image/webp':
+      ext==='.gif'?'image/gif':
+      ext==='.svg'?'image/svg+xml':
+      ext==='.avif'?'image/avif':'image/png';
+    const bytes=fs.readFileSync(file);
+    return {ok:true,path:file,name:path.basename(file),size:stat.size,mime,dataUrl:'data:'+mime+';base64,'+bytes.toString('base64')};
+  }catch(error){return {ok:false,error:'Lecture de l’image impossible : '+String(error&&error.message||error)}}
+});
+
 function localSourceEntry(source){
   if(!source)return null;
   if(source.type==='folder'&&source.path){
@@ -564,8 +586,12 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     textAdjusted:!!(item&&item.textAdjusted),
     textContent:String(item&&item.textContent!==undefined?item.textContent:''),
     accessibilityAdjusted:!!(item&&item.accessibilityAdjusted),
-    accessibilityLabel:String(item&&item.accessibilityLabel||'')
-  })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted));
+    accessibilityLabel:String(item&&item.accessibilityLabel||''),
+    mediaAdjusted:!!(item&&item.mediaAdjusted),
+    mediaKind:String(item&&item.mediaKind||''),
+    mediaSource:String(item&&item.mediaSource||''),
+    mediaFit:String(item&&item.mediaFit||'contain')
+  })).filter(item=>item.selector&&(item.textAdjusted||item.accessibilityAdjusted||item.mediaAdjusted));
 
   const cleanPrototypeLinks=Object.keys(prototypeLinks&&typeof prototypeLinks==='object'?prototypeLinks:{}).map(sourceSelector=>{
     const link=prototypeLinks[sourceSelector]||{};
@@ -628,6 +654,21 @@ function generatedStructureScript(nodes,patches,locators,prototypeLinks){
     '      if(item.accessibilityAdjusted){',
     '        if(item.accessibilityLabel)element.setAttribute("aria-label",item.accessibilityLabel);',
     '        else element.removeAttribute("aria-label");',
+    '      }',
+    '      if(item.mediaAdjusted&&item.mediaSource){',
+    '        const fit=item.mediaFit||"contain";',
+    '        if(item.mediaKind==="img"){element.setAttribute("src",item.mediaSource);element.style.objectFit=fit;}',
+    '        else if(item.mediaKind==="svg-image"){element.setAttribute("href",item.mediaSource);element.setAttributeNS("http://www.w3.org/1999/xlink","href",item.mediaSource);}',
+    '        else if(item.mediaKind==="svg"){',
+    '          while(element.firstChild)element.removeChild(element.firstChild);',
+    '          const image=document.createElementNS("http://www.w3.org/2000/svg","image");',
+    '          image.setAttribute("href",item.mediaSource);image.setAttribute("x","0");image.setAttribute("y","0");image.setAttribute("width","100%");image.setAttribute("height","100%");',
+    '          image.setAttribute("preserveAspectRatio",fit==="fill"?"none":fit==="cover"?"xMidYMid slice":"xMidYMid meet");element.appendChild(image);',
+    '        }else{',
+    '          element.style.setProperty("background-image","url(\\\""+String(item.mediaSource).replace(/\\\"/g,"%22")+"\\\")","important");',
+    '          element.style.setProperty("background-size",fit==="fill"?"100% 100%":fit==="none"?"auto":fit,"important");',
+    '          element.style.setProperty("background-position","center","important");element.style.setProperty("background-repeat","no-repeat","important");',
+    '        }',
     '      }',
     '    });',
     '  }',
@@ -707,6 +748,20 @@ function transactionFile(dir,stamp){
   return path.join(dir,'app-interface-studio.transaction-'+stamp+'.json');
 }
 
+function mediaAssetPlan(item,dir){
+  const sourcePath=String(item&&item.mediaAssetPath||'');
+  if(!sourcePath||!fs.existsSync(sourcePath)||!fs.statSync(sourcePath).isFile())return null;
+  const bytes=fs.readFileSync(sourcePath);
+  const hash=crypto.createHash('sha1').update(bytes).digest('hex').slice(0,12);
+  const rawExt=path.extname(sourcePath).toLowerCase();
+  const ext=/^\\.(png|jpe?g|webp|gif|svg|avif)$/i.test(rawExt)?rawExt:'.bin';
+  const base=path.basename(sourcePath,rawExt).replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48)||'asset';
+  const assetDir=path.join(dir,'app-interface-studio-assets');
+  const filename=base+'-'+hash+ext;
+  const target=path.join(assetDir,filename);
+  return {source:sourcePath,target,existed:fs.existsSync(target),url:'./app-interface-studio-assets/'+encodeURIComponent(filename)};
+}
+
 function computeLocalPatchPlan(payload,parts){
   const source=payload&&payload.source;
   const css=String(payload&&payload.css||'').trim();
@@ -723,13 +778,21 @@ function computeLocalPatchPlan(payload,parts){
     structure:!parts||parts.structure!==false
   };
   const dir=path.dirname(local.html);
+  const assetCopies=[];
+  const normalizedDomPatches=domPatches.map(item=>{
+    if(!item||!item.mediaAdjusted)return item;
+    const plan=mediaAssetPlan(item,dir);
+    if(!plan)return item;
+    assetCopies.push(plan);
+    return Object.assign({},item,{mediaSource:plan.url});
+  });
   const cssPath=path.join(dir,'app-interface-studio.generated.css');
   const jsPath=path.join(dir,'app-interface-studio.generated.js');
   const originalHtml=fs.readFileSync(local.html,'utf8');
   const currentCss=fs.existsSync(cssPath)?fs.readFileSync(cssPath,'utf8'):'';
   const currentJs=fs.existsSync(jsPath)?fs.readFileSync(jsPath,'utf8'):'';
-  const needLocators=sourceSelectors.length||generatedNodes.length||domPatches.length||Object.keys(prototypeLinks).length;
-  const sourceLocators=needLocators?buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks):[];
+  const needLocators=sourceSelectors.length||generatedNodes.length||normalizedDomPatches.length||Object.keys(prototypeLinks).length;
+  const sourceLocators=needLocators?buildSourceLocators(sourceSelectors,generatedNodes,normalizedDomPatches,prototypeLinks):[];
   const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
 
   let html=originalHtml;
@@ -754,8 +817,8 @@ function computeLocalPatchPlan(payload,parts){
 
   const prototypeCount=Object.keys(prototypeLinks).length;
   if(applyParts.structure){
-    if(generatedNodes.length||domPatches.length||sourceLocators.length||prototypeCount){
-      nextJs=generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks);
+    if(generatedNodes.length||normalizedDomPatches.length||sourceLocators.length||prototypeCount){
+      nextJs=generatedStructureScript(generatedNodes,normalizedDomPatches,sourceLocators,prototypeLinks);
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
@@ -781,7 +844,9 @@ function computeLocalPatchPlan(payload,parts){
       js:simpleUnifiedDiff(currentJs,nextJs,path.basename(jsPath))
     },
     generatedCount:generatedNodes.length,
-    domPatchCount:domPatches.length,
+    domPatchCount:normalizedDomPatches.length,
+    assetCopies,
+    assetCount:assetCopies.length,
     locatorCount:sourceLocators.length,
     prototypeCount
   };
@@ -801,6 +866,7 @@ ipcMain.handle('source:preview-patch',async (_event,payload)=>{
       },
       generatedCount:plan.generatedCount,
       domPatchCount:plan.domPatchCount,
+      assetCount:plan.assetCount,
       locatorCount:plan.locatorCount,
       prototypeCount:plan.prototypeCount
     };
@@ -825,9 +891,17 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const htmlBackupPath=path.join(plan.dir,path.basename(plan.local.html)+'.ais-backup-'+stamp);
   const cssBackup=optionalFileBackup(plan.cssPath,stamp);
   const jsBackup=optionalFileBackup(plan.jsPath,stamp);
+  const createdAssets=[];
 
   try{
     fs.copyFileSync(plan.local.html,htmlBackupPath);
+    for(const asset of plan.assetCopies||[]){
+      fs.mkdirSync(path.dirname(asset.target),{recursive:true});
+      if(!fs.existsSync(asset.target)){
+        fs.copyFileSync(asset.source,asset.target);
+        createdAssets.push(asset.target);
+      }
+    }
 
     if(plan.changed.css){
       if(plan.after.css)fs.writeFileSync(plan.cssPath,plan.after.css,'utf8');
@@ -841,7 +915,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
 
     const transactionPath=transactionFile(plan.dir,stamp);
     const transaction={
-      version:2,
+      version:3,
       createdAt:new Date().toISOString(),
       sourceHtml:path.resolve(plan.local.html),
       htmlBackupPath,
@@ -851,6 +925,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       jsPath:plan.jsPath,
       jsExisted:jsBackup.existed,
       jsBackupPath:jsBackup.backupPath,
+      createdAssets,
       applyParts:plan.parts,
       rolledBack:false
     };
@@ -867,6 +942,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
       domPatchCount:plan.domPatchCount,
       locatorCount:plan.locatorCount,
       prototypeCount:plan.prototypeCount,
+      assetCount:plan.assetCount,
       cssApplied:plan.parts.css&&!!plan.after.css,
       cssRemoved:plan.parts.css&&!plan.after.css&&!!plan.before.css,
       structureApplied:plan.parts.structure&&!!plan.after.js,
@@ -875,6 +951,7 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   }catch(error){
     cleanupOptionalBackup(cssBackup);
     cleanupOptionalBackup(jsBackup);
+    createdAssets.forEach(file=>{try{if(fs.existsSync(file))fs.unlinkSync(file)}catch(_){}});
     return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)};
   }
 });
@@ -905,6 +982,9 @@ ipcMain.handle('source:rollback-last-patch',async (_event,payload)=>{
     fs.copyFileSync(chosen.htmlBackupPath,local.html);
     restoreOptionalFile(chosen.cssPath,!!chosen.cssExisted,chosen.cssBackupPath);
     restoreOptionalFile(chosen.jsPath,!!chosen.jsExisted,chosen.jsBackupPath);
+    (Array.isArray(chosen.createdAssets)?chosen.createdAssets:[]).forEach(file=>{
+      try{if(file&&fs.existsSync(file))fs.unlinkSync(file)}catch(_){}
+    });
 
     chosen.rolledBack=true;
     chosen.rolledBackAt=new Date().toISOString();
@@ -977,6 +1057,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     const generatedStructure=path.join(path.dirname(local.html),'app-interface-studio.generated.js');
     const generatedStructureRelative=path.relative(root,generatedStructure);
     if(fs.existsSync(generatedStructure)||gitPathTracked(root,generatedStructureRelative))files.push(generatedStructureRelative);
+    const assetDir=path.join(path.dirname(local.html),'app-interface-studio-assets');
+    if(fs.existsSync(assetDir))files.push(path.relative(root,assetDir));
     execFileSync('git',['-C',root,'add','-A','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
