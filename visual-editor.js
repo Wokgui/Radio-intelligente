@@ -58,8 +58,10 @@
   altTargetOutline.className = 've-alt-target';
   const altMeasureLabel = document.createElement('div');
   altMeasureLabel.className = 've-alt-measure';
+  const marqueeBox = document.createElement('div');
+  marqueeBox.className = 've-marquee';
 
-  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel);
+  document.body.append(toolbar, outline, guideV, guideH, guideVLabel, guideHLabel, constraintBadge, altTargetOutline, altMeasureLabel, marqueeBox);
 
   const targetLabel = toolbar.querySelector('.ve-target');
   const metrics = toolbar.querySelector('.ve-metrics');
@@ -72,6 +74,8 @@
   const secondaryOutlines = new Map();
   let drag = null;
   let resizeDrag = null;
+  let marqueeDrag = null;
+  let marqueeMode = false;
   let grid = 1;
   let smartGuidesEnabled = true;
   let keyboardCommitTimer = null;
@@ -748,7 +752,7 @@
   function isEditorNode(node) {
     return node === launcher || toolbar.contains(node) || node === outline || outline.contains(node) ||
       node === guideV || node === guideH || node === guideVLabel || node === guideHLabel ||
-      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel;
+      node === constraintBadge || node === altTargetOutline || node === altMeasureLabel || node === marqueeBox;
   }
 
   function alignmentCandidates(element) {
@@ -2178,6 +2182,93 @@
     emit('state', currentPayload());
   }
 
+  function setMarqueeMode(value) {
+    marqueeMode = !!value;
+    document.body.classList.toggle('ve-marquee-mode', marqueeMode);
+    if (!marqueeMode && marqueeDrag) {
+      marqueeDrag = null;
+      marqueeBox.style.display = 'none';
+    }
+    emit('marquee-mode',{active:marqueeMode});
+  }
+
+  function marqueeRectFromPoints(x1,y1,x2,y2) {
+    const left=Math.min(x1,x2), top=Math.min(y1,y2);
+    const right=Math.max(x1,x2), bottom=Math.max(y1,y2);
+    return {left:left,top:top,right:right,bottom:bottom,width:right-left,height:bottom-top};
+  }
+
+  function updateMarqueeBox(rect) {
+    marqueeBox.style.display='block';
+    marqueeBox.style.left=Math.round(rect.left)+'px';
+    marqueeBox.style.top=Math.round(rect.top)+'px';
+    marqueeBox.style.width=Math.round(rect.width)+'px';
+    marqueeBox.style.height=Math.round(rect.height)+'px';
+  }
+
+  function marqueeCandidates(rect) {
+    const raw=[];
+    Array.from(document.body.querySelectorAll('*')).some(function(el){
+      if(raw.length>=500)return true;
+      if(isEditorNode(el)||/^SCRIPT|STYLE|LINK|META|NOSCRIPT$/i.test(el.tagName))return false;
+      const cs=getComputedStyle(el);
+      const r=el.getBoundingClientRect();
+      if(cs.display==='none'||cs.visibility==='hidden'||r.width<2||r.height<2)return false;
+      const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      if(cx<rect.left||cx>rect.right||cy<rect.top||cy>rect.bottom)return false;
+      let target=el;
+      const interactive=el.closest&&el.closest('button,a,input,select,textarea,[role="button"],svg');
+      if(interactive&&document.body.contains(interactive))target=interactive;
+      if(!raw.includes(target))raw.push(target);
+      return false;
+    });
+    return raw.filter(function(el){
+      return !raw.some(function(other){return other!==el&&el.contains(other)});
+    }).slice(0,80);
+  }
+
+  function startMarquee(event) {
+    marqueeDrag={
+      pointerId:event.pointerId,
+      startX:event.clientX,
+      startY:event.clientY,
+      additive:!!event.shiftKey
+    };
+    if(!marqueeDrag.additive){
+      selectedSet.clear();
+      selected=null;
+      clearSecondaryOutlines();
+      updateOverlay();
+    }
+    updateMarqueeBox(marqueeRectFromPoints(event.clientX,event.clientY,event.clientX,event.clientY));
+  }
+
+  function updateMarquee(event) {
+    if(!marqueeDrag||event.pointerId!==marqueeDrag.pointerId)return false;
+    updateMarqueeBox(marqueeRectFromPoints(marqueeDrag.startX,marqueeDrag.startY,event.clientX,event.clientY));
+    return true;
+  }
+
+  function finishMarquee(event) {
+    if(!marqueeDrag||event.pointerId!==marqueeDrag.pointerId)return false;
+    const rect=marqueeRectFromPoints(marqueeDrag.startX,marqueeDrag.startY,event.clientX,event.clientY);
+    const additive=marqueeDrag.additive;
+    marqueeDrag=null;
+    marqueeBox.style.display='none';
+    if(rect.width<3&&rect.height<3){
+      if(!additive){selectedSet.clear();selected=null;updateOverlay();emitLayers()}
+      return true;
+    }
+    const items=marqueeCandidates(rect);
+    if(!additive)selectedSet.clear();
+    items.forEach(function(el){remember(el);selectedSet.add(el)});
+    selected=items.length?items[items.length-1]:(selectedSet.values().next().value||null);
+    updateOverlay();
+    emitLayers();
+    emit('marquee-selection',{count:selectedSet.size,selectors:selectionElements().map(selectorFor).filter(Boolean)});
+    return true;
+  }
+
   function select(element, additive) {
     if (!element || isEditorNode(element)) return;
     if (element.closest && element.closest('svg') && element.tagName && element.tagName.toLowerCase() !== 'svg') {
@@ -2598,6 +2689,10 @@
     if (!active || isEditorNode(event.target)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (marqueeMode || event.ctrlKey || event.metaKey) {
+      startMarquee(event);
+      return;
+    }
     select(event.target, !!event.shiftKey);
     if (!selected) return;
     const movable = selectionElements().filter(function (element) {
@@ -2615,7 +2710,9 @@
   }, true);
 
   window.addEventListener('pointermove', function (event) {
-    if (!active || !drag || event.pointerId !== drag.pointerId || !selected) return;
+    if (!active) return;
+    if (updateMarquee(event)) { event.preventDefault(); return; }
+    if (!drag || event.pointerId !== drag.pointerId || !selected) return;
     event.preventDefault();
     const totalDx = snapGrid(event.clientX - drag.x);
     const totalDy = snapGrid(event.clientY - drag.y);
@@ -2673,7 +2770,13 @@
   window.addEventListener('blur', clearAltMeasure);
 
   window.addEventListener('pointerup', function (event) {
-    if (!active || !drag || event.pointerId !== drag.pointerId) return;
+    if (!active) return;
+    if (finishMarquee(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    if (!drag || event.pointerId !== drag.pointerId) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     drag = null;
@@ -2762,6 +2865,13 @@
       redo();
       return true;
     }
+    if (key === 'Escape' && (marqueeMode || marqueeDrag)) {
+      event.preventDefault();
+      marqueeDrag = null;
+      marqueeBox.style.display = 'none';
+      setMarqueeMode(false);
+      return true;
+    }
     if ((key === 'Delete' || key === 'Backspace') && selected) {
       event.preventDefault();
       deleteSelected();
@@ -2848,6 +2958,7 @@
     if (data.type === 'get-layers') emitLayers();
     if (data.type === 'select-selector') selectBySelector(payload.selector, !!payload.additive);
     if (data.type === 'navigate-selection') navigateSelection(String(payload.direction || ''));
+    if (data.type === 'marquee-mode') setMarqueeMode(!!payload.active);
     if (data.type === 'layer-lock') setLayerLock(payload.selector, payload.value);
     if (data.type === 'layer-hidden') setLayerHidden(payload.selector, payload.value);
     if (data.type === 'parent-layout') setParentLayout(payload);
@@ -2934,6 +3045,7 @@
     emitLayers: emitLayers,
     navigateSelection: navigateSelection,
     smartSnapSelection: smartSnapSelection,
+    setMarqueeMode: setMarqueeMode,
     setParentLayout: setParentLayout,
     inferAutoLayout: inferAutoLayout,
     inferSmartConstraints: inferSmartConstraints,
