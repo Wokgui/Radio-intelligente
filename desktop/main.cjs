@@ -2197,14 +2197,8 @@ function resolvePortableStrings(value,bundle,seen){
   });
 }
 
-ipcMain.handle('layout:export-portable',async (_event,project)=>{
-  const result=await dialog.showSaveDialog({
-    title:'Exporter un projet portable',
-    defaultPath:'interface.ais-portable',
-    filters:[{name:'Projet portable App Interface Studio',extensions:['ais-portable']}]
-  });
-  if(result.canceled||!result.filePath)return {ok:false,canceled:true};
-  const bundle=path.resolve(result.filePath);
+function writePortableBundle(project,bundle){
+  bundle=path.resolve(bundle);
   const clone=JSON.parse(JSON.stringify(project||{}));
   const temp=bundle+'.tmp-'+Date.now()+'-'+crypto.randomBytes(3).toString('hex');
   try{
@@ -2267,15 +2261,10 @@ ipcMain.handle('layout:export-portable',async (_event,project)=>{
     try{fs.rmSync(temp,{recursive:true,force:true})}catch(_){}
     return {ok:false,error:'Export portable impossible : '+String(error&&error.message||error)};
   }
-});
+}
 
-ipcMain.handle('layout:import-portable',async ()=>{
-  const result=await dialog.showOpenDialog({
-    title:'Ouvrir un projet portable',
-    properties:['openDirectory']
-  });
-  if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};
-  const bundle=path.resolve(result.filePaths[0]);
+function readPortableBundle(bundle){
+  bundle=path.resolve(bundle);
   const manifest=path.join(bundle,'project.json');
   if(!fs.existsSync(manifest))return {ok:false,error:'Ce dossier ne contient pas project.json.'};
   try{
@@ -2286,6 +2275,25 @@ ipcMain.handle('layout:import-portable',async ()=>{
   }catch(error){
     return {ok:false,error:'Ouverture du projet portable impossible : '+String(error&&error.message||error)};
   }
+}
+
+ipcMain.handle('layout:export-portable',async (_event,project)=>{
+  const result=await dialog.showSaveDialog({
+    title:'Exporter un projet portable',
+    defaultPath:'interface.ais-portable',
+    filters:[{name:'Projet portable App Interface Studio',extensions:['ais-portable']}]
+  });
+  if(result.canceled||!result.filePath)return {ok:false,canceled:true};
+  return writePortableBundle(project,result.filePath);
+});
+
+ipcMain.handle('layout:import-portable',async ()=>{
+  const result=await dialog.showOpenDialog({
+    title:'Ouvrir un projet portable',
+    properties:['openDirectory']
+  });
+  if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};
+  return readPortableBundle(result.filePaths[0]);
 });
 
 ipcMain.handle('layout:save-chatgpt',async (_event,payload)=>{
