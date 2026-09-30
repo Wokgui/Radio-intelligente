@@ -42,6 +42,10 @@
     '<i class="ve-handle ve-handle-ne" data-handle="ne"></i>' +
     '<i class="ve-handle ve-handle-sw" data-handle="sw"></i>' +
     '<i class="ve-handle ve-handle-se" data-handle="se"></i>' +
+    '<i class="ve-handle ve-handle-n" data-handle="n"></i>' +
+    '<i class="ve-handle ve-handle-e" data-handle="e"></i>' +
+    '<i class="ve-handle ve-handle-s" data-handle="s"></i>' +
+    '<i class="ve-handle ve-handle-w" data-handle="w"></i>' +
     '<button class="ve-anchor-pin ve-anchor-left" data-anchor-axis="h" data-anchor-value="left" title="Ancrer à gauche">←</button>' +
     '<button class="ve-anchor-pin ve-anchor-hcenter" data-anchor-axis="h" data-anchor-value="center" title="Centrer horizontalement">↔</button>' +
     '<button class="ve-anchor-pin ve-anchor-right" data-anchor-axis="h" data-anchor-value="right" title="Ancrer à droite">→</button>' +
