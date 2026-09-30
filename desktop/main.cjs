@@ -707,7 +707,7 @@ function transactionFile(dir,stamp){
   return path.join(dir,'app-interface-studio.transaction-'+stamp+'.json');
 }
 
-ipcMain.handle('source:apply-css',async (_event,payload)=>{
+function computeLocalPatchPlan(payload,parts){
   const source=payload&&payload.source;
   const css=String(payload&&payload.css||'').trim();
   const generatedNodes=Array.isArray(payload&&payload.generatedNodes)?payload.generatedNodes:[];
@@ -715,39 +715,30 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
   const sourceSelectors=Array.isArray(payload&&payload.sourceSelectors)?payload.sourceSelectors:[];
   const prototypeLinks=payload&&payload.prototypeLinks&&typeof payload.prototypeLinks==='object'?payload.prototypeLinks:{};
   const local=localSourceEntry(source);
-  if(!local)return {ok:false,error:'Application directe disponible uniquement pour un dossier ou fichier HTML local.'};
-  if(!fs.existsSync(local.html))return {ok:false,error:'Fichier HTML source introuvable.'};
+  if(!local)throw new Error('Application directe disponible uniquement pour un dossier ou fichier HTML local.');
+  if(!fs.existsSync(local.html))throw new Error('Fichier HTML source introuvable.');
 
+  const applyParts={
+    css:!parts||parts.css!==false,
+    structure:!parts||parts.structure!==false
+  };
   const dir=path.dirname(local.html);
   const cssPath=path.join(dir,'app-interface-studio.generated.css');
   const jsPath=path.join(dir,'app-interface-studio.generated.js');
-  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-  const htmlBackupPath=path.join(dir,path.basename(local.html)+'.ais-backup-'+stamp);
-  const cssBackup=optionalFileBackup(cssPath,stamp);
-  const jsBackup=optionalFileBackup(jsPath,stamp);
+  const originalHtml=fs.readFileSync(local.html,'utf8');
+  const currentCss=fs.existsSync(cssPath)?fs.readFileSync(cssPath,'utf8'):'';
+  const currentJs=fs.existsSync(jsPath)?fs.readFileSync(jsPath,'utf8'):'';
+  const needLocators=sourceSelectors.length||generatedNodes.length||domPatches.length||Object.keys(prototypeLinks).length;
+  const sourceLocators=needLocators?buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks):[];
+  const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
 
-  try{
-    const originalHtml=fs.readFileSync(local.html,'utf8');
-    fs.copyFileSync(local.html,htmlBackupPath);
+  let html=originalHtml;
+  let nextCss=currentCss;
+  let nextJs=currentJs;
 
-    let html=originalHtml;
-    let cssApplied=false;
-    let cssRemoved=false;
-    let structureApplied=false;
-    let structureRemoved=false;
-    let cssChanged=false;
-    let structureChanged=false;
-
-    const sourceLocators=generatedNodes.length?buildSourceLocators(sourceSelectors,generatedNodes,domPatches,prototypeLinks):[];
-    const stableCss=sourceLocators.length?rewriteGeneratedCss(css,sourceLocators):css;
-
+  if(applyParts.css){
     if(stableCss&&stableCss!=='/* Aucun ajustement. */'){
-      const nextCss='/* Généré par App Interface Studio — patch réversible. */\n'+stableCss+'\n';
-      const previousCss=fs.existsSync(cssPath)?fs.readFileSync(cssPath,'utf8'):'';
-      if(previousCss!==nextCss){
-        fs.writeFileSync(cssPath,nextCss,'utf8');
-        cssChanged=true;
-      }
+      nextCss='/* Généré par App Interface Studio — patch réversible. */\n'+stableCss+'\n';
       const marker='data-app-interface-studio="generated"';
       if(!html.includes(marker)){
         const href='./'+path.basename(cssPath);
@@ -755,79 +746,134 @@ ipcMain.handle('source:apply-css',async (_event,payload)=>{
         if(new RegExp('</head>','i').test(html))html=html.replace(new RegExp('</head>','i'),'  '+link+'\n</head>');
         else html=link+'\n'+html;
       }
-      cssApplied=true;
     }else{
-      const cleaned=removeGeneratedCssTag(html);
-      if(cleaned!==html){html=cleaned;cssChanged=true}
-      if(fs.existsSync(cssPath)){fs.unlinkSync(cssPath);cssChanged=true;cssRemoved=true}
+      nextCss='';
+      html=removeGeneratedCssTag(html);
     }
+  }
 
-    const prototypeCount=Object.keys(prototypeLinks).length;
+  const prototypeCount=Object.keys(prototypeLinks).length;
+  if(applyParts.structure){
     if(generatedNodes.length||domPatches.length||sourceLocators.length||prototypeCount){
-      const nextJs=generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks);
-      const previousJs=fs.existsSync(jsPath)?fs.readFileSync(jsPath,'utf8'):'';
-      if(previousJs!==nextJs){
-        fs.writeFileSync(jsPath,nextJs,'utf8');
-        structureChanged=true;
-      }
+      nextJs=generatedStructureScript(generatedNodes,domPatches,sourceLocators,prototypeLinks);
       const marker='data-app-interface-studio="generated-structure"';
       const src='./'+path.basename(jsPath);
       const tag='<script src="'+src+'" '+marker+'></script>';
-      const nextHtml=ensureGeneratedTag(html,tag,marker);
-      if(nextHtml!==html){html=nextHtml;structureChanged=true}
-      structureApplied=true;
+      html=ensureGeneratedTag(html,tag,marker);
     }else{
-      const cleaned=removeGeneratedStructureTag(html);
-      if(cleaned!==html){html=cleaned;structureChanged=true}
-      if(fs.existsSync(jsPath)){fs.unlinkSync(jsPath);structureChanged=true;structureRemoved=true}
+      nextJs='';
+      html=removeGeneratedStructureTag(html);
     }
+  }
 
-    const htmlChanged=html!==originalHtml;
-    if(htmlChanged)fs.writeFileSync(local.html,html,'utf8');
+  const htmlChanged=html!==originalHtml;
+  const cssChanged=nextCss!==currentCss;
+  const structureChanged=nextJs!==currentJs;
+  return {
+    local,dir,cssPath,jsPath,
+    parts:applyParts,
+    before:{html:originalHtml,css:currentCss,js:currentJs},
+    after:{html:html,css:nextCss,js:nextJs},
+    changed:{html:htmlChanged,css:cssChanged,structure:structureChanged},
+    diffs:{
+      html:simpleUnifiedDiff(originalHtml,html,path.basename(local.html)),
+      css:simpleUnifiedDiff(currentCss,nextCss,path.basename(cssPath)),
+      js:simpleUnifiedDiff(currentJs,nextJs,path.basename(jsPath))
+    },
+    generatedCount:generatedNodes.length,
+    domPatchCount:domPatches.length,
+    locatorCount:sourceLocators.length,
+    prototypeCount
+  };
+}
 
-    if(!htmlChanged&&!cssChanged&&!structureChanged){
-      try{fs.unlinkSync(htmlBackupPath)}catch(_){}
-      cleanupOptionalBackup(cssBackup);
-      cleanupOptionalBackup(jsBackup);
-      return {ok:false,error:'Le code local est déjà synchronisé avec le projet.'};
+ipcMain.handle('source:preview-patch',async (_event,payload)=>{
+  try{
+    const plan=computeLocalPatchPlan(payload,{css:true,structure:true});
+    return {
+      ok:true,
+      files:{
+        html:{path:plan.local.html,changed:plan.changed.html,diff:plan.diffs.html,before:plan.before.html,after:plan.after.html},
+        css:{path:plan.cssPath,changed:plan.changed.css,diff:plan.diffs.css,before:plan.before.css,after:plan.after.css},
+        js:{path:plan.jsPath,changed:plan.changed.structure,diff:plan.diffs.js,before:plan.before.js,after:plan.after.js}
+      },
+      generatedCount:plan.generatedCount,
+      domPatchCount:plan.domPatchCount,
+      locatorCount:plan.locatorCount,
+      prototypeCount:plan.prototypeCount
+    };
+  }catch(error){
+    return {ok:false,error:'Préparation du patch impossible : '+String(error&&error.message||error)};
+  }
+});
+
+ipcMain.handle('source:apply-css',async (_event,payload)=>{
+  let plan=null;
+  try{
+    plan=computeLocalPatchPlan(payload,payload&&payload.applyParts);
+  }catch(error){
+    return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)};
+  }
+
+  if(!plan.changed.html&&!plan.changed.css&&!plan.changed.structure){
+    return {ok:false,error:'Le code local est déjà synchronisé avec le projet.'};
+  }
+
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const htmlBackupPath=path.join(plan.dir,path.basename(plan.local.html)+'.ais-backup-'+stamp);
+  const cssBackup=optionalFileBackup(plan.cssPath,stamp);
+  const jsBackup=optionalFileBackup(plan.jsPath,stamp);
+
+  try{
+    fs.copyFileSync(plan.local.html,htmlBackupPath);
+
+    if(plan.changed.css){
+      if(plan.after.css)fs.writeFileSync(plan.cssPath,plan.after.css,'utf8');
+      else if(fs.existsSync(plan.cssPath))fs.unlinkSync(plan.cssPath);
     }
+    if(plan.changed.structure){
+      if(plan.after.js)fs.writeFileSync(plan.jsPath,plan.after.js,'utf8');
+      else if(fs.existsSync(plan.jsPath))fs.unlinkSync(plan.jsPath);
+    }
+    if(plan.changed.html)fs.writeFileSync(plan.local.html,plan.after.html,'utf8');
 
-    const transactionPath=transactionFile(dir,stamp);
+    const transactionPath=transactionFile(plan.dir,stamp);
     const transaction={
-      version:1,
+      version:2,
       createdAt:new Date().toISOString(),
-      sourceHtml:path.resolve(local.html),
+      sourceHtml:path.resolve(plan.local.html),
       htmlBackupPath,
-      cssPath,
+      cssPath:plan.cssPath,
       cssExisted:cssBackup.existed,
       cssBackupPath:cssBackup.backupPath,
-      jsPath,
+      jsPath:plan.jsPath,
       jsExisted:jsBackup.existed,
       jsBackupPath:jsBackup.backupPath,
+      applyParts:plan.parts,
       rolledBack:false
     };
     fs.writeFileSync(transactionPath,JSON.stringify(transaction,null,2)+'\n','utf8');
 
     return {
       ok:true,
-      cssPath:cssApplied?cssPath:null,
-      jsPath:structureApplied?jsPath:null,
-      htmlPath:local.html,
+      cssPath:plan.after.css?plan.cssPath:null,
+      jsPath:plan.after.js?plan.jsPath:null,
+      htmlPath:plan.local.html,
       backupPath:htmlBackupPath,
       transactionPath,
-      generatedCount:generatedNodes.length,
-      domPatchCount:domPatches.length,
-      locatorCount:sourceLocators.length,
-      prototypeCount,
-      cssApplied,
-      cssRemoved,
-      structureApplied,
-      structureRemoved
+      generatedCount:plan.generatedCount,
+      domPatchCount:plan.domPatchCount,
+      locatorCount:plan.locatorCount,
+      prototypeCount:plan.prototypeCount,
+      cssApplied:plan.parts.css&&!!plan.after.css,
+      cssRemoved:plan.parts.css&&!plan.after.css&&!!plan.before.css,
+      structureApplied:plan.parts.structure&&!!plan.after.js,
+      structureRemoved:plan.parts.structure&&!plan.after.js&&!!plan.before.js
     };
   }catch(error){
     cleanupOptionalBackup(cssBackup);
     cleanupOptionalBackup(jsBackup);
-    return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)}
+    return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)};
   }
 });
 
