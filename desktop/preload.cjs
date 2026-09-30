@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   prepareNativeEdit: payload => ipcRenderer.invoke('source:prepare-native-edit', payload),
   applyNativeEdit: payload => ipcRenderer.invoke('source:apply-native-edit', payload),
   runTestMatrix: payload => ipcRenderer.invoke('capture:test-matrix', payload),
+  replayScenario: payload => ipcRenderer.invoke('scenario:replay', payload),
+  keyboardAccessibilityAudit: payload => ipcRenderer.invoke('accessibility:keyboard-audit', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   exportPortableProject: project => ipcRenderer.invoke('layout:export-portable', project),
@@ -46,7 +48,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   copyText: text => ipcRenderer.invoke('layout:copy-text', String(text || '')),
   appInfo: () => ipcRenderer.invoke('layout:app-info'),
   smokeTransactionRoundtrip: () => ipcRenderer.invoke('smoke:transaction-roundtrip'),
-  smokePortableRoundtrip: () => ipcRenderer.invoke('smoke:portable-roundtrip')
+  smokePortableRoundtrip: () => ipcRenderer.invoke('smoke:portable-roundtrip'),
+  smokeCascadeFixtures: () => ipcRenderer.invoke('smoke:cascade-fixtures')
 });
 
 // Compatibilité avec la v1.
