@@ -121,6 +121,13 @@ expect(engine,"function navigateSelection(direction)","structural selection navi
 expect(engine,"data.type === 'navigate-selection'","selection navigation engine command");
 expect(engine,"smartGuidesEnabled && !event.altKey","smart guide drag integration");
 expect(engine,"applyState(element, state, false);","non-responsive move application");
+expect(html,'id="guideThresholdPref"','smart guide sensitivity control');
+expect(html,'id="selectionBreadcrumbs"','selection hierarchy breadcrumbs');
+expect(html,"function renderSelectionBreadcrumbs","selection breadcrumb rendering");
+expect(engine,"let guideThreshold = 5","configurable guide threshold");
+expect(engine,"Zone sûre gauche","safe-area snapping");
+expect(engine,"Centre parent","parent snapping");
+expect(engine,"selectionPath: selectionPath(selected)","selection path payload");
 
 const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 if(!blocks.length)throw new Error('No inline script found in visual-editor.html');
@@ -128,4 +135,4 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.1 feature checks passed.');
+console.log('App Interface Studio 6.2 feature checks passed.');
