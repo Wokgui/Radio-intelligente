@@ -394,6 +394,12 @@ body.desktop .desktop-badge{display:inline-flex}
 .source-property-chip{display:flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid #ffffff22;border-radius:8px;background:#18151e;color:#eee;font:700 10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace}
 .source-property-chip input{accent-color:#8f6df7}
 .matrix-cause{margin-top:7px;padding:7px;border-radius:7px;background:#f7f3fb;border:1px solid var(--line);font-size:.62rem;line-height:1.35}
+.scenario-list{display:grid;gap:6px;max-height:280px;overflow:auto;margin-top:8px}
+.scenario-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:7px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:.66rem}
+.scenario-item code{overflow-wrap:anywhere;white-space:normal}
+.scenario-state{font-size:.68rem;color:var(--muted);margin-top:7px}
+.keyboard-result{display:grid;gap:6px;margin-top:8px}
+.keyboard-sequence{max-height:130px;overflow:auto;padding:8px;border-radius:8px;background:#f8f6fa;font:600 .61rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace}
 .matrix-cause b{display:block;margin-bottom:3px}
 .matrix-cause code{display:block;white-space:normal;overflow-wrap:anywhere;color:#5e456f}
 .patch-diff-section{margin-bottom:16px;transition:opacity .15s}.patch-diff-section.disabled{opacity:.42}.patch-diff-section h3{display:flex;gap:8px;align-items:baseline;margin:0 0 6px}.patch-diff-section .diff-code{min-height:180px;max-height:38vh}.patch-diff-section small{color:#b8aac8}
@@ -1180,6 +1186,29 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
 
+    <section class="card desktop-only">
+      <h2>Parcours utilisateur <small>enregistrer et rejouer</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="scenarioRecordBtn">Démarrer l’enregistrement</button>
+        <button class="btn wide" id="scenarioStopBtn" disabled>Arrêter</button>
+      </div>
+      <div class="toolbar" style="margin-top:7px">
+        <button class="btn wide" id="scenarioReplayBtn" disabled>Rejouer sur 3 formats</button>
+        <button class="btn wide" id="scenarioClearBtn">Effacer</button>
+      </div>
+      <div class="scenario-state" id="scenarioStatus">Aucun parcours enregistré.</div>
+      <div class="scenario-list" id="scenarioList"><div class="hint">Les clics, saisies et touches d’action apparaîtront ici.</div></div>
+      <div class="matrix-list" id="scenarioReplayResults"></div>
+      <p>Le rejeu est exécuté sur téléphone, tablette et desktop, puis vérifie aussi les débordements et textes coupés après le parcours.</p>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Clavier et focus <small>audit accessibilité réel</small></h2>
+      <button class="btn primary" id="keyboardAuditBtn" style="width:100%">Tester Tab, focus et mouvement réduit</button>
+      <div class="compare-status" id="keyboardAuditStatus">Aucun audit clavier lancé.</div>
+      <div class="keyboard-result" id="keyboardAuditResult"></div>
+    </section>
+
     <section class="card">
       <h2>Tests de contenu <small>cas extrêmes</small></h2>
       <div class="pro-grid">
@@ -1589,6 +1618,16 @@ body.desktop .desktop-badge{display:inline-flex}
   var consistencyStatus=document.getElementById('consistencyStatus');
   var consistencyList=document.getElementById('consistencyList');
   var autoLayoutStatus=document.getElementById('autoLayoutStatus');
+  var scenarioRecordBtn=document.getElementById('scenarioRecordBtn');
+  var scenarioStopBtn=document.getElementById('scenarioStopBtn');
+  var scenarioReplayBtn=document.getElementById('scenarioReplayBtn');
+  var scenarioStatus=document.getElementById('scenarioStatus');
+  var scenarioList=document.getElementById('scenarioList');
+  var scenarioReplayResults=document.getElementById('scenarioReplayResults');
+  var keyboardAuditStatus=document.getElementById('keyboardAuditStatus');
+  var keyboardAuditResult=document.getElementById('keyboardAuditResult');
+  var recordedScenarioActions=[];
+  var scenarioRecordingActive=false;
   var componentTestStatus=document.getElementById('componentTestStatus');
   var finalControlStatus=document.getElementById('finalControlStatus');
   var finalControlList=document.getElementById('finalControlList');
@@ -1710,7 +1749,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.57.0'};
+      project.studio={name:'App Interface Studio',version:'6.58.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -3103,6 +3142,87 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function renderScenario(actions,active){
+    recordedScenarioActions=Array.isArray(actions)?actions:[];
+    scenarioRecordingActive=!!active;
+    scenarioRecordBtn.disabled=scenarioRecordingActive;
+    scenarioStopBtn.disabled=!scenarioRecordingActive;
+    scenarioReplayBtn.disabled=!recordedScenarioActions.length||scenarioRecordingActive;
+    scenarioStatus.textContent=scenarioRecordingActive
+      ?'Enregistrement en cours · '+recordedScenarioActions.length+' action(s).'
+      :(recordedScenarioActions.length?recordedScenarioActions.length+' action(s) enregistrée(s).':'Aucun parcours enregistré.');
+    scenarioList.innerHTML='';
+    if(!recordedScenarioActions.length){
+      scenarioList.innerHTML='<div class="hint">Les clics, saisies et touches d’action apparaîtront ici.</div>';
+      return;
+    }
+    recordedScenarioActions.forEach(function(action,index){
+      var row=document.createElement('div');row.className='scenario-item';
+      var n=document.createElement('b');n.textContent=String(index+1);
+      var text=document.createElement('code');
+      var extra=action.value!==undefined?' = "'+String(action.value).slice(0,60)+'"':(action.key?' · '+action.key:'');
+      text.textContent=(action.type||'action')+' · '+(action.selector||'')+extra;
+      var del=document.createElement('button');del.className='btn';del.textContent='×';
+      del.title='Supprimer cette étape';
+      del.addEventListener('click',function(){
+        recordedScenarioActions.splice(index,1);
+        renderScenario(recordedScenarioActions,false);
+      });
+      row.append(n,text,del);scenarioList.appendChild(row);
+    });
+  }
+
+  function renderScenarioReplay(result){
+    scenarioReplayResults.innerHTML='';
+    if(!result||!result.ok){
+      scenarioStatus.textContent=result&&result.error||'Rejeu impossible.';
+      return;
+    }
+    var summary=result.summary||{};
+    scenarioStatus.textContent=summary.tested+' formats rejoués · '+summary.failed+' en échec · '+summary.failedSteps+' étape(s) échouée(s) · '+summary.layoutIssues+' anomalie(s) de layout.';
+    (result.results||[]).forEach(function(item){
+      var row=document.createElement('div');row.className='matrix-item '+(item.ok&&!(item.issues||[]).length?'pass':'fail');
+      var title=document.createElement('b');title.textContent=(item.config&&item.config.name||'format')+' · '+(item.config&&item.config.width||0)+'×'+(item.config&&item.config.height||0);
+      var failed=(item.steps||[]).filter(function(x){return !x.ok});
+      var detail=document.createElement('div');detail.textContent=failed.length?(failed.length+' étape(s) échouée(s) : '+failed.map(function(x){return (x.index+1)+' '+(x.error||'')}).join(' · ')):'Toutes les étapes exécutées.';
+      row.append(title,detail);
+      if((item.issues||[]).length){
+        var issues=document.createElement('div');issues.className='matrix-cause';issues.textContent=(item.issues||[]).map(function(x){return x.type+(x.count?' ×'+x.count:'')}).join(' · ');row.appendChild(issues);
+      }
+      scenarioReplayResults.appendChild(row);
+    });
+  }
+
+  async function replayRecordedScenario(){
+    if(!desktop||!desktop.replayScenario||!currentSource||!recordedScenarioActions.length)return;
+    scenarioStatus.textContent='Rejeu du parcours sur téléphone, tablette et desktop…';
+    scenarioReplayResults.innerHTML='';
+    var project=await requestProject();
+    var result=await desktop.replayScenario({source:currentSource,css:project&&project.css||cssOut.value,actions:recordedScenarioActions});
+    renderScenarioReplay(result);
+  }
+
+  async function runKeyboardAudit(){
+    if(!desktop||!desktop.keyboardAccessibilityAudit||!currentSource){keyboardAuditStatus.textContent='Fonction disponible dans l’application Windows avec une source chargée.';return}
+    keyboardAuditStatus.textContent='Audit clavier en cours…';
+    keyboardAuditResult.innerHTML='';
+    var project=await requestProject();
+    var result=await desktop.keyboardAccessibilityAudit({source:currentSource,css:project&&project.css||cssOut.value});
+    if(!result||!result.ok){keyboardAuditStatus.textContent=result&&result.error||'Audit impossible.';return}
+    var issues=result.issues||[];
+    keyboardAuditStatus.textContent=(result.focusable||0)+' élément(s) focusables · '+issues.length+' problème(s) · mouvement réduit '+(result.reducedMotion&&result.reducedMotion.supported?'simulé':'non simulé')+'.';
+    issues.forEach(function(issue){
+      var row=document.createElement('div');row.className='audit-item warning';
+      row.innerHTML='<b></b><span></span>';
+      row.querySelector('b').textContent=issue.type+(issue.count?' ×'+issue.count:'');
+      row.querySelector('span').textContent=issue.message||'';
+      keyboardAuditResult.appendChild(row);
+    });
+    var seq=document.createElement('div');seq.className='keyboard-sequence';
+    seq.textContent='Ordre Tab : '+((result.sequence||[]).join(' → ')||'aucun');
+    keyboardAuditResult.appendChild(seq);
+  }
+
   async function runTestMatrix(){
     if(!desktop||!desktop.runTestMatrix||!currentSource){matrixStatus.textContent='Fonction disponible dans l’application Windows pour une source chargée.';return}
     matrixModal.classList.add('visible');matrixStatus.textContent='Tests en cours sur 12 configurations…';matrixList.innerHTML='';
@@ -3940,7 +4060,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.57.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.58.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4067,7 +4187,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.57.0'};
+    project.studio={name:'App Interface Studio',version:'6.58.0'};
     return project;
   }
 
@@ -4164,7 +4284,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.57.0'};
+    project.studio={name:'App Interface Studio',version:'6.58.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4549,6 +4669,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='design-consistency')renderConsistency(p);
     if(data.type==='css-cascade')renderCssCascade(p);
+    if(data.type==='scenario-recording')renderScenario(p.actions||[],p.active);
     if(data.type==='layout-diagnostic')renderLayoutDiagnostic(p);
     if(data.type==='layout-diagnostic-applied'){setStatus('Correction structurelle appliquée à '+(p.selector||'l’objet')+'.');post('get-css')}
     if(data.type==='layout-diagnostic-batch'){setStatus((p.count||0)+' correction(s) structurelle(s) appliquée(s) dans une seule étape Undo.');post('get-css')}
@@ -4846,6 +4967,11 @@ body.desktop .desktop-badge{display:inline-flex}
     grid.value=String(unit);post('grid',{grid:unit});setStatus('Accrochage réglé sur '+unit+' px.');
   });
 
+  scenarioRecordBtn.addEventListener('click',function(){scenarioReplayResults.innerHTML='';post('scenario-record-start',{clear:true})});
+  scenarioStopBtn.addEventListener('click',function(){post('scenario-record-stop')});
+  scenarioClearBtn.addEventListener('click',function(){recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);post('scenario-record-clear')});
+  scenarioReplayBtn.addEventListener('click',replayRecordedScenario);
+  document.getElementById('keyboardAuditBtn').addEventListener('click',runKeyboardAudit);
   document.getElementById('testComponentsBtn').addEventListener('click',function(){post('test-components')});
   document.getElementById('runFinalControlBtn').addEventListener('click',runFinalControl);
   document.getElementById('createComponentBtn').addEventListener('click',function(){
@@ -5038,6 +5164,7 @@ body.desktop .desktop-badge{display:inline-flex}
     selector.textContent='Chargement de l’application…';
     cssOut.value='/* Aucun ajustement. */';
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
+    recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
     directSourceStatus.textContent=source.type==='android-project'
       ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
       : (['folder','html'].indexOf(source.type)>=0?'Sélectionne un objet puis prépare le diff de sa vraie règle CSS.':'L’édition source directe nécessite une source locale.');
