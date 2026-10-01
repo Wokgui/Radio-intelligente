@@ -2280,6 +2280,44 @@ async function smokeAdvancedCssCleanupFixture(){
   }
 }
 if(smokeMode)ipcMain.handle('smoke:css-cleanup-fixture',async ()=>smokeAdvancedCssCleanupFixture());
+async function smokeRouteFixture(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-route-smoke-'));
+  let server=null;
+  try{
+    fs.writeFileSync(path.join(root,'index.html'),'<!doctype html><html><head><title>Home</title></head><body><a href="about.html">About</a><div class="home-only">Home</div></body></html>','utf8');
+    fs.writeFileSync(path.join(root,'about.html'),'<!doctype html><html><head><title>About</title></head><body><a href="index.html">Home</a><div class="about-only">About</div></body></html>','utf8');
+    server=serveStatic(root);const base=await listen(server);
+    const source={type:'folder',path:root,root,entry:'index.html',url:base+'/index.html',label:'route fixture'};
+    const result=await analyzeSourceRoutes(source,{maxRoutes:6,selectors:['.home-only','.about-only','.missing']});
+    if(!result.ok)throw new Error(result.error||'Route fixture échouée.');
+    if((result.summary&&result.summary.scanned||0)<2)throw new Error('Toutes les routes fixture ne sont pas scannées.');
+    if(!(result.selectorUsage['.home-only']||[]).length)throw new Error('Sélecteur home non détecté.');
+    if(!(result.selectorUsage['.about-only']||[]).length)throw new Error('Sélecteur about non détecté.');
+    if((result.selectorUsage['.missing']||[]).length)throw new Error('Sélecteur absent détecté à tort.');
+    return {ok:true,summary:result.summary,home:(result.selectorUsage['.home-only']||[]).length,about:(result.selectorUsage['.about-only']||[]).length};
+  }finally{
+    await closeHttpServer(server);
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+if(smokeMode)ipcMain.handle('smoke:route-fixture',async ()=>smokeRouteFixture());
+
+function smokeReportFixture(){
+  const tiny='data:image/png;base64,iVBORw0KGgo=';
+  const report={
+    version:'fixture',generatedAt:'2026-01-01T00:00:00.000Z',
+    source:{label:'Fixture App',url:'http://fixture/',type:'folder'},
+    checks:[{title:'Responsive',detail:'12 tests',ok:true},{title:'Accessibilité',detail:'1 point',ok:false}],
+    captures:[{name:'Téléphone',width:412,height:915,dataUrl:tiny}],
+    details:{matrix:{summary:{tested:12,failed:0}},routes:{summary:{scanned:2}}}
+  };
+  const html=buildStandaloneReport(report);
+  const ok=html.includes('Fixture App')&&html.includes('Responsive')&&html.includes('À vérifier')&&html.includes(tiny)&&html.includes('Détails techniques');
+  if(!ok)throw new Error('Rapport HTML fixture incomplet.');
+  return {ok:true,length:html.length,hasCapture:html.includes(tiny),hasDetails:html.includes('Détails techniques')};
+}
+if(smokeMode)ipcMain.handle('smoke:report-fixture',async ()=>smokeReportFixture());
+
 
 
 
