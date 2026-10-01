@@ -357,6 +357,7 @@ function createWindow(){
             const performanceProfile=await api.profilePerformance({source:demo.source,css:'/* smoke test */'});
             const performanceOk=!!(performanceProfile&&performanceProfile.ok&&performanceProfile.metrics&&Number.isFinite(Number(performanceProfile.metrics.domNodes)));
             const roundtrip=await api.smokeTransactionRoundtrip();
+            const atomicFailure=await api.smokeAtomicFailureRollback();
             const portableRoundtrip=await api.smokePortableRoundtrip();
             const cascadeFixtures=await api.smokeCascadeFixtures();
             const scenarioFixture=await api.smokeScenarioFixture();
@@ -364,7 +365,7 @@ function createWindow(){
             const routeFixture=await api.smokeRouteFixture();
             const reportFixture=await api.smokeReportFixture();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&reportBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok&&routeFixture&&routeFixture.ok&&reportFixture&&reportFixture.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&reportBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&atomicFailure&&atomicFailure.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok&&routeFixture&&routeFixture.ok&&reportFixture&&reportFixture.ok),
               version:info&&info.version,
               bridge:true,
               sourceSafetyBridge:sourceSafetyBridge,
@@ -382,6 +383,7 @@ function createWindow(){
               performanceOk:performanceOk,
               performanceMetrics:performanceProfile&&performanceProfile.metrics,
               transactionRoundtrip:roundtrip,
+              atomicFailure:atomicFailure,
               portableRoundtrip:portableRoundtrip,
               cascadeFixtures:cascadeFixtures,
               scenarioFixture:scenarioFixture,
