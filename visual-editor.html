@@ -1396,7 +1396,10 @@ body.desktop .desktop-badge{display:inline-flex}
 
     <section class="card desktop-only">
       <h2>Contrôle final <small>bilan avant livraison</small></h2>
-      <button class="btn primary" id="runFinalControlBtn" style="width:100%">Lancer le contrôle complet</button>
+      <div class="toolbar">
+        <button class="btn primary wide" id="runFinalControlBtn">Lancer le contrôle complet</button>
+        <button class="btn wide" id="exportFinalReportBtn" disabled>Exporter le rapport</button>
+      </div>
       <div class="compare-status" id="finalControlStatus">Aucun contrôle final lancé.</div>
       <div class="version-list" id="finalControlList"><div class="hint">Le bilan regroupera audit, responsive, composants, cohérence, assets et surcharges.</div></div>
       <p>Ce bilan n’attribue pas de note arbitraire : il liste les anomalies réellement détectées et les contrôles passés.</p>
@@ -1473,6 +1476,14 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="compare-status" id="overrideCleanupStatus">Seules les règles strictement redondantes et les fichiers générés vides sont proposés.</div>
       <div class="version-list" id="overrideCleanupList"><div class="hint">Aucune analyse lancée.</div></div>
       <p>Avant suppression, Studio crée une sauvegarde <code>.ais-cleanup-backup-…</code>. Les règles seulement « probablement » inutiles ne sont pas touchées.</p>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Routes et pages <small>analyse multi-écrans</small></h2>
+      <button class="btn primary" id="routeAnalyzeBtn" style="width:100%">Analyser jusqu’à 12 routes</button>
+      <div class="compare-status" id="routeAnalyzeStatus">Aucune analyse multi-routes.</div>
+      <div class="version-list" id="routeAnalyzeList"><div class="hint">Pages HTML locales et liens same-origin seront parcourus avec une limite stricte.</div></div>
+      <p>Cette analyse complète le nettoyage CSS : un sélecteur absent de l’écran courant peut être reconnu comme utilisé sur une autre route.</p>
     </section>
 
     <section class="card desktop-only">
@@ -1768,6 +1779,11 @@ body.desktop .desktop-badge{display:inline-flex}
   var performanceFindings=document.getElementById('performanceFindings');
   var lastPerformanceProfile=null;
   var performanceBaseline=null;
+  var routeAnalyzeStatus=document.getElementById('routeAnalyzeStatus');
+  var routeAnalyzeList=document.getElementById('routeAnalyzeList');
+  var lastRouteAnalysis=null;
+  var lastFinalControlData=null;
+  var exportFinalReportBtn=document.getElementById('exportFinalReportBtn');
   var finalControlStatus=document.getElementById('finalControlStatus');
   var finalControlList=document.getElementById('finalControlList');
   var lastAuditPayload=null;
@@ -1888,7 +1904,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.62.0'};
+      project.studio={name:'App Interface Studio',version:'6.63.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -4430,7 +4446,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.62.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.63.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4581,6 +4597,35 @@ body.desktop .desktop-badge{display:inline-flex}
     return comparison;
   }
 
+  function renderRouteAnalysis(result){
+    lastRouteAnalysis=result&&result.ok?result:null;
+    routeAnalyzeList.innerHTML='';
+    if(!result||!result.ok){
+      routeAnalyzeStatus.textContent=result&&result.error||'Analyse multi-routes impossible.';
+      return;
+    }
+    var summary=result.summary||{};
+    routeAnalyzeStatus.textContent=(summary.scanned||0)+' route(s) scannée(s) · '+(summary.failed||0)+' échec(s) · '+(summary.htmlFiles||0)+' fichier(s) HTML · '+(summary.links||0)+' route(s) découverte(s) par lien.';
+    (result.pages||[]).forEach(function(page){
+      var row=document.createElement('div');row.className='version-item';
+      var text=document.createElement('div');
+      var strong=document.createElement('strong');strong.textContent=(page.ok?'✓ ':'⚠ ')+(page.title||page.url||'Route');
+      var small=document.createElement('small');
+      small.textContent=page.ok
+        ?(page.url+' · '+(page.nodes||0)+' nœuds · '+(page.textLength||0)+' caractères · lang '+(page.lang||'—')+' · dir '+(page.dir||'—'))
+        :(page.url+' · '+(page.error||'échec de chargement'));
+      text.append(strong,small);row.appendChild(text);routeAnalyzeList.appendChild(row);
+    });
+    if(!(result.pages||[]).length)routeAnalyzeList.innerHTML='<div class="hint">Aucune route analysable.</div>';
+  }
+
+  async function analyzeRoutesUi(){
+    if(!desktop||!desktop.analyzeRoutes||!currentSource){routeAnalyzeStatus.textContent='Fonction disponible dans l’application Windows avec une source chargée.';return null}
+    routeAnalyzeStatus.textContent='Analyse multi-routes en cours…';routeAnalyzeList.innerHTML='';
+    var result=await desktop.analyzeRoutes({source:currentSource,maxRoutes:12});
+    renderRouteAnalysis(result);return result;
+  }
+
   function finalControlRow(title,detail,ok){
     var row=document.createElement('div');row.className='version-item';
     row.style.gridTemplateColumns='minmax(0,1fr) auto';
@@ -4610,6 +4655,10 @@ body.desktop .desktop-badge{display:inline-flex}
     var advancedCssResult=desktop&&desktop.analyzeCssCleanup&&['folder','html'].indexOf(currentSource.type)>=0
       ?await desktop.analyzeCssCleanup(currentSource)
       :null;
+    var routeResult=desktop&&desktop.analyzeRoutes
+      ?await desktop.analyzeRoutes({source:currentSource,maxRoutes:12})
+      :null;
+    if(routeResult&&routeResult.ok)lastRouteAnalysis=routeResult;
     var keyboardResult=desktop&&desktop.keyboardAccessibilityAudit
       ?await desktop.keyboardAccessibilityAudit({source:currentSource,css:project&&project.css||cssOut.value})
       :null;
@@ -4693,6 +4742,13 @@ body.desktop .desktop-badge{display:inline-flex}
         ok:!(advancedCssResult.summary&&advancedCssResult.summary.safe)
       });
     }
+    if(routeResult&&routeResult.ok){
+      checks.push({
+        title:'Routes et pages',
+        detail:(routeResult.summary&&routeResult.summary.scanned||0)+' route(s) scannée(s) · '+(routeResult.summary&&routeResult.summary.failed||0)+' échec(s)',
+        ok:!(routeResult.summary&&routeResult.summary.failed)
+      });
+    }
     if(performanceResult&&performanceResult.ok){
       checks.push({
         title:'Performances',
@@ -4724,6 +4780,64 @@ body.desktop .desktop-badge{display:inline-flex}
     checks.forEach(function(check){finalControlList.appendChild(finalControlRow(check.title,check.detail,check.ok))});
     var failed=checks.filter(function(x){return !x.ok}).length;
     finalControlStatus.textContent=checks.length+' contrôles · '+(checks.length-failed)+' sans anomalie · '+failed+' à vérifier.';
+    lastFinalControlData={
+      version:'6.63.0',
+      generatedAt:new Date().toISOString(),
+      source:{label:currentSource&&currentSource.label||'',url:currentSource&&currentSource.url||'',type:currentSource&&currentSource.type||''},
+      checks:JSON.parse(JSON.stringify(checks)),
+      details:{
+        audit:lastAuditPayload||null,
+        matrix:matrixResult?{summary:matrixResult.summary,results:(matrixResult.results||[]).map(function(x){return {config:x.config,issues:x.issues,viewport:x.viewport,diagnostics:x.diagnostics}})}:null,
+        components:lastComponentTestsPayload||null,
+        consistency:lastConsistencyPayload||null,
+        internationalisation:lastI18nPayload||null,
+        fonts:lastFontAuditPayload||null,
+        animations:lastAnimationAuditPayload||null,
+        keyboard:keyboardResult||null,
+        assets:assetsResult||null,
+        overrides:overridesResult||null,
+        advancedCss:advancedCssResult?{summary:advancedCssResult.summary,items:(advancedCssResult.items||[]).slice(0,250),routeSummary:advancedCssResult.routeSummary||null}:null,
+        routes:routeResult||null,
+        performance:performanceResult||null,
+        performanceRegression:performanceComparison||null,
+        scenarios:scenarioResult||null,
+        network:networkResult||null
+      }
+    };
+    exportFinalReportBtn.disabled=false;
+    return lastFinalControlData;
+  }
+
+  async function exportFinalReport(){
+    if(!desktop||!desktop.exportReport||!currentSource){finalControlStatus.textContent='Export du rapport disponible dans l’application Windows avec une source chargée.';return}
+    var data=lastFinalControlData||await runFinalControl();
+    if(!data)return;
+    finalControlStatus.textContent='Préparation des captures du rapport…';
+    var project=await requestProject();
+    var css=project&&project.css||cssOut.value;
+    var configs=[
+      {name:'Téléphone',width:412,height:915},
+      {name:'Tablette',width:768,height:1024},
+      {name:'Desktop',width:1366,height:768}
+    ];
+    var captures=[];
+    if(desktop.captureCurrentSource){
+      for(var i=0;i<configs.length;i+=1){
+        var cfg=configs[i];
+        var shot=await desktop.captureCurrentSource({source:currentSource,width:cfg.width,height:cfg.height,css:css});
+        if(shot&&shot.ok)captures.push({name:cfg.name,width:cfg.width,height:cfg.height,dataUrl:shot.dataUrl});
+      }
+    }
+    var report=JSON.parse(JSON.stringify(data));
+    report.generatedAt=new Date().toISOString();
+    report.captures=captures;
+    var result=await desktop.exportReport({report:report});
+    if(!result||!result.ok){
+      if(result&&!result.canceled)finalControlStatus.textContent=result&&result.error||'Export du rapport impossible.';
+      return;
+    }
+    finalControlStatus.textContent='Rapport exporté : HTML + JSON.';
+    setStatus('Rapport exporté : '+result.htmlPath+' · '+result.jsonPath);
   }
 
   function requestProject(){
@@ -4773,7 +4887,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.performanceBaseline=performanceBaseline||null;
     project.namedScenarios=JSON.parse(JSON.stringify(namedScenarios||[]));
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.62.0'};
+    project.studio={name:'App Interface Studio',version:'6.63.0'};
     return project;
   }
 
@@ -4874,7 +4988,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.62.0'};
+    project.studio={name:'App Interface Studio',version:'6.63.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -5585,7 +5699,9 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('performanceCompareBtn').addEventListener('click',comparePerformanceNow);
   document.getElementById('networkTestBtn').addEventListener('click',runNetworkTests);
   document.getElementById('testComponentsBtn').addEventListener('click',function(){post('test-components')});
+  document.getElementById('routeAnalyzeBtn').addEventListener('click',analyzeRoutesUi);
   document.getElementById('runFinalControlBtn').addEventListener('click',runFinalControl);
+  exportFinalReportBtn.addEventListener('click',exportFinalReport);
   document.getElementById('createComponentBtn').addEventListener('click',function(){
     var name=document.getElementById('componentName').value.trim();
     if(!name){setStatus('Donne un nom au composant.',true);return}
@@ -5781,6 +5897,7 @@ body.desktop .desktop-badge{display:inline-flex}
     cssOut.value='/* Aucun ajustement. */';
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
     lastAdvancedCssItems=[];advancedCssList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';advancedCssPrepareBtn.disabled=true;advancedCssStatus.textContent='Détecte doublons stricts, variables inutilisées, déclarations écrasées, règles proches et sélecteurs absents de l’écran courant.';containerDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';stackingDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';
+    lastRouteAnalysis=null;routeAnalyzeStatus.textContent='Aucune analyse multi-routes.';routeAnalyzeList.innerHTML='<div class="hint">Pages HTML locales et liens same-origin seront parcourus avec une limite stricte.</div>';lastFinalControlData=null;exportFinalReportBtn.disabled=true;
     recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
     i18nAuditStatus.textContent='Aucun audit i18n lancé.';i18nAuditList.innerHTML='';fontAuditStatus.textContent='Aucune analyse des polices.';fontAuditList.innerHTML='';animationAuditStatus.textContent='Aucun audit d’animations.';animationAuditList.innerHTML='';lastI18nPayload=null;lastFontAuditPayload=null;lastAnimationAuditPayload=null;lastReducedMotionResult=null;
     performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;performanceRegressionStatus.textContent=performanceBaseline?'Référence de performances disponible.':'Aucune référence de performances.';networkTestStatus.textContent='Aucun test réseau lancé.';networkTestResults.innerHTML='';post('dynamic-diagnostics-stop');
