@@ -2250,6 +2250,35 @@ async function smokeScenarioFixture(){
   }
 }
 if(smokeMode)ipcMain.handle('smoke:scenario-fixture',async ()=>smokeScenarioFixture());
+async function smokeAdvancedCssCleanupFixture(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-css-cleanup-smoke-'));
+  let server=null;
+  try{
+    const htmlPath=path.join(root,'index.html'),cssPath=path.join(root,'styles.css');
+    fs.writeFileSync(htmlPath,'<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body><div class="used">OK</div></body></html>','utf8');
+    fs.writeFileSync(cssPath,[
+      ':root { --unused-fixture: #123456; --used-fixture: #fff; }',
+      '.used { color: var(--used-fixture); padding: 4px; }',
+      '.used { color: var(--used-fixture); padding: 4px; }'
+    ].join('\n'),'utf8');
+    server=serveStatic(root);const base=await listen(server);
+    const source={type:'folder',path:root,root,entry:'index.html',url:base+'/index.html',label:'css cleanup fixture'};
+    const analysis=await analyzeAdvancedCss(source);
+    if(!analysis.ok)throw new Error('Analyse CSS fixture échouée.');
+    const safe=analysis.items.filter(x=>x.safe&&x.confidence==='high');
+    if(!safe.some(x=>x.kind==='exact-duplicate-rule'))throw new Error('Doublon strict non détecté.');
+    if(!safe.some(x=>x.kind==='unused-variable'&&x.variable==='--unused-fixture'))throw new Error('Variable inutilisée non détectée.');
+    const ids=new Set(safe.map(x=>x.id));
+    const plan=advancedCssCleanupPlan(analysis,ids);
+    if(!plan.files.length||!plan.files.some(x=>x.diff&&x.diff.length))throw new Error('Diff nettoyage CSS absent.');
+    return {ok:true,safe:safe.length,files:plan.files.length,duplicate:true,unusedVariable:true};
+  }finally{
+    await closeHttpServer(server);
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+if(smokeMode)ipcMain.handle('smoke:css-cleanup-fixture',async ()=>smokeAdvancedCssCleanupFixture());
+
 
 
 async function profileSourcePerformance(source,css){
@@ -2446,10 +2475,13 @@ function parseCssBlocks(content){
     if(ch==='/'&&next==='*'){comment=true;i+=1;continue}
     if(ch==='"'||ch==="'"){quote=ch;continue}
     if(ch==='{'){
-      const prelude=text.slice(boundary,i).trim();
+      const rawPrelude=text.slice(boundary,i);
+      const leading=(rawPrelude.match(/^\s*/)||[''])[0].length;
+      const prelude=rawPrelude.trim();
+      const preludeStart=boundary+leading;
       const parent=stack.length?stack[stack.length-1]:null;
       const ancestors=stack.filter(x=>x.prelude&&x.prelude.trim().startsWith('@')).map(x=>x.prelude.trim());
-      const block={prelude,open:i,bodyStart:i+1,close:-1,parent,context:ancestors.join(' · ')};
+      const block={prelude,preludeStart,open:i,bodyStart:i+1,close:-1,parent,context:ancestors.join(' · ')};
       stack.push(block);boundary=i+1;
       continue;
     }
@@ -2829,7 +2861,7 @@ async function analyzeAdvancedCss(source){
       const sig=cssRuleSignature(prelude,block.context,body);
       if(seenSignatures.has(sig)){
         const first=seenSignatures.get(sig);
-        const start=Math.max(0,block.open-prelude.length);
+        const start=Math.max(0,Number(block.preludeStart)||0);
         items.push({
           id:'css-clean-'+(++itemId),kind:'exact-duplicate-rule',confidence:'high',safe:true,
           file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
