@@ -1625,9 +1625,16 @@ function generatedAssetReferences(local){
 function cleanupGeneratedAssets(local){
   const dir=path.dirname(local.html);
   const assetDir=path.join(dir,'app-interface-studio-assets');
-  if(!fs.existsSync(assetDir))return {removed:[],kept:[]};
+  if(!fs.existsSync(assetDir))return {removed:[],kept:[],scanTruncated:false,scannedFiles:0};
   const used=generatedAssetReferences(local);
   const removed=[],kept=[];
+  if(used.truncated){
+    fs.readdirSync(assetDir).forEach(name=>{
+      const file=path.join(assetDir,name);
+      try{if(fs.statSync(file).isFile())kept.push(file)}catch(_){}
+    });
+    return {removed,kept,scanTruncated:true,scannedFiles:used.scannedFiles||0};
+  }
   fs.readdirSync(assetDir).forEach(name=>{
     const file=path.join(assetDir,name);
     let stat=null;
@@ -1637,7 +1644,7 @@ function cleanupGeneratedAssets(local){
     try{fs.unlinkSync(file);removed.push(file)}catch(_){}
   });
   try{if(fs.existsSync(assetDir)&&fs.readdirSync(assetDir).length===0)fs.rmdirSync(assetDir)}catch(_){}
-  return {removed,kept};
+  return {removed,kept,scanTruncated:false,scannedFiles:used.scannedFiles||0};
 }
 
 function sourceRoot(source){
