@@ -377,6 +377,13 @@ body.desktop .desktop-badge{display:inline-flex}
 .cascade-decl.lose{opacity:.55;text-decoration:line-through}
 .cascade-computed{max-height:170px;overflow:auto;display:grid;grid-template-columns:minmax(110px,.8fr) 1fr;gap:3px 8px;margin-top:8px;padding:8px;border-radius:8px;background:#f8f6fa;font-size:.61rem}
 .cascade-computed b{font-weight:850}.cascade-computed span{overflow-wrap:anywhere}
+.deep-diagnostic-list{display:grid;gap:7px;max-height:320px;overflow:auto;margin-top:8px}
+.deep-diagnostic-item{padding:9px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.deep-diagnostic-item b{display:block;font-size:.68rem;overflow-wrap:anywhere}
+.deep-diagnostic-item small{display:block;margin-top:3px;color:var(--muted);font-size:.6rem;line-height:1.35;overflow-wrap:anywhere}
+.cleanup-confidence{display:inline-block;margin-right:5px;padding:2px 6px;border-radius:999px;font-size:.56rem;font-weight:850}
+.cleanup-confidence.high{background:#e8f6ee;color:#22643f}.cleanup-confidence.medium{background:#fff2d9;color:#855b12}.cleanup-confidence.low{background:#f4eafa;color:#6e4d8b}
+
 
 .layer-search{width:100%;margin-bottom:8px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;color:var(--ink);outline:none}
 .layer-search:focus{border-color:#9b81f8;box-shadow:0 0 0 3px #6f49f51a}
@@ -1397,6 +1404,20 @@ body.desktop .desktop-badge{display:inline-flex}
 
 
     <section class="card">
+      <h2>Container Queries <small>conteneur responsable</small></h2>
+      <button class="btn primary" id="containerDiagnosticBtn" style="width:100%">Analyser la sélection</button>
+      <div class="compare-status" id="containerDiagnosticStatus">Sélectionne un composant pour identifier son conteneur CSS.</div>
+      <div class="deep-diagnostic-list" id="containerDiagnosticList"><div class="hint">Aucune analyse.</div></div>
+    </section>
+
+    <section class="card">
+      <h2>Empilement <small>z-index / stacking contexts</small></h2>
+      <button class="btn primary" id="stackingDiagnosticBtn" style="width:100%">Expliquer l’empilement</button>
+      <div class="compare-status" id="stackingDiagnosticStatus">Sélectionne un élément pour remonter sa chaîne d’empilement.</div>
+      <div class="deep-diagnostic-list" id="stackingDiagnosticList"><div class="hint">Aucune analyse.</div></div>
+    </section>
+
+    <section class="card">
       <h2>Cascade CSS <small>règle gagnante et source</small></h2>
       <div class="toolbar">
         <button class="btn primary wide" id="inspectCascadeBtn">Inspecter la sélection</button>
@@ -1423,6 +1444,17 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="compare-status" id="overrideCleanupStatus">Seules les règles strictement redondantes et les fichiers générés vides sont proposés.</div>
       <div class="version-list" id="overrideCleanupList"><div class="hint">Aucune analyse lancée.</div></div>
       <p>Avant suppression, Studio crée une sauvegarde <code>.ais-cleanup-backup-…</code>. Les règles seulement « probablement » inutiles ne sont pas touchées.</p>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Nettoyage CSS avancé <small>confiance + diff</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="advancedCssAnalyzeBtn">Analyser le CSS</button>
+        <button class="btn wide" id="advancedCssPrepareBtn" disabled>Préparer le diff sûr</button>
+      </div>
+      <div class="compare-status" id="advancedCssStatus">Détecte doublons stricts, variables inutilisées, déclarations écrasées, règles proches et sélecteurs absents de l’écran courant.</div>
+      <div class="version-list" id="advancedCssList"><div class="hint">Aucune analyse lancée.</div></div>
+      <p>Seuls les éléments « haute confiance » sont cochables pour suppression automatique. Les autres restent des diagnostics manuels.</p>
     </section>
 
     <section class="card desktop-only">
@@ -1660,6 +1692,15 @@ body.desktop .desktop-badge{display:inline-flex}
   var cascadeComputed=document.getElementById('cascadeComputed');
   var cascadeVariables=document.getElementById('cascadeVariables');
   var cascadeList=document.getElementById('cascadeList');
+  var containerDiagnosticStatus=document.getElementById('containerDiagnosticStatus');
+  var containerDiagnosticList=document.getElementById('containerDiagnosticList');
+  var stackingDiagnosticStatus=document.getElementById('stackingDiagnosticStatus');
+  var stackingDiagnosticList=document.getElementById('stackingDiagnosticList');
+  var advancedCssStatus=document.getElementById('advancedCssStatus');
+  var advancedCssList=document.getElementById('advancedCssList');
+  var advancedCssPrepareBtn=document.getElementById('advancedCssPrepareBtn');
+  var lastAdvancedCssItems=[];
+  var pendingCssCleanupPlan=null;
   var lastCascadePayload=null;
   var consistencyStatus=document.getElementById('consistencyStatus');
   var consistencyList=document.getElementById('consistencyList');
@@ -1714,6 +1755,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var pendingPatchPreview=null;
   var pendingDirectDiff=null;
   var pendingNativeDiff=null;
+  var pendingCssCleanupPlan=null;
   var pendingDiffKind=null;
   var nativeNodes=[];
   var selectedNativeNode=null;
@@ -1808,7 +1850,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.60.0'};
+      project.studio={name:'App Interface Studio',version:'6.61.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2739,6 +2781,117 @@ body.desktop .desktop-badge{display:inline-flex}
     else layerTree.appendChild(frag);
   }
 
+  function renderContainerDiagnostic(payload){
+    containerDiagnosticList.innerHTML='';
+    if(!payload||!payload.selected){
+      containerDiagnosticStatus.textContent='Aucun objet sélectionné.';
+      containerDiagnosticList.innerHTML='<div class="hint">Sélection requise.</div>';
+      return;
+    }
+    var nearest=payload.nearestContainer;
+    containerDiagnosticStatus.textContent=nearest
+      ?'Conteneur le plus proche : '+nearest.selector+' · '+nearest.type+' · '+nearest.width+'×'+nearest.height+' px.'
+      :'Aucun ancêtre avec container-type différent de normal.';
+    if(nearest){
+      var box=document.createElement('div');box.className='deep-diagnostic-item';
+      box.innerHTML='<b></b><small></small>';
+      box.querySelector('b').textContent='Conteneur : '+nearest.selector;
+      box.querySelector('small').textContent='container-type '+nearest.type+' · container-name '+nearest.name+' · '+nearest.width+'×'+nearest.height+' px';
+      containerDiagnosticList.appendChild(box);
+    }
+    (payload.rules||[]).forEach(function(rule){
+      var row=document.createElement('div');row.className='deep-diagnostic-item';
+      var title=document.createElement('b');
+      var state=rule.active===true?'ACTIVE':(rule.active===false?'inactive':'état complexe');
+      title.textContent='@container '+(rule.name?rule.name+' ':'')+(rule.condition||'')+' · '+state;
+      var detail=document.createElement('small');
+      detail.textContent='Cible '+(rule.selectors||[]).join(', ')+' · conteneur '+(rule.containerSelector||'introuvable')+
+        (rule.containerWidth!=null?' · '+rule.containerWidth+'×'+rule.containerHeight+' px':'')+
+        (rule.context?' · '+rule.context:'');
+      row.append(title,detail);containerDiagnosticList.appendChild(row);
+    });
+    if(!(payload.rules||[]).length&&!nearest){
+      containerDiagnosticList.innerHTML='<div class="hint">Aucune container query liée à cette sélection.</div>';
+    }
+  }
+
+  function renderStackingDiagnostic(payload){
+    stackingDiagnosticList.innerHTML='';
+    if(!payload||!payload.selected){
+      stackingDiagnosticStatus.textContent='Aucun objet sélectionné.';
+      stackingDiagnosticList.innerHTML='<div class="hint">Sélection requise.</div>';
+      return;
+    }
+    var blockers=payload.blockers||[];
+    stackingDiagnosticStatus.textContent=blockers.length
+      ?blockers.length+' élément(s) passent devant le centre de la sélection.'
+      :'Aucun élément détecté devant le centre de la sélection.';
+    (payload.chain||[]).forEach(function(item,index){
+      var row=document.createElement('div');row.className='deep-diagnostic-item';
+      var b=document.createElement('b');b.textContent=(index===0?'Sélection':'Contexte parent')+' · '+item.selector;
+      var s=document.createElement('small');s.textContent=item.reason+' · position '+item.position+' · z-index '+item.zIndex+
+        (item.opacity!=='1'?' · opacity '+item.opacity:'')+(item.transform&&item.transform!=='none'?' · transform':'')+
+        (item.filter&&item.filter!=='none'?' · filter':'');
+      row.append(b,s);stackingDiagnosticList.appendChild(row);
+    });
+    if(blockers.length){
+      var sep=document.createElement('div');sep.className='deep-diagnostic-item';
+      var sb=document.createElement('b');sb.textContent='Devant la sélection au point '+payload.point.x+','+payload.point.y;
+      var ss=document.createElement('small');ss.textContent=blockers.map(function(x){return x.selector+' (z '+x.zIndex+(x.context?' · '+x.context:'')+')'}).join(' | ');
+      sep.append(sb,ss);stackingDiagnosticList.appendChild(sep);
+    }
+  }
+
+  function renderAdvancedCssAnalysis(result){
+    lastAdvancedCssItems=result&&result.items||[];
+    advancedCssList.innerHTML='';
+    if(!result||!result.ok){
+      advancedCssStatus.textContent=result&&result.error||'Analyse impossible.';
+      advancedCssPrepareBtn.disabled=true;
+      return;
+    }
+    var s=result.summary||{};
+    advancedCssStatus.textContent=(s.total||0)+' diagnostic(s) · '+(s.safe||0)+' suppression(s) haute confiance · '+(s.medium||0)+' moyenne confiance · '+(s.low||0)+' information(s).';
+    advancedCssPrepareBtn.disabled=!lastAdvancedCssItems.some(function(x){return x.safe&&x.confidence==='high'});
+    if(!lastAdvancedCssItems.length){advancedCssList.innerHTML='<div class="hint">Aucun nettoyage ou diagnostic CSS notable.</div>';return}
+    lastAdvancedCssItems.forEach(function(item){
+      var row=document.createElement('label');row.className='version-item';row.style.gridTemplateColumns='auto minmax(0,1fr)';
+      var check=document.createElement('input');check.type='checkbox';check.dataset.cssCleanupId=item.id;
+      check.disabled=!(item.safe&&item.confidence==='high');check.checked=!check.disabled;
+      var text=document.createElement('div');
+      var strong=document.createElement('strong');
+      var badge=document.createElement('span');badge.className='cleanup-confidence '+(item.confidence||'low');badge.textContent=item.confidence==='high'?'haute':(item.confidence==='medium'?'moyenne':'faible');
+      strong.appendChild(badge);strong.appendChild(document.createTextNode((item.kind||'diagnostic')+' · '+(item.selector||item.variable||item.relativePath||'')));
+      var small=document.createElement('small');small.textContent=(item.relativePath||'')+(item.context?' · '+item.context:'')+' · '+(item.reason||'');
+      text.append(strong,small);row.append(check,text);advancedCssList.appendChild(row);
+    });
+  }
+
+  async function analyzeAdvancedCss(){
+    if(!desktop||!desktop.analyzeCssCleanup||!currentSource){advancedCssStatus.textContent='Fonction disponible pour une source locale.';return}
+    advancedCssStatus.textContent='Analyse CSS avancée…';
+    var result=await desktop.analyzeCssCleanup(currentSource);
+    renderAdvancedCssAnalysis(result);
+  }
+
+  async function prepareAdvancedCssCleanup(){
+    if(!desktop||!desktop.prepareCssCleanup||!currentSource)return;
+    var ids=Array.from(advancedCssList.querySelectorAll('input[data-css-cleanup-id]:checked')).map(function(x){return x.dataset.cssCleanupId});
+    if(!ids.length){advancedCssStatus.textContent='Aucun élément haute confiance sélectionné.';return}
+    advancedCssStatus.textContent='Préparation du diff multi-fichiers…';
+    var result=await desktop.prepareCssCleanup({source:currentSource,ids:ids});
+    if(!result||!result.ok){advancedCssStatus.textContent=result&&result.error||'Préparation impossible.';return}
+    pendingCssCleanupPlan=result;
+    pendingDiffKind='css-cleanup';
+    pendingDirectDiff=null;pendingNativeDiff=null;
+    sourcePropertyList.innerHTML='';
+    sourceDiffFile.textContent=result.files.length+' fichier(s) CSS · '+result.selected.length+' suppression(s) sûre(s)';
+    sourceDiffCode.textContent=result.diff||'Aucune différence.';
+    document.getElementById('applyDirectDiffBtn').disabled=false;
+    sourceDiffModal.classList.add('visible');
+    advancedCssStatus.textContent='Diff prêt. Vérifie-le avant application.';
+  }
+
   function cascadeFileLabel(href){
     if(!href)return 'style interne';
     if(href==='inline')return 'attribut style';
@@ -3121,11 +3274,14 @@ body.desktop .desktop-badge{display:inline-flex}
       var validation=await validatePendingDirectEdit();
       if(!validation||!validation.ok||validation.safe===false)return;
       result=await desktop.applyDirectEdit({source:currentSource,file:pendingDirectDiff.file,beforeHash:pendingDirectDiff.beforeHash,after:pendingDirectDiff.after});
+    }else if(pendingDiffKind==='css-cleanup'&&pendingCssCleanupPlan&&desktop&&desktop.applyCssCleanup){
+      result=await desktop.applyCssCleanup({source:currentSource,files:pendingCssCleanupPlan.files});
     }
     if(!result||!result.ok){setStatus(result&&result.error||'Application du diff impossible.',true);return}
     sourceDiffModal.classList.remove('visible');
-    setStatus('Source modifiée : '+result.file+(result.backupPath?' · sauvegarde créée':''));
-    pendingDirectDiff=null;pendingNativeDiff=null;pendingDiffKind=null;
+    if(pendingDiffKind==='css-cleanup')setStatus('Nettoyage CSS appliqué : '+(result.changed||0)+' fichier(s) · '+((result.backups||[]).length)+' sauvegarde(s).');
+    else setStatus('Source modifiée : '+result.file+(result.backupPath?' · sauvegarde créée':''));
+    pendingDirectDiff=null;pendingNativeDiff=null;pendingCssCleanupPlan=null;pendingDiffKind=null;
     if(currentSource&&currentSource.type==='android-project'&&desktop&&desktop.restoreSource){
       var restored=await desktop.restoreSource(currentSource);if(restored&&restored.ok)await loadSource(restored.source);
     }else{
@@ -4174,7 +4330,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.60.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.61.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4483,7 +4639,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.performanceBaseline=performanceBaseline||null;
     project.namedScenarios=JSON.parse(JSON.stringify(namedScenarios||[]));
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.60.0'};
+    project.studio={name:'App Interface Studio',version:'6.61.0'};
     return project;
   }
 
@@ -4584,7 +4740,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.60.0'};
+    project.studio={name:'App Interface Studio',version:'6.61.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4969,6 +5125,8 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     if(data.type==='design-consistency')renderConsistency(p);
     if(data.type==='css-cascade')renderCssCascade(p);
+    if(data.type==='container-diagnostic')renderContainerDiagnostic(p);
+    if(data.type==='stacking-diagnostic')renderStackingDiagnostic(p);
     if(data.type==='scenario-recording')renderScenario(p.actions||[],p.active);
     if(data.type==='dynamic-diagnostics'){
       var stats=p.stats||{};
@@ -5364,6 +5522,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('systemDarkMode').addEventListener('change',sendEnvironment);
   document.getElementById('systemKeyboard').addEventListener('change',sendEnvironment);
 
+  document.getElementById('containerDiagnosticBtn').addEventListener('click',function(){post('get-container-diagnostic')});
+  document.getElementById('stackingDiagnosticBtn').addEventListener('click',function(){post('get-stacking-diagnostic')});
   document.getElementById('inspectCascadeBtn').addEventListener('click',function(){post('get-css-cascade')});
   document.getElementById('layoutDiagnosticBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'screen'})});
   document.getElementById('layoutDiagnosticSelectionBtn').addEventListener('click',function(){post('layout-diagnostic',{scope:'selection'})});
@@ -5419,6 +5579,8 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('prepareDirectEditBtn').addEventListener('click',function(){prepareDirectSourceEdit(null)});
   document.getElementById('analyzeOverridesBtn').addEventListener('click',analyzeOverrides);
   cleanupOverridesBtn.addEventListener('click',cleanupSelectedOverrides);
+  document.getElementById('advancedCssAnalyzeBtn').addEventListener('click',analyzeAdvancedCss);
+  advancedCssPrepareBtn.addEventListener('click',prepareAdvancedCssCleanup);
   document.getElementById('prepareNativeEditBtn').addEventListener('click',prepareNativeEdit);
 
   document.getElementById('copyBtn').addEventListener('click',function(){post('copy-css')});
@@ -5478,6 +5640,7 @@ body.desktop .desktop-badge{display:inline-flex}
     selector.textContent='Chargement de l’application…';
     cssOut.value='/* Aucun ajustement. */';
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
+    lastAdvancedCssItems=[];advancedCssList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';advancedCssPrepareBtn.disabled=true;advancedCssStatus.textContent='Détecte doublons stricts, variables inutilisées, déclarations écrasées, règles proches et sélecteurs absents de l’écran courant.';containerDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';stackingDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';
     recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
     performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;performanceRegressionStatus.textContent=performanceBaseline?'Référence de performances disponible.':'Aucune référence de performances.';networkTestStatus.textContent='Aucun test réseau lancé.';networkTestResults.innerHTML='';post('dynamic-diagnostics-stop');
     directSourceStatus.textContent=source.type==='android-project'
