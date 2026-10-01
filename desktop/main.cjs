@@ -1678,20 +1678,26 @@ function svgIntrinsicSize(file){
   }catch(_){return {width:0,height:0}}
 }
 
-function collectProjectImages(root,limit){
+function collectProjectImages(root,limit,options){
   const out=[];
   const skip=new Set(['.git','node_modules','.next','.gradle','.idea','.vscode','build','dist','coverage']);
+  const requiredFile=options&&options.requiredFile?path.resolve(options.requiredFile):'';
+  function containsRequired(candidate){
+    if(!requiredFile)return false;
+    const resolved=path.resolve(candidate);
+    return requiredFile===resolved||requiredFile.startsWith(resolved+path.sep);
+  }
   function walk(dir){
     if(out.length>=limit)return;
     let names=[];
     try{names=fs.readdirSync(dir)}catch(_){return}
     for(const name of names){
       if(out.length>=limit)break;
-      if(skip.has(name))continue;
       const file=path.join(dir,name);
+      if(skip.has(name)&&!containsRequired(file))continue;
       let stat=null;try{stat=fs.statSync(file)}catch(_){continue}
       if(stat.isDirectory()){walk(file);continue}
-      if(!stat.isFile()||!/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(name))continue;
+      if(!stat.isFile()||!/[.](png|jpe?g|webp|gif|svg|avif)$/i.test(name))continue;
       out.push({file,stat});
     }
   }
@@ -1703,7 +1709,7 @@ function auditProjectAssets(local){
   const root=local.root||path.dirname(local.html);
   const generatedDir=path.join(path.dirname(local.html),'app-interface-studio-assets');
   const usedGenerated=generatedAssetReferences(local);
-  const entries=collectProjectImages(root,3000);
+  const entries=collectProjectImages(root,3000,{requiredFile:local.html});
   const byHash=new Map();
   const files=[];
   let totalBytes=0;
