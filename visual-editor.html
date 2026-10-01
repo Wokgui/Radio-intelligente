@@ -195,6 +195,11 @@ body.no-animations *,body.no-animations *::before,body.no-animations *::after{tr
 .performance-metric{padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff}
 .performance-metric b{display:block;font-size:.76rem}.performance-metric small{display:block;color:var(--muted);font-size:.6rem;margin-top:2px}
 .performance-findings{display:grid;gap:6px;margin-top:8px}
+.diagnostic-grid{display:grid;gap:6px;margin-top:8px}
+.diagnostic-row{padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:.66rem;line-height:1.38}
+.diagnostic-row b{display:block;margin-bottom:2px;overflow-wrap:anywhere}
+.diagnostic-row small{display:block;color:var(--muted);overflow-wrap:anywhere}
+
   min-height:43px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);
   display:flex;align-items:center;
   font:700 10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
@@ -1233,11 +1238,35 @@ body.desktop .desktop-badge{display:inline-flex}
       <h2>Tests de contenu <small>cas extrêmes</small></h2>
       <div class="pro-grid">
         <button class="tool" data-stress="long-text">Textes très longs</button>
+        <button class="tool" data-stress="german-long">Allemand très long</button>
+        <button class="tool" data-stress="short-text">Textes très courts</button>
+        <button class="tool" data-stress="rtl">RTL</button>
+        <button class="tool" data-stress="text-200">Texte 200 %</button>
+        <button class="tool" data-stress="fallback-font">Police de secours</button>
         <button class="tool" data-stress="no-images">Images absentes</button>
         <button class="tool" data-stress="empty">Contenu vide</button>
         <button class="tool" data-stress="many-items">Beaucoup d’éléments</button>
       </div>
+      <button class="btn" id="i18nAuditBtn" style="width:100%;margin-top:7px">Auditer l’internationalisation</button>
+      <div class="compare-status" id="i18nAuditStatus">Aucun audit i18n lancé.</div>
+      <div class="diagnostic-grid" id="i18nAuditList"></div>
       <button class="btn" id="resetStressBtn" style="width:100%;margin-top:7px">Revenir au contenu normal</button>
+    </section>
+
+    <section class="card">
+      <h2>Polices <small>chargement / fallback</small></h2>
+      <button class="btn primary" id="fontAuditBtn" style="width:100%">Analyser les polices</button>
+      <div class="compare-status" id="fontAuditStatus">Aucune analyse des polices.</div>
+      <div class="diagnostic-grid" id="fontAuditList"></div>
+      <p>Vérifie les familles demandées, leur disponibilité dans <code>document.fonts</code>, les poids demandés et l’écart de largeur avec une police générique.</p>
+    </section>
+
+    <section class="card">
+      <h2>Animations <small>durée / layout / mouvement réduit</small></h2>
+      <button class="btn primary" id="animationAuditBtn" style="width:100%">Auditer les animations</button>
+      <div class="compare-status" id="animationAuditStatus">Aucun audit d’animations.</div>
+      <div class="diagnostic-grid" id="animationAuditList"></div>
+      <p>Repère animations infinies, transitions longues et propriétés susceptibles de provoquer du layout. Le test reduced-motion réel est croisé avec l’audit clavier desktop.</p>
     </section>
 
     <section class="card">
@@ -1716,6 +1745,16 @@ body.desktop .desktop-badge{display:inline-flex}
   var namedScenarios=[];
   var keyboardAuditStatus=document.getElementById('keyboardAuditStatus');
   var keyboardAuditResult=document.getElementById('keyboardAuditResult');
+  var i18nAuditStatus=document.getElementById('i18nAuditStatus');
+  var i18nAuditList=document.getElementById('i18nAuditList');
+  var fontAuditStatus=document.getElementById('fontAuditStatus');
+  var fontAuditList=document.getElementById('fontAuditList');
+  var animationAuditStatus=document.getElementById('animationAuditStatus');
+  var animationAuditList=document.getElementById('animationAuditList');
+  var lastI18nPayload=null;
+  var lastFontAuditPayload=null;
+  var lastAnimationAuditPayload=null;
+  var lastReducedMotionResult=null;
   var recordedScenarioActions=[];
   var scenarioRecordingActive=false;
   var componentTestStatus=document.getElementById('componentTestStatus');
@@ -1849,7 +1888,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.61.0'};
+      project.studio={name:'App Interface Studio',version:'6.62.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -3471,12 +3510,74 @@ body.desktop .desktop-badge{display:inline-flex}
     renderScenarioReplay(result);
   }
 
+  function diagnosticRow(title,detail){
+    var row=document.createElement('div');row.className='diagnostic-row';
+    var b=document.createElement('b');b.textContent=title||'Diagnostic';
+    var s=document.createElement('small');s.textContent=detail||'';
+    row.append(b,s);return row;
+  }
+
+  function renderI18nAudit(payload){
+    lastI18nPayload=payload||{};
+    i18nAuditList.innerHTML='';
+    var summary=lastI18nPayload.summary||{},issues=lastI18nPayload.issues||[];
+    i18nAuditStatus.textContent=issues.length+' point(s) à vérifier · lang '+(summary.lang||'—')+' · dir '+(summary.dir||'—')+
+      (summary.truncated?' · analyse partielle '+(summary.scanned||0)+' / '+(summary.total||0):'');
+    if(!issues.length)i18nAuditList.appendChild(diagnosticRow('Aucun problème probable','Aucune clé/placeholder évident détecté sur l’écran courant.'));
+    issues.forEach(function(item){i18nAuditList.appendChild(diagnosticRow(item.type+' · '+(item.selector||''),item.message||''))});
+  }
+
+  function renderFontAudit(payload){
+    lastFontAuditPayload=payload||{};
+    fontAuditList.innerHTML='';
+    var summary=lastFontAuditPayload.summary||{},items=lastFontAuditPayload.items||[];
+    fontAuditStatus.textContent=(summary.groups||0)+' combinaison(s) police/poids/taille · '+(summary.unavailable||0)+' famille(s) probablement indisponible(s) · '+(summary.loadedFaces||0)+' face(s) chargée(s).';
+    items.slice(0,50).forEach(function(item){
+      var state=item.available===false?'fallback probable':'disponible';
+      var detail='Demandée : '+item.family+' · poids '+item.weight+' · taille '+item.size+' · '+item.count+' élément(s) · '+state;
+      if(item.widthDelta!==null&&item.widthDelta!==undefined)detail+=' · écart vs sans-serif '+(item.widthDelta>=0?'+':'')+item.widthDelta+' %';
+      fontAuditList.appendChild(diagnosticRow(item.firstFamily||item.family,detail));
+    });
+    if(!items.length)fontAuditList.appendChild(diagnosticRow('Aucun texte','Aucun groupe typographique analysable.'));
+  }
+
+  function renderAnimationAudit(payload){
+    lastAnimationAuditPayload=payload||{};
+    animationAuditList.innerHTML='';
+    var summary=lastAnimationAuditPayload.summary||{},issues=lastAnimationAuditPayload.issues||[];
+    var reduced=lastReducedMotionResult&&lastReducedMotionResult.reducedMotion;
+    animationAuditStatus.textContent=(summary.animations||0)+' animation(s) · '+(summary.transitions||0)+' transition(s) · '+(summary.infinite||0)+' infinie(s) · '+(summary.layoutSensitive||0)+' sensible(s) au layout'+
+      (reduced?' · reduced-motion '+(reduced.violations?reduced.violations+' violation(s)':'OK'):'');
+    if(!issues.length)animationAuditList.appendChild(diagnosticRow('Aucun problème structurel','Aucune animation infinie, longue ou sensible au layout détectée.'));
+    issues.forEach(function(item){animationAuditList.appendChild(diagnosticRow(item.type+' · '+(item.selector||''),item.message||''))});
+    if(reduced&&reduced.violations)animationAuditList.appendChild(diagnosticRow('reduced-motion',reduced.violations+' animation(s)/transition(s) longues restent actives sous prefers-reduced-motion: reduce.'));
+  }
+
+  async function runI18nAudit(){
+    i18nAuditStatus.textContent='Audit i18n en cours…';i18nAuditList.innerHTML='';post('i18n-audit');
+  }
+
+  async function runFontAudit(){
+    fontAuditStatus.textContent='Analyse des polices en cours…';fontAuditList.innerHTML='';post('font-audit');
+  }
+
+  async function runAnimationAudit(){
+    animationAuditStatus.textContent='Audit des animations en cours…';animationAuditList.innerHTML='';lastReducedMotionResult=null;
+    post('animation-audit');
+    if(desktop&&desktop.keyboardAccessibilityAudit&&currentSource){
+      var project=await requestProject();
+      lastReducedMotionResult=await desktop.keyboardAccessibilityAudit({source:currentSource,css:project&&project.css||cssOut.value});
+      if(lastAnimationAuditPayload)renderAnimationAudit(lastAnimationAuditPayload);
+    }
+  }
+
   async function runKeyboardAudit(){
     if(!desktop||!desktop.keyboardAccessibilityAudit||!currentSource){keyboardAuditStatus.textContent='Fonction disponible dans l’application Windows avec une source chargée.';return}
     keyboardAuditStatus.textContent='Audit clavier en cours…';
     keyboardAuditResult.innerHTML='';
     var project=await requestProject();
     var result=await desktop.keyboardAccessibilityAudit({source:currentSource,css:project&&project.css||cssOut.value});
+    lastReducedMotionResult=result;
     if(!result||!result.ok){keyboardAuditStatus.textContent=result&&result.error||'Audit impossible.';return}
     var issues=result.issues||[];
     keyboardAuditStatus.textContent=(result.focusable||0)+' élément(s) focusables · '+issues.length+' problème(s) · mouvement réduit '+(result.reducedMotion&&result.reducedMotion.supported?'simulé':'non simulé')+'.';
@@ -4329,7 +4430,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.61.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.62.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4648,7 +4749,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.performanceBaseline=performanceBaseline||null;
     project.namedScenarios=JSON.parse(JSON.stringify(namedScenarios||[]));
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.61.0'};
+    project.studio={name:'App Interface Studio',version:'6.62.0'};
     return project;
   }
 
@@ -4749,7 +4850,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.61.0'};
+    project.studio={name:'App Interface Studio',version:'6.62.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -5137,6 +5238,9 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='container-diagnostic')renderContainerDiagnostic(p);
     if(data.type==='stacking-diagnostic')renderStackingDiagnostic(p);
     if(data.type==='scenario-recording')renderScenario(p.actions||[],p.active);
+    if(data.type==='i18n-audit')renderI18nAudit(p);
+    if(data.type==='font-audit')renderFontAudit(p);
+    if(data.type==='animation-audit')renderAnimationAudit(p);
     if(data.type==='dynamic-diagnostics'){
       var stats=p.stats||{};
       dynamicDiagnosticsBtn.textContent=p.active?'Désactiver':'Activer';
@@ -5447,6 +5551,9 @@ body.desktop .desktop-badge{display:inline-flex}
   scenarioReplayBtn.addEventListener('click',replayRecordedScenario);
   document.getElementById('scenarioSaveBtn').addEventListener('click',saveCurrentScenario);
   document.getElementById('keyboardAuditBtn').addEventListener('click',runKeyboardAudit);
+  document.getElementById('i18nAuditBtn').addEventListener('click',runI18nAudit);
+  document.getElementById('fontAuditBtn').addEventListener('click',runFontAudit);
+  document.getElementById('animationAuditBtn').addEventListener('click',runAnimationAudit);
   dynamicDiagnosticsBtn.addEventListener('click',function(){post('dynamic-diagnostics-toggle')});
   document.getElementById('dynamicDiagnosticsRefreshBtn').addEventListener('click',function(){post('dynamic-diagnostics-status')});
   document.getElementById('performanceProfileBtn').addEventListener('click',runPerformanceProfile);
@@ -5651,6 +5758,7 @@ body.desktop .desktop-badge{display:inline-flex}
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
     lastAdvancedCssItems=[];advancedCssList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';advancedCssPrepareBtn.disabled=true;advancedCssStatus.textContent='Détecte doublons stricts, variables inutilisées, déclarations écrasées, règles proches et sélecteurs absents de l’écran courant.';containerDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';stackingDiagnosticList.innerHTML='<div class="hint">Aucune analyse.</div>';
     recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
+    i18nAuditStatus.textContent='Aucun audit i18n lancé.';i18nAuditList.innerHTML='';fontAuditStatus.textContent='Aucune analyse des polices.';fontAuditList.innerHTML='';animationAuditStatus.textContent='Aucun audit d’animations.';animationAuditList.innerHTML='';lastI18nPayload=null;lastFontAuditPayload=null;lastAnimationAuditPayload=null;lastReducedMotionResult=null;
     performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;performanceRegressionStatus.textContent=performanceBaseline?'Référence de performances disponible.':'Aucune référence de performances.';networkTestStatus.textContent='Aucun test réseau lancé.';networkTestResults.innerHTML='';post('dynamic-diagnostics-stop');
     directSourceStatus.textContent=source.type==='android-project'
       ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
