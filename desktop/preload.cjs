@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   copyText: text => ipcRenderer.invoke('layout:copy-text', String(text || '')),
   appInfo: () => ipcRenderer.invoke('layout:app-info'),
   smokeTransactionRoundtrip: () => ipcRenderer.invoke('smoke:transaction-roundtrip'),
+  smokeAtomicFailureRollback: () => ipcRenderer.invoke('smoke:atomic-failure-rollback'),
   smokePortableRoundtrip: () => ipcRenderer.invoke('smoke:portable-roundtrip'),
   smokeCascadeFixtures: () => ipcRenderer.invoke('smoke:cascade-fixtures'),
   smokeScenarioFixture: () => ipcRenderer.invoke('smoke:scenario-fixture'),
