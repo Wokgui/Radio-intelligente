@@ -170,6 +170,12 @@
   let scenarioActions = [];
   let scenarioLastInput = new WeakMap();
   let responsiveResizeTimer = null;
+  let dynamicDiagnosticsEnabled = false;
+  let dynamicMutationObserver = null;
+  let dynamicResizeObserver = null;
+  let dynamicDiagnosticsTimer = null;
+  let dynamicPending = { audit:false, layout:false, consistency:false };
+  let dynamicStats = { mutations:0, resizes:0, runs:0, lastRun:0 };
   let spacingVisualTimer = null;
 
   const history = [];
@@ -2526,6 +2532,99 @@
     return {items:items,total:total,inspected:inspected,truncated:inspected<total};
   }
 
+  function scheduleDynamicDiagnostics(kinds) {
+    if(!dynamicDiagnosticsEnabled)return;
+    kinds=kinds||{};
+    dynamicPending.audit=dynamicPending.audit||!!kinds.audit;
+    dynamicPending.layout=dynamicPending.layout||!!kinds.layout;
+    dynamicPending.consistency=dynamicPending.consistency||!!kinds.consistency;
+    if(dynamicDiagnosticsTimer)clearTimeout(dynamicDiagnosticsTimer);
+    dynamicDiagnosticsTimer=setTimeout(function(){
+      dynamicDiagnosticsTimer=null;
+      if(!dynamicDiagnosticsEnabled)return;
+      const pending=Object.assign({},dynamicPending);
+      dynamicPending={audit:false,layout:false,consistency:false};
+      dynamicStats.runs+=1;dynamicStats.lastRun=Date.now();
+      if(pending.layout)analyzeLayoutDiagnostics('screen');
+      if(pending.audit)auditInterface();
+      if(pending.consistency)analyzeDesignConsistency();
+      emit('dynamic-diagnostics',{
+        active:true,
+        pending:pending,
+        stats:Object.assign({},dynamicStats),
+        message:'Contrôles actualisés automatiquement.'
+      });
+    },260);
+  }
+
+  function dynamicRelevantNode(node) {
+    if(!node)return false;
+    if(node.nodeType===3)node=node.parentElement;
+    if(!node||node.nodeType!==1)return false;
+    return !isEditorNode(node)&&!/^SCRIPT|STYLE|LINK|META$/i.test(node.tagName);
+  }
+
+  function refreshDynamicResizeTargets() {
+    if(!dynamicResizeObserver)return;
+    try{dynamicResizeObserver.disconnect()}catch(_){}
+    const targets=[document.documentElement,document.body];
+    if(selected){
+      targets.push(selected);
+      if(selected.parentElement)targets.push(selected.parentElement);
+    }
+    const unique=Array.from(new Set(targets.filter(Boolean)));
+    unique.forEach(function(el){try{dynamicResizeObserver.observe(el)}catch(_){}});
+  }
+
+  function startDynamicDiagnostics() {
+    if(dynamicDiagnosticsEnabled)return;
+    dynamicDiagnosticsEnabled=true;
+    dynamicStats={mutations:0,resizes:0,runs:0,lastRun:0};
+    if(typeof MutationObserver!=='undefined'){
+      dynamicMutationObserver=new MutationObserver(function(records){
+        let audit=false,layout=false,consistency=false,relevant=0;
+        records.forEach(function(record){
+          const target=record.target&&record.target.nodeType===1?record.target:record.target&&record.target.parentElement;
+          if(!dynamicRelevantNode(target))return;
+          relevant+=1;
+          if(record.type==='childList'){audit=true;layout=true;consistency=true}
+          else if(record.type==='characterData'){audit=true;layout=true}
+          else if(record.type==='attributes'){
+            const name=String(record.attributeName||'');
+            if(/^(style|class|hidden|open|width|height)$/.test(name))layout=true;
+            if(/^aria-|^(role|tabindex|disabled|title|alt|src|href|value)$/.test(name))audit=true;
+            if(/^(style|class)$/.test(name))consistency=true;
+          }
+        });
+        if(!relevant)return;
+        dynamicStats.mutations+=relevant;
+        scheduleDynamicDiagnostics({audit:audit,layout:layout,consistency:consistency});
+      });
+      try{
+        dynamicMutationObserver.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','class','hidden','open','width','height','role','tabindex','disabled','title','alt','src','href','value','aria-label','aria-labelledby','aria-hidden','aria-expanded','aria-selected']});
+      }catch(_){}
+    }
+    if(typeof ResizeObserver!=='undefined'){
+      dynamicResizeObserver=new ResizeObserver(function(entries){
+        const relevant=entries.filter(function(entry){return dynamicRelevantNode(entry.target)}).length;
+        if(!relevant)return;
+        dynamicStats.resizes+=relevant;
+        scheduleDynamicDiagnostics({layout:true,audit:true});
+      });
+      refreshDynamicResizeTargets();
+    }
+    emit('dynamic-diagnostics',{active:true,stats:Object.assign({},dynamicStats),message:'Surveillance dynamique activée.'});
+  }
+
+  function stopDynamicDiagnostics() {
+    dynamicDiagnosticsEnabled=false;
+    if(dynamicDiagnosticsTimer){clearTimeout(dynamicDiagnosticsTimer);dynamicDiagnosticsTimer=null}
+    if(dynamicMutationObserver){try{dynamicMutationObserver.disconnect()}catch(_){};dynamicMutationObserver=null}
+    if(dynamicResizeObserver){try{dynamicResizeObserver.disconnect()}catch(_){};dynamicResizeObserver=null}
+    dynamicPending={audit:false,layout:false,consistency:false};
+    emit('dynamic-diagnostics',{active:false,stats:Object.assign({},dynamicStats),message:'Surveillance dynamique arrêtée.'});
+  }
+
   function clearLayoutDiagnostics() {
     layoutDiagnostics=[];
     layoutDiagnosticLayer.innerHTML='';
@@ -3744,6 +3843,7 @@
   }
 
   function updateOverlay() {
+    if(dynamicDiagnosticsEnabled)refreshDynamicResizeTargets();
     if (!active || !selected || !document.documentElement.contains(selected)) {
       outline.style.display = 'none';
       constraintBadge.style.display = 'none';
@@ -5449,6 +5549,10 @@
     if (data.type === 'box-model') setBoxModel(payload);
     if (data.type === 'box-model-visible') { boxModelVisible=payload.active!==false; updateOverlay(); }
     if (data.type === 'design-consistency') analyzeDesignConsistency();
+    if (data.type === 'dynamic-diagnostics-start') startDynamicDiagnostics();
+    if (data.type === 'dynamic-diagnostics-stop') stopDynamicDiagnostics();
+    if (data.type === 'dynamic-diagnostics-toggle') dynamicDiagnosticsEnabled?stopDynamicDiagnostics():startDynamicDiagnostics();
+    if (data.type === 'dynamic-diagnostics-status') emit('dynamic-diagnostics',{active:dynamicDiagnosticsEnabled,stats:Object.assign({},dynamicStats)});
     if (data.type === 'layout-diagnostic') analyzeLayoutDiagnostics(payload.scope||'screen');
     if (data.type === 'layout-diagnostic-clear') clearLayoutDiagnostics();
     if (data.type === 'layout-diagnostic-apply') applyLayoutDiagnostic(payload.id);
