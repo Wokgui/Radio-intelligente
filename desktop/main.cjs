@@ -2646,12 +2646,30 @@ async function profileSourcePerformance(source,css){
     webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}
   });
   let attached=false;
+  const withTimeout=(promise,ms,label)=>new Promise((resolve,reject)=>{
+    let settled=false;
+    const timer=setTimeout(()=>{
+      if(settled)return;
+      settled=true;
+      reject(new Error((label||'Opération')+' > '+ms+' ms.'));
+    },ms);
+    Promise.resolve(promise).then(value=>{
+      if(settled)return;
+      settled=true;clearTimeout(timer);resolve(value);
+    },error=>{
+      if(settled)return;
+      settled=true;clearTimeout(timer);reject(error);
+    });
+  });
   try{
     try{
       win.webContents.debugger.attach('1.3');attached=true;
-      await win.webContents.debugger.sendCommand('Performance.enable');
-      await win.webContents.debugger.sendCommand('Network.enable');
-    }catch(_){}
+      await withTimeout(win.webContents.debugger.sendCommand('Performance.enable'),3000,'Performance.enable');
+      await withTimeout(win.webContents.debugger.sendCommand('Network.enable'),3000,'Network.enable');
+    }catch(_){
+      try{if(attached&&win.webContents.debugger.isAttached())win.webContents.debugger.detach()}catch(_){}
+      attached=false;
+    }
     const started=Date.now();
     let mainLoadFailure=null;
     const domReady=new Promise((resolve,reject)=>{
@@ -2681,19 +2699,20 @@ async function profileSourcePerformance(source,css){
     try{win.webContents.stop()}catch(_){}
     navigation.catch(()=>{});
     if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */'){
-      await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
+      try{await withTimeout(win.webContents.insertCSS(String(css),{cssOrigin:'author'}),3000,'insertCSS')}catch(_){}
       await new Promise(r=>setTimeout(r,160));
     }
     let metricMap={};
     if(attached){
       try{
-        const rawMetrics=await win.webContents.debugger.sendCommand('Performance.getMetrics');
+        const rawMetrics=await withTimeout(win.webContents.debugger.sendCommand('Performance.getMetrics'),3000,'Performance.getMetrics');
         (rawMetrics.metrics||[]).forEach(item=>{metricMap[item.name]=item.value});
       }catch(_){}
     }
-    const page=await win.webContents.executeJavaScript("(function(){var resources=performance.getEntriesByType('resource')||[];var nav=(performance.getEntriesByType('navigation')||[])[0]||null;var paints=performance.getEntriesByType('paint')||[];var images=Array.from(document.images||[]);var imageNaturalBytes=0,brokenImages=0;images.forEach(function(img){if(!img.complete||!img.naturalWidth)brokenImages++;imageNaturalBytes+=Math.max(0,(img.naturalWidth||0)*(img.naturalHeight||0)*4);});var transfer=resources.reduce(function(n,r){return n+(Number(r.transferSize)||0)},0);var encoded=resources.reduce(function(n,r){return n+(Number(r.encodedBodySize)||0)},0);var decoded=resources.reduce(function(n,r){return n+(Number(r.decodedBodySize)||0)},0);var byType={};resources.forEach(function(r){var k=r.initiatorType||'other';if(!byType[k])byType[k]={count:0,transfer:0,duration:0};byType[k].count++;byType[k].transfer+=Number(r.transferSize)||0;byType[k].duration+=Number(r.duration)||0;});return {url:location.href,nodes:document.getElementsByTagName('*').length,images:images.length,brokenImages:brokenImages,estimatedDecodedImageBytes:imageNaturalBytes,resources:resources.length,transferBytes:transfer,encodedBytes:encoded,decodedBytes:decoded,resourceTypes:byType,navigation:nav?{domContentLoaded:nav.domContentLoadedEventEnd,loadEventEnd:nav.loadEventEnd,responseStart:nav.responseStart,responseEnd:nav.responseEnd,duration:nav.duration}:null,paints:paints.map(function(x){return {name:x.name,startTime:x.startTime}})};})()",true);
+    let page={url:target,nodes:0,images:0,brokenImages:0,estimatedDecodedImageBytes:0,resources:0,transferBytes:0,encodedBytes:0,decodedBytes:0,resourceTypes:{},navigation:null,paints:[]};
+    try{page=await withTimeout(win.webContents.executeJavaScript("(function(){var resources=performance.getEntriesByType('resource')||[];var nav=(performance.getEntriesByType('navigation')||[])[0]||null;var paints=performance.getEntriesByType('paint')||[];var images=Array.from(document.images||[]);var imageNaturalBytes=0,brokenImages=0;images.forEach(function(img){if(!img.complete||!img.naturalWidth)brokenImages++;imageNaturalBytes+=Math.max(0,(img.naturalWidth||0)*(img.naturalHeight||0)*4);});var transfer=resources.reduce(function(n,r){return n+(Number(r.transferSize)||0)},0);var encoded=resources.reduce(function(n,r){return n+(Number(r.encodedBodySize)||0)},0);var decoded=resources.reduce(function(n,r){return n+(Number(r.decodedBodySize)||0)},0);var byType={};resources.forEach(function(r){var k=r.initiatorType||'other';if(!byType[k])byType[k]={count:0,transfer:0,duration:0};byType[k].count++;byType[k].transfer+=Number(r.transferSize)||0;byType[k].duration+=Number(r.duration)||0;});return {url:location.href,nodes:document.getElementsByTagName('*').length,images:images.length,brokenImages:brokenImages,estimatedDecodedImageBytes:imageNaturalBytes,resources:resources.length,transferBytes:transfer,encodedBytes:encoded,decodedBytes:decoded,resourceTypes:byType,navigation:nav?{domContentLoaded:nav.domContentLoadedEventEnd,loadEventEnd:nav.loadEventEnd,responseStart:nav.responseStart,responseEnd:nav.responseEnd,duration:nav.duration}:null,paints:paints.map(function(x){return {name:x.name,startTime:x.startTime}})};})()",,true),5000,'performance page metrics')}catch(error){page.profileError=String(error&&error.message||error)}
     let processMemory=null;
-    try{processMemory=await win.webContents.getProcessMemoryInfo()}catch(_){}
+    try{processMemory=await withTimeout(win.webContents.getProcessMemoryInfo(),3000,'process memory')}catch(_){}
     const secToMs=name=>Math.round((Number(metricMap[name])||0)*10000)/10;
     const bytes=name=>Math.round(Number(metricMap[name])||0);
     const metrics={
