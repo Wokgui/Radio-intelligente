@@ -1186,35 +1186,80 @@ async function applyLocalPatch(payload){
 async function rollbackLocalPatch(payload){
   const local=localSourceEntry(payload&&payload.source);
   if(!local)return {ok:false,error:'Rollback disponible uniquement pour une source HTML locale.'};
-  const dir=path.dirname(local.html);
   try{
     const history=listLocalTransactions({source:payload&&payload.source});
     if(!history.ok)return history;
     const chosenPath=history.nextRollbackPath;
     if(!chosenPath)return {ok:false,error:'Aucun patch local à annuler pour cette source.'};
-    let chosen=null;
-    try{chosen=JSON.parse(fs.readFileSync(chosenPath,'utf8'))}catch(_){}
+
+    let chosen=null,chosenText='';
+    try{
+      chosenText=fs.readFileSync(chosenPath,'utf8');
+      chosen=JSON.parse(chosenText);
+    }catch(_){}
     if(!chosen)return {ok:false,error:'Transaction du prochain rollback introuvable ou invalide.'};
     if(!chosen.htmlBackupPath||!fs.existsSync(chosen.htmlBackupPath))return {ok:false,error:'Sauvegarde HTML du dernier patch introuvable.'};
+    if(chosen.cssExisted&&(!chosen.cssBackupPath||!fs.existsSync(chosen.cssBackupPath)))return {ok:false,error:'Sauvegarde CSS du dernier patch introuvable.'};
+    if(chosen.jsExisted&&(!chosen.jsBackupPath||!fs.existsSync(chosen.jsBackupPath)))return {ok:false,error:'Sauvegarde JS du dernier patch introuvable.'};
 
-    fs.copyFileSync(chosen.htmlBackupPath,local.html);
-    restoreOptionalFile(chosen.cssPath,!!chosen.cssExisted,chosen.cssBackupPath);
-    restoreOptionalFile(chosen.jsPath,!!chosen.jsExisted,chosen.jsBackupPath);
-    (Array.isArray(chosen.createdAssets)?chosen.createdAssets:[]).forEach(file=>{
-      try{if(file&&fs.existsSync(file))fs.unlinkSync(file)}catch(_){}
-    });
-
-    chosen.rolledBack=true;
-    chosen.rolledBackAt=new Date().toISOString();
-    fs.writeFileSync(chosenPath,JSON.stringify(chosen,null,2)+'\n','utf8');
-
-    return {
-      ok:true,
-      htmlPath:local.html,
-      transactionPath:chosenPath,
-      restoredAt:chosen.rolledBackAt,
-      removedAssets:Array.isArray(chosen.createdAssets)?chosen.createdAssets.slice():[]
+    const current={
+      html:fs.readFileSync(local.html,'utf8'),
+      css:{existed:!!(chosen.cssPath&&fs.existsSync(chosen.cssPath)),content:chosen.cssPath&&fs.existsSync(chosen.cssPath)?fs.readFileSync(chosen.cssPath,'utf8'):''},
+      js:{existed:!!(chosen.jsPath&&fs.existsSync(chosen.jsPath)),content:chosen.jsPath&&fs.existsSync(chosen.jsPath)?fs.readFileSync(chosen.jsPath,'utf8'):''},
+      assets:[]
     };
+    for(const assetFile of Array.isArray(chosen.createdAssets)?chosen.createdAssets:[]){
+      if(assetFile&&fs.existsSync(assetFile)){
+        current.assets.push({file:assetFile,bytes:fs.readFileSync(assetFile)});
+      }
+    }
+
+    try{
+      fs.copyFileSync(chosen.htmlBackupPath,local.html);
+      restoreOptionalFile(chosen.cssPath,!!chosen.cssExisted,chosen.cssBackupPath);
+      restoreOptionalFile(chosen.jsPath,!!chosen.jsExisted,chosen.jsBackupPath);
+      (Array.isArray(chosen.createdAssets)?chosen.createdAssets:[]).forEach(assetFile=>{
+        if(assetFile&&fs.existsSync(assetFile))fs.unlinkSync(assetFile);
+      });
+
+      chosen.rolledBack=true;
+      chosen.rolledBackAt=new Date().toISOString();
+      writeTextFilesTransactional([{file:chosenPath,text:JSON.stringify(chosen,null,2)+'\n'}]);
+
+      return {
+        ok:true,
+        htmlPath:local.html,
+        transactionPath:chosenPath,
+        restoredAt:chosen.rolledBackAt,
+        removedAssets:Array.isArray(chosen.createdAssets)?chosen.createdAssets.slice():[]
+      };
+    }catch(error){
+      const restoreErrors=[];
+      try{fs.writeFileSync(local.html,current.html,'utf8')}catch(e){restoreErrors.push('HTML: '+String(e&&e.message||e))}
+      try{
+        if(chosen.cssPath){
+          if(current.css.existed)fs.writeFileSync(chosen.cssPath,current.css.content,'utf8');
+          else if(fs.existsSync(chosen.cssPath))fs.unlinkSync(chosen.cssPath);
+        }
+      }catch(e){restoreErrors.push('CSS: '+String(e&&e.message||e))}
+      try{
+        if(chosen.jsPath){
+          if(current.js.existed)fs.writeFileSync(chosen.jsPath,current.js.content,'utf8');
+          else if(fs.existsSync(chosen.jsPath))fs.unlinkSync(chosen.jsPath);
+        }
+      }catch(e){restoreErrors.push('JS: '+String(e&&e.message||e))}
+      for(const asset of current.assets){
+        try{fs.mkdirSync(path.dirname(asset.file),{recursive:true});fs.writeFileSync(asset.file,asset.bytes)}
+        catch(e){restoreErrors.push('asset '+path.basename(asset.file)+': '+String(e&&e.message||e))}
+      }
+      try{writeTextFilesTransactional([{file:chosenPath,text:chosenText}])}
+      catch(e){restoreErrors.push('transaction: '+String(e&&e.message||e))}
+      return {
+        ok:false,
+        error:'Annulation du patch impossible : '+String(error&&error.message||error)+(restoreErrors.length?' · restauration de l’état courant incomplète : '+restoreErrors.join(' | '):''),
+        currentStateRestored:restoreErrors.length===0
+      };
+    }
   }catch(error){
     return {ok:false,error:'Annulation du patch impossible : '+String(error&&error.message||error)};
   }
