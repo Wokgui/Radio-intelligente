@@ -337,11 +337,11 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
-            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','overrideCleanupList','componentTestStatus','finalControlList','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','containerDiagnosticList','stackingDiagnosticList','overrideCleanupList','advancedCssList','componentTestStatus','finalControlList','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
             if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
-            const sourceSafetyBridge=typeof api.validateDirectEdit==='function'&&typeof api.analyzeOverrides==='function'&&typeof api.cleanupOverrides==='function';
+            const sourceSafetyBridge=typeof api.validateDirectEdit==='function'&&typeof api.analyzeOverrides==='function'&&typeof api.cleanupOverrides==='function'&&typeof api.analyzeCssCleanup==='function'&&typeof api.prepareCssCleanup==='function'&&typeof api.applyCssCleanup==='function';
             const interactionBridge=typeof api.replayScenario==='function'&&typeof api.keyboardAccessibilityAudit==='function'&&typeof api.smokeCascadeFixtures==='function';
             const performanceBridge=typeof api.profilePerformance==='function'&&typeof api.testNetwork==='function'&&typeof api.smokeScenarioFixture==='function';
             const info=await api.appInfo();
@@ -359,8 +359,9 @@ function createWindow(){
             const portableRoundtrip=await api.smokePortableRoundtrip();
             const cascadeFixtures=await api.smokeCascadeFixtures();
             const scenarioFixture=await api.smokeScenarioFixture();
+            const cssCleanupFixture=await api.smokeCssCleanupFixture();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok),
               version:info&&info.version,
               bridge:true,
               sourceSafetyBridge:sourceSafetyBridge,
@@ -379,7 +380,8 @@ function createWindow(){
               transactionRoundtrip:roundtrip,
               portableRoundtrip:portableRoundtrip,
               cascadeFixtures:cascadeFixtures,
-              scenarioFixture:scenarioFixture
+              scenarioFixture:scenarioFixture,
+              cssCleanupFixture:cssCleanupFixture
             };
           })()
         `,true);
