@@ -4376,7 +4376,7 @@ body.desktop .desktop-badge{display:inline-flex}
   function renderAssetAudit(result){
     assetAuditList.innerHTML='';
     if(!result||!result.ok){assetAuditStatus.textContent=result&&result.error||'Audit impossible.';return}
-    assetAuditStatus.textContent=result.scanned+' image(s) · '+formatAssetBytes(result.totalBytes)+' · '+result.orphanCount+' orpheline(s) · '+result.duplicateCount+' doublon(s) · '+result.largeCount+' lourde(s) · '+result.oversizedCount+' surdimensionnée(s).';
+    assetAuditStatus.textContent=result.scanned+' image(s) · '+formatAssetBytes(result.totalBytes)+' · '+result.orphanCount+' orpheline(s) · '+result.duplicateCount+' doublon(s) · '+result.largeCount+' lourde(s) · '+result.oversizedCount+' surdimensionnée(s)'+(result.referenceScan&&result.referenceScan.truncated?' · scan des références incomplet : aucun orphelin n’est affirmé dans ce cas':'')+'.';
     var relevant=(result.files||[]).filter(function(item){return item.issues&&item.issues.length});
     if(!relevant.length){assetAuditList.innerHTML='<div class="hint">Aucun problème détecté dans les images analysées.</div>';return}
     relevant.slice(0,80).forEach(function(item){
@@ -4402,7 +4402,11 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!desktop||!desktop.cleanGeneratedAssets){assetAuditStatus.textContent='Nettoyage indisponible.';return}
     var result=await desktop.cleanGeneratedAssets(currentSource);
     if(!result||!result.ok){assetAuditStatus.textContent=result&&result.error||'Nettoyage impossible.';return}
-    setStatus((result.removed||[]).length+' asset(s) orphelin(s) supprimé(s).');
+    if(result.scanTruncated){
+      setStatus('Analyse limitée à '+(result.scannedFiles||0)+' fichier(s) : aucun asset supprimé par sécurité.');
+    }else{
+      setStatus((result.removed||[]).length+' asset(s) orphelin(s) supprimé(s).');
+    }
     await runAssetAudit();
   }
 
@@ -4418,7 +4422,9 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre une source HTML locale avant le nettoyage.';return}
     var result=await desktop.cleanGeneratedAssets(currentSource);
     if(!result||!result.ok){gitStatusText.textContent=(result&&result.error)||'Nettoyage impossible.';return}
-    gitStatusText.textContent=(result.removed||[]).length+' asset(s) inutilisé(s) supprimé(s) · '+(result.kept||[]).length+' conservé(s).';
+    gitStatusText.textContent=result.scanTruncated
+      ?'Analyse limitée à '+(result.scannedFiles||0)+' fichier(s) : aucun asset supprimé par sécurité.'
+      :(result.removed||[]).length+' asset(s) inutilisé(s) supprimé(s) · '+(result.kept||[]).length+' conservé(s).';
   }
 
   async function publishGit(){
@@ -4441,7 +4447,9 @@ body.desktop .desktop-badge{display:inline-flex}
       body:'Modifications visuelles générées avec App Interface Studio 6.63.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
-    var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
+    var cleanNote=result.assetScanTruncated
+      ?' · nettoyage assets ignoré par sécurité (scan incomplet)'
+      :(result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'');
     gitStatusText.textContent=(result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.')+cleanNote;
     if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
   }
