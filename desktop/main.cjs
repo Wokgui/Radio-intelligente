@@ -1125,6 +1125,7 @@ async function applyLocalPatch(payload){
     touched.transaction=true;
     fs.writeFileSync(transactionPath,JSON.stringify(transaction,null,2)+'\n','utf8');
 
+    markStudioTouched(payload&&payload.source,[plan.local.html,plan.changed.css?plan.cssPath:null,plan.changed.structure?plan.jsPath:null].concat(createdAssets));
     return {
       ok:true,
       cssPath:plan.after.css?plan.cssPath:null,
@@ -1661,6 +1662,33 @@ function commandExists(command){
   }catch(_){return false}
 }
 
+const studioTouchedFilesByRoot=new Map();
+
+function markStudioTouched(source,files){
+  const root=sourceRoot(source);
+  if(!root)return;
+  const rootResolved=path.resolve(root);
+  if(!studioTouchedFilesByRoot.has(rootResolved))studioTouchedFilesByRoot.set(rootResolved,new Set());
+  const set=studioTouchedFilesByRoot.get(rootResolved);
+  (Array.isArray(files)?files:[files]).forEach(file=>{
+    if(!file)return;
+    const resolved=path.resolve(String(file));
+    if(isPathInside(rootResolved,resolved)||resolved===rootResolved)set.add(resolved);
+  });
+}
+
+function studioTouchedRelativePaths(source){
+  const root=sourceRoot(source);
+  if(!root)return [];
+  const rootResolved=path.resolve(root),set=studioTouchedFilesByRoot.get(rootResolved)||new Set();
+  return Array.from(set).filter(file=>isPathInside(rootResolved,file)).map(file=>path.relative(rootResolved,file)).filter(Boolean);
+}
+
+function clearStudioTouched(source){
+  const root=sourceRoot(source);
+  if(root)studioTouchedFilesByRoot.delete(path.resolve(root));
+}
+
 function gitPathTracked(root,relativePath){
   try{
     execFileSync('git',['-C',root,'ls-files','--error-unmatch','--',relativePath],{encoding:'utf8',windowsHide:true,timeout:5000});
@@ -1804,7 +1832,7 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
       catch(_){execFileSync('git',['-C',root,'checkout',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
     }
     const cleanup=cleanupGeneratedAssets(local);
-    const files=[path.relative(root,local.html)];
+    const files=[path.relative(root,local.html)].concat(studioTouchedRelativePaths(source));
     const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
     const generatedRelative=path.relative(root,generated);
     if(fs.existsSync(generated)||gitPathTracked(root,generatedRelative))files.push(generatedRelative);
@@ -1813,7 +1841,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     if(fs.existsSync(generatedStructure)||gitPathTracked(root,generatedStructureRelative))files.push(generatedStructureRelative);
     const assetDir=path.join(path.dirname(local.html),'app-interface-studio-assets');
     if(fs.existsSync(assetDir))files.push(path.relative(root,assetDir));
-    execFileSync('git',['-C',root,'add','-A','--'].concat(files),{encoding:'utf8',windowsHide:true,timeout:10000});
+    const uniqueFiles=Array.from(new Set(files.filter(Boolean)));
+    execFileSync('git',['-C',root,'add','-A','--'].concat(uniqueFiles),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
     execFileSync('git',['-C',root,'commit','-m',title],{encoding:'utf8',windowsHide:true,timeout:15000});
@@ -1825,7 +1854,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
         prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
       }catch(_){}
     }
-    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length,assetScanTruncated:!!cleanup.scanTruncated};
+    clearStudioTouched(source);
+    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length,assetScanTruncated:!!cleanup.scanTruncated,studioFiles:uniqueFiles};
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
 });
 
@@ -3444,6 +3474,7 @@ ipcMain.handle('css-cleanup:apply',async (_event,payload)=>{
       written.push(item.file);
       fs.writeFileSync(item.file,item.after,'utf8');
     }
+    markStudioTouched(source,staged.map(item=>item.file));
     return {ok:true,changed:staged.length,backups};
   }catch(error){
     const rollbackErrors=[];
@@ -3490,6 +3521,7 @@ ipcMain.handle('source:cleanup-overrides',async (_event,payload)=>{
       if(item.removeWhole){fs.unlinkSync(item.file);removed.push(path.relative(local.root,item.file))}
       else fs.writeFileSync(item.file,item.after,'utf8');
     }
+    markStudioTouched(source,staged.map(item=>item.file));
     return {ok:true,removed,backups,changed:selected.length};
   }catch(error){
     const rollbackErrors=[];
@@ -3536,6 +3568,7 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
         fs.writeFileSync(local.html,html,'utf8');
       }
     }
+    markStudioTouched(source,[file,htmlTouched?local.html:null]);
     return {ok:true,file,backupPath,htmlBackupPath,created:!existedBefore};
   }catch(error){
     const rollbackErrors=[];
