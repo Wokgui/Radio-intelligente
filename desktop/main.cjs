@@ -1916,13 +1916,21 @@ ipcMain.handle('source:prepare-native-edit',async (_event,payload)=>{
 ipcMain.handle('source:apply-native-edit',async (_event,payload)=>{
   const source=payload&&payload.source,file=String(payload&&payload.file||'');
   if(!source||source.type!=='android-project'||!isPathInside(source.path,file))return {ok:false,error:'Patch Android invalide.'};
+  let before='',backup='';
   try{
-    const before=fs.readFileSync(file,'utf8');
+    before=fs.readFileSync(file,'utf8');
     if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier Android a changé. Reprépare le diff.'};
-    const backup=file+'.ais-backup-'+new Date().toISOString().replace(/[:.]/g,'-');
-    fs.copyFileSync(file,backup);fs.writeFileSync(file,String(payload.after||''),'utf8');
+    backup=file+'.ais-backup-'+new Date().toISOString().replace(/[:.]/g,'-');
+    fs.copyFileSync(file,backup);
+    fs.writeFileSync(file,String(payload.after||''),'utf8');
     return {ok:true,file,backupPath:backup};
-  }catch(error){return {ok:false,error:String(error&&error.message||error)}}
+  }catch(error){
+    let rolledBack=false;
+    if(before){
+      try{fs.writeFileSync(file,before,'utf8');rolledBack=true}catch(_){}
+    }
+    return {ok:false,error:String(error&&error.message||error),rolledBack};
+  }
 });
 
 
@@ -3447,6 +3455,44 @@ ipcMain.handle('source:inject-editor',async ()=>{
 });
 
 
+function writeTextFilesTransactional(entries){
+  const token=Date.now()+'-'+crypto.randomBytes(4).toString('hex');
+  const staged=[];
+  try{
+    const seen=new Set();
+    for(const entry of entries||[]){
+      const file=path.resolve(String(entry&&entry.file||''));
+      if(!file||seen.has(file))throw new Error('Chemin de sortie invalide ou dupliqué.');
+      seen.add(file);
+      fs.mkdirSync(path.dirname(file),{recursive:true});
+      const tmp=file+'.ais-write-tmp-'+token;
+      fs.writeFileSync(tmp,String(entry&&entry.text!==undefined?entry.text:''),'utf8');
+      staged.push({file,tmp,backup:'',committed:false});
+    }
+    for(const item of staged){
+      if(fs.existsSync(item.file)){
+        item.backup=item.file+'.ais-write-backup-'+token;
+        fs.renameSync(item.file,item.backup);
+      }
+    }
+    for(const item of staged){
+      fs.renameSync(item.tmp,item.file);
+      item.committed=true;
+    }
+    for(const item of staged){
+      if(item.backup&&fs.existsSync(item.backup))try{fs.unlinkSync(item.backup)}catch(_){}
+    }
+    return {ok:true,files:staged.map(x=>x.file)};
+  }catch(error){
+    for(const item of staged){
+      try{if(item.committed&&fs.existsSync(item.file))fs.unlinkSync(item.file)}catch(_){}
+      try{if(item.backup&&fs.existsSync(item.backup))fs.renameSync(item.backup,item.file)}catch(_){}
+      try{if(item.tmp&&fs.existsSync(item.tmp))fs.unlinkSync(item.tmp)}catch(_){}
+    }
+    throw error;
+  }
+}
+
 function reportEscape(value){
   return String(value===undefined||value===null?'':value).replace(/[&<>"']/g,ch=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -3499,8 +3545,9 @@ ipcMain.handle('report:export',async (_event,payload)=>{
     let htmlPath=result.filePath;
     if(path.extname(htmlPath).toLowerCase()!=='.html')htmlPath+='.html';
     const jsonPath=htmlPath.replace(/\.html$/i,'.json');
-    fs.writeFileSync(htmlPath,buildStandaloneReport(report),'utf8');
-    fs.writeFileSync(jsonPath,JSON.stringify(report,null,2),'utf8');
+    const htmlText=buildStandaloneReport(report);
+    const jsonText=JSON.stringify(report,null,2);
+    writeTextFilesTransactional([{file:htmlPath,text:htmlText},{file:jsonPath,text:jsonText}]);
     return {ok:true,htmlPath,jsonPath};
   }catch(error){
     return {ok:false,error:'Export du rapport impossible : '+String(error&&error.message||error)};
@@ -3514,8 +3561,12 @@ ipcMain.handle('layout:save-project',async (_event,project)=>{
     filters:[{name:'Projet App Interface Studio',extensions:['json']},{name:'Tous les fichiers',extensions:['*']}]
   });
   if(result.canceled||!result.filePath)return {ok:false,canceled:true};
-  fs.writeFileSync(result.filePath,JSON.stringify(project,null,2),'utf8');
-  return {ok:true,path:result.filePath};
+  try{
+    writeTextFilesTransactional([{file:result.filePath,text:JSON.stringify(project,null,2)}]);
+    return {ok:true,path:result.filePath};
+  }catch(error){
+    return {ok:false,error:'Enregistrement du projet impossible : '+String(error&&error.message||error)};
+  }
 });
 
 ipcMain.handle('layout:open-project',async ()=>{
@@ -3705,8 +3756,12 @@ ipcMain.handle('layout:save-chatgpt',async (_event,payload)=>{
     filters:[{name:'Texte pour ChatGPT',extensions:['txt']},{name:'Markdown',extensions:['md']}]
   });
   if(result.canceled||!result.filePath)return {ok:false,canceled:true};
-  fs.writeFileSync(result.filePath,text,'utf8');
-  return {ok:true,path:result.filePath,text};
+  try{
+    writeTextFilesTransactional([{file:result.filePath,text}]);
+    return {ok:true,path:result.filePath,text};
+  }catch(error){
+    return {ok:false,error:'Export ChatGPT impossible : '+String(error&&error.message||error)};
+  }
 });
 
 ipcMain.handle('layout:copy-text',(_event,text)=>{
