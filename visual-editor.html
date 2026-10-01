@@ -4451,6 +4451,7 @@ body.desktop .desktop-badge{display:inline-flex}
       gitStatusText.textContent='Préparation de la branche Git…';
       var preparedBranch=await desktop.prepareGitBranch({source:currentSource,branch:targetBranch});
       if(!preparedBranch||!preparedBranch.ok){gitStatusText.textContent=preparedBranch&&preparedBranch.error||'Impossible de préparer la branche Git.';return}
+      targetBranch=preparedBranch.branch||targetBranch;
     }
     gitStatusText.textContent='Préparation du patch puis publication…';
     if(desktop.applyCssToSource){
