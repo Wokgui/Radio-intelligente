@@ -1663,6 +1663,7 @@ function commandExists(command){
 }
 
 const studioTouchedFilesByRoot=new Map();
+const studioPendingPushByRoot=new Map();
 
 function markStudioTouched(source,files){
   const root=sourceRoot(source);
@@ -1687,6 +1688,11 @@ function studioTouchedRelativePaths(source){
 function clearStudioTouched(source){
   const root=sourceRoot(source);
   if(root)studioTouchedFilesByRoot.delete(path.resolve(root));
+}
+
+function pendingStudioPushKey(source){
+  const root=sourceRoot(source);
+  return root?path.resolve(root):'';
 }
 
 function gitPathTracked(root,relativePath){
@@ -1824,6 +1830,7 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
   const branch=String(payload&&payload.branch||('app-interface-studio-'+Date.now())).replace(/[^a-zA-Z0-9._\/-]/g,'-');
   const title=String(payload&&payload.title||'Mise à jour interface App Interface Studio');
   const body=String(payload&&payload.body||'Modifications visuelles générées avec App Interface Studio.');
+  const pendingKey=pendingStudioPushKey(source);
   try{
     execFileSync('git',['-C',root,'rev-parse','--is-inside-work-tree'],{encoding:'utf8',windowsHide:true,timeout:5000});
     const current=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
@@ -1844,8 +1851,17 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     const uniqueFiles=Array.from(new Set(files.filter(Boolean)));
     execFileSync('git',['-C',root,'add','-A','--'].concat(uniqueFiles),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
-    if(!staged)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
-    execFileSync('git',['-C',root,'commit','-m',title],{encoding:'utf8',windowsHide:true,timeout:15000});
+    let commitSha='';
+    if(staged){
+      execFileSync('git',['-C',root,'commit','-m',title],{encoding:'utf8',windowsHide:true,timeout:15000});
+      commitSha=execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+      if(pendingKey)studioPendingPushByRoot.set(pendingKey,{branch,commitSha});
+    }else{
+      const pending=pendingKey&&studioPendingPushByRoot.get(pendingKey);
+      const head=execFileSync('git',['-C',root,'rev-parse','HEAD'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+      if(!pending||pending.branch!==branch||pending.commitSha!==head)return {ok:false,error:'Aucune modification App Interface Studio à publier.'};
+      commitSha=head;
+    }
     execFileSync('git',['-C',root,'push','-u','origin',branch],{encoding:'utf8',windowsHide:true,timeout:30000});
 
     let prUrl='';
@@ -1855,7 +1871,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
       }catch(_){}
     }
     clearStudioTouched(source);
-    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length,assetScanTruncated:!!cleanup.scanTruncated,studioFiles:uniqueFiles};
+    if(pendingKey)studioPendingPushByRoot.delete(pendingKey);
+    return {ok:true,branch,staged,commitSha,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length,assetScanTruncated:!!cleanup.scanTruncated,studioFiles:uniqueFiles};
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
 });
 
