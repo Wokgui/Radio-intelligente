@@ -687,4 +687,16 @@ if(duplicateHtmlIds.length)throw new Error('Duplicate HTML ids: '+duplicateHtmlI
 const hostRotateDefinitions=(html.match(/function\s+rotateDevice\s*\(/g)||[]).length;
 if(hostRotateDefinitions!==1)throw new Error('rotateDevice must have exactly one host implementation, got '+hostRotateDefinitions);
 
+
+expect(main,"async function smokeAtomicFailureRollback()","atomic failure rollback smoke");
+expect(main,"smoke:atomic-failure-rollback","atomic failure rollback IPC");
+expect(preload,"smokeAtomicFailureRollback: () => ipcRenderer.invoke('smoke:atomic-failure-rollback')","atomic failure rollback bridge");
+expect(main,"const atomicFailure=await api.smokeAtomicFailureRollback()","global smoke atomic rollback invocation");
+expect(html,"function recoveryProjectPayload(project)","complete recovery payload");
+expect(html,"function compactRecoveryPayload(project)","recovery quota fallback");
+expect(html,"await setPreviewMode(project.preview.mode||'edit')","saved preview mode restore");
+expect(html,"referenceOverlay.removeAttribute('src')","stale reference clearing");
+expect(main,"writeTextFilesTransactional","transactional disk writes");
+expect(main,"rolledBack:rollbackErrors.length===0","direct edit rollback status");
+
 console.log('App Interface Studio 6.63 feature checks passed.');
