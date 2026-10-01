@@ -19,6 +19,9 @@ body.ve-active {
   cursor: crosshair !important;
   touch-action: none;
 }
+body.ve-active.ve-space-pan{cursor:grab!important}
+body.ve-active.ve-canvas-panning{cursor:grabbing!important}
+
 
 body.ve-active .ve-toolbar {
   position: fixed;
@@ -150,7 +153,75 @@ body.ve-active .ve-selection{
 .ve-handle-ne{right:-7px;top:-7px;cursor:nesw-resize}
 .ve-handle-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
 .ve-handle-se{right:-7px;bottom:-7px;cursor:nwse-resize}
+.ve-handle-n,.ve-handle-s{width:24px;height:8px;border-radius:999px}
+.ve-handle-w,.ve-handle-e{width:8px;height:24px;border-radius:999px}
+.ve-handle-n{top:-5px;left:75%;transform:translateX(-50%);cursor:ns-resize}
+.ve-handle-s{bottom:-5px;left:75%;transform:translateX(-50%);cursor:ns-resize}
+.ve-handle-w{left:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
+.ve-handle-e{right:-5px;top:75%;transform:translateY(-50%);cursor:ew-resize}
+.ve-media-focal{
+  position:absolute;z-index:8;display:none;align-items:center;justify-content:center;
+  width:26px;height:26px;padding:0;border:2px solid #fff;border-radius:50%;
+  background:#7c3aed;color:#fff;font:900 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 0 0 2px #7c3aed,0 3px 10px #0005;
+  transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;cursor:move!important
+}
+.ve-media-focal:active{transform:translate(-50%,-50%) scale(.94)}
+body.ve-media-drop-ready{cursor:copy!important}
+body.ve-media-drop-ready .ve-selection{box-shadow:0 0 0 2px #22c55e,0 0 0 100vmax #16a34a10!important}
 
+.ve-anchor-pin{
+  position:absolute;z-index:4;display:none;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:1px solid #7c3aed;border-radius:7px;
+  background:#fff;color:#6f49f5;font:900 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 2px 8px #0003;pointer-events:auto;touch-action:manipulation;cursor:pointer!important
+}
+.ve-anchor-pin:hover,.ve-anchor-pin.active{background:#6f49f5;color:#fff}
+.ve-anchor-left{left:-29px;top:50%;transform:translateY(-50%)}
+.ve-anchor-right{right:-29px;top:50%;transform:translateY(-50%)}
+.ve-anchor-top{top:-29px;left:50%;transform:translateX(-50%)}
+.ve-anchor-bottom{bottom:-29px;left:50%;transform:translateX(-50%)}
+.ve-anchor-hcenter{top:-29px;left:25%;transform:translateX(-50%)}
+.ve-anchor-vcenter{left:-29px;top:25%;transform:translateY(-50%)}
+.ve-anchor-hstretch{bottom:-29px;left:38%;transform:translateX(-50%)}
+.ve-anchor-vstretch{bottom:-29px;left:62%;transform:translateX(-50%)}
+body.ve-active .ve-selection.ve-single-selection .ve-anchor-pin{display:flex}
+.ve-selection-secondary .ve-anchor-pin{display:none!important}
+.ve-box-handle{
+  position:absolute;z-index:5;display:none;align-items:center;justify-content:center;
+  min-width:24px;min-height:18px;padding:2px 5px;border:1px solid currentColor;border-radius:6px;
+  background:#fff;font:850 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 2px 8px #0003;pointer-events:auto;touch-action:none;user-select:none
+}
+.ve-box-handle.margin{color:#e67e22}
+.ve-box-handle.padding{color:#16a085}
+.ve-box-handle[data-side="top"],.ve-box-handle[data-side="bottom"]{cursor:ns-resize}
+.ve-box-handle[data-side="left"],.ve-box-handle[data-side="right"]{cursor:ew-resize}
+.ve-box-handle.margin[data-side="top"]{top:-54px;left:50%;transform:translateX(-50%)}
+.ve-box-handle.margin[data-side="bottom"]{bottom:-54px;left:50%;transform:translateX(-50%)}
+.ve-box-handle.margin[data-side="left"]{left:-54px;top:50%;transform:translateY(-50%)}
+.ve-box-handle.margin[data-side="right"]{right:-54px;top:50%;transform:translateY(-50%)}
+.ve-box-handle.padding[data-side="top"]{top:7px;left:50%;transform:translateX(-50%)}
+.ve-box-handle.padding[data-side="bottom"]{bottom:7px;left:50%;transform:translateX(-50%)}
+.ve-box-handle.padding[data-side="left"]{left:7px;top:50%;transform:translateY(-50%)}
+.ve-box-handle.padding[data-side="right"]{right:7px;top:50%;transform:translateY(-50%)}
+body.ve-active .ve-selection.ve-single-selection.ve-box-model-visible .ve-box-handle{display:flex}
+.ve-box-ring-margin,.ve-box-ring-padding{
+  position:fixed;z-index:2147483643;display:none;pointer-events:none;border-style:solid;box-sizing:border-box
+}
+.ve-box-ring-margin{border-color:#e67e2288;background:#e67e2212}
+.ve-box-ring-padding{border-color:#16a08588;background:#16a08512}
+
+body.ve-active .ve-marquee{
+  position:fixed;
+  z-index:2147483646;
+  display:none;
+  pointer-events:none;
+  border:1px solid #6f49f5;
+  background:#6f49f51a;
+  box-shadow:0 0 0 1px #ffffffaa inset;
+}
+body.ve-active.ve-marquee-mode{cursor:crosshair!important}
 .ve-guide,
 .ve-guide-label{
   display:none;
@@ -211,6 +282,15 @@ body.ve-active .ve-constraint-badge{
   padding:4px 7px;border-radius:7px;background:#6f49f5;color:#fff;
   font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 5px 14px #2d205c33
 }
+body.ve-active .ve-constraint-line{
+  position:fixed;z-index:2147483644;display:none;pointer-events:none;
+  background:#6f49f5;opacity:.78;box-shadow:0 0 0 1px #fff8
+}
+body.ve-active .ve-constraint-line.horizontal{height:1px}
+body.ve-active .ve-constraint-line.vertical{width:1px}
+body.ve-active .ve-constraint-line.center{background:transparent;box-shadow:none;border-color:#6f49f5;border-style:dashed;opacity:.72}
+body.ve-active .ve-constraint-line.center.horizontal{border-top-width:1px}
+body.ve-active .ve-constraint-line.center.vertical{border-left-width:1px}
 body.ve-active .ve-alt-target{
   position:fixed;z-index:2147483646;display:none;pointer-events:none;
   border:2px dashed #ff4fad;background:#ff4fad0c;border-radius:4px
@@ -220,3 +300,45 @@ body.ve-active .ve-alt-measure{
   padding:6px 8px;border-radius:8px;background:#21182fe8;color:#fff;
   font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 6px 18px #0004
 }
+body.ve-active .ve-drag-measure{
+  position:fixed;z-index:2147483647;display:none;pointer-events:none;
+  padding:6px 8px;border-radius:8px;background:#0f6f83ee;color:#fff;
+  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-shadow:0 6px 18px #0004;white-space:nowrap
+}
+body.ve-active .ve-spacing-line,
+body.ve-active .ve-spacing-label{
+  position:fixed;z-index:2147483646;display:none;pointer-events:none
+}
+body.ve-active .ve-spacing-line{background:#ff8a00;box-shadow:0 0 0 1px #fff9}
+body.ve-active .ve-spacing-line.horizontal{height:1px}
+body.ve-active .ve-spacing-line.vertical{width:1px}
+body.ve-active .ve-spacing-label{
+  z-index:2147483647;padding:3px 5px;border-radius:6px;background:#ff8a00;color:#fff;
+  font:850 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap
+}
+[data-ais-isolation-hidden="1"]{
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+[data-ais-inline-editing="1"]{
+  outline:2px solid #00a7c8!important;
+  outline-offset:2px!important;
+  caret-color:#00a7c8!important;
+  cursor:text!important;
+  user-select:text!important
+}
+body.ve-inline-text-editing{cursor:text!important}
+body.ve-inline-text-editing [data-ais-inline-editing="1"] *{pointer-events:auto!important}
+
+
+/* App Interface Studio 6.51 · diagnostic structurel */
+.ve-layout-diagnostics{position:fixed;inset:0;z-index:2147483635;pointer-events:none;display:none}
+.ve-layout-diagnostics.visible{display:block}
+.ve-layout-diagnostic{position:absolute;border:2px solid rgba(201,131,27,.95);background:rgba(244,180,65,.10);box-shadow:0 0 0 1px rgba(255,255,255,.8) inset}
+.ve-layout-diagnostic.error{border-color:rgba(210,47,78,.98);background:rgba(210,47,78,.11)}
+.ve-layout-diagnostic.info{border-color:rgba(64,125,230,.95);background:rgba(64,125,230,.09)}
+.ve-layout-diagnostic>span{position:absolute;left:-2px;top:-22px;max-width:280px;height:20px;padding:0 6px;border-radius:5px 5px 5px 0;background:#b67512;color:#fff;font:800 10px/20px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px #0003}
+.ve-layout-diagnostic.error>span{background:#c52f4e}
+.ve-layout-diagnostic.info>span{background:#356fcf}
+body:not(.ve-active) .ve-layout-diagnostics{display:none!important}
