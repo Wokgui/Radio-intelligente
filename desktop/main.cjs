@@ -1057,7 +1057,7 @@ async function applyLocalPatch(payload){
   }
 
   if(!plan.changed.html&&!plan.changed.css&&!plan.changed.structure){
-    return {ok:false,error:'Le code local est déjà synchronisé avec le projet.'};
+    return {ok:true,noChange:true,message:'Le code local est déjà synchronisé avec le projet.',assetCount:0,createdAssets:[]};
   }
 
   const stamp=new Date().toISOString().replace(/[:.]/g,'-')+'-'+crypto.randomBytes(3).toString('hex');
