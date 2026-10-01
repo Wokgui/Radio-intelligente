@@ -337,12 +337,13 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
-            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','overrideCleanupList','componentTestStatus','finalControlList','sourcePropertyList','scenarioList','scenarioReplayResults','keyboardAuditResult','appFrame'];
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','overrideCleanupList','componentTestStatus','finalControlList','sourcePropertyList','scenarioList','scenarioReplayResults','keyboardAuditResult','dynamicDiagnosticsStatus','performanceMetrics','selectorStability','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
             if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
             const sourceSafetyBridge=typeof api.validateDirectEdit==='function'&&typeof api.analyzeOverrides==='function'&&typeof api.cleanupOverrides==='function';
             const interactionBridge=typeof api.replayScenario==='function'&&typeof api.keyboardAccessibilityAudit==='function'&&typeof api.smokeCascadeFixtures==='function';
+            const performanceBridge=typeof api.profilePerformance==='function';
             const info=await api.appInfo();
             const demo=await api.openDemo();
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
@@ -352,15 +353,18 @@ function createWindow(){
             const regressionOk=!!(regression&&regression.ok&&regression.changedPixels===0&&regression.differencePercent===0&&typeof regression.diffDataUrl==='string'&&regression.diffDataUrl.indexOf('data:image/png')===0);
             const matrix=await api.runTestMatrix({source:demo.source,css:'/* smoke test */'});
             const matrixOk=!!(matrix&&matrix.ok&&matrix.summary&&matrix.summary.tested===12&&Array.isArray(matrix.results)&&matrix.results.length===12);
+            const performanceProfile=await api.profilePerformance({source:demo.source,css:'/* smoke test */'});
+            const performanceOk=!!(performanceProfile&&performanceProfile.ok&&performanceProfile.metrics&&Number.isFinite(Number(performanceProfile.metrics.domNodes)));
             const roundtrip=await api.smokeTransactionRoundtrip();
             const portableRoundtrip=await api.smokePortableRoundtrip();
             const cascadeFixtures=await api.smokeCascadeFixtures();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&captureOk&&regressionOk&&matrixOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok),
               version:info&&info.version,
               bridge:true,
               sourceSafetyBridge:sourceSafetyBridge,
               interactionBridge:interactionBridge,
+              performanceBridge:performanceBridge,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
@@ -369,6 +373,8 @@ function createWindow(){
               regressionDifferencePercent:regression&&regression.differencePercent,
               matrixOk:matrixOk,
               matrixSummary:matrix&&matrix.summary,
+              performanceOk:performanceOk,
+              performanceMetrics:performanceProfile&&performanceProfile.metrics,
               transactionRoundtrip:roundtrip,
               portableRoundtrip:portableRoundtrip,
               cascadeFixtures:cascadeFixtures
