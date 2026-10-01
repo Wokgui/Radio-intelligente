@@ -3318,6 +3318,67 @@ ipcMain.handle('source:inject-editor',async ()=>{
   return {ok:count>0,count};
 });
 
+
+function reportEscape(value){
+  return String(value===undefined||value===null?'':value).replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+
+function reportJson(value){
+  try{return JSON.stringify(value,null,2)}catch(_){return '{}'}
+}
+
+function buildStandaloneReport(report){
+  report=report&&typeof report==='object'?report:{};
+  const checks=Array.isArray(report.checks)?report.checks:[];
+  const captures=Array.isArray(report.captures)?report.captures:[];
+  const details=report.details&&typeof report.details==='object'?report.details:{};
+  const source=report.source||{};
+  const checkHtml=checks.map(item=>
+    '<tr><td><strong>'+reportEscape(item.title)+'</strong></td><td>'+reportEscape(item.detail)+'</td><td><span class="badge '+(item.ok?'ok':'warn')+'">'+(item.ok?'OK':'À vérifier')+'</span></td></tr>'
+  ).join('');
+  const captureHtml=captures.map(item=>
+    '<figure><figcaption>'+reportEscape(item.name||'Capture')+' · '+reportEscape(item.width)+'×'+reportEscape(item.height)+'</figcaption><img src="'+reportEscape(item.dataUrl||'')+'" alt="'+reportEscape(item.name||'Capture')+'"></figure>'
+  ).join('');
+  const detailSections=Object.keys(details).map(key=>
+    '<details><summary>'+reportEscape(key)+'</summary><pre>'+reportEscape(reportJson(details[key]))+'</pre></details>'
+  ).join('');
+  const rawJson=reportEscape(reportJson(Object.assign({},report,{captures:captures.map(x=>({name:x.name,width:x.width,height:x.height,embedded:!!x.dataUrl}))})));
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>App Interface Studio — Rapport</title><style>'+
+    ':root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#241d2d;background:#f6f3f8}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1180px;margin:auto;padding:28px}header{background:#251d2e;color:#fff;padding:24px;border-radius:16px;margin-bottom:18px}header h1{margin:0 0 6px;font-size:1.7rem}header p{margin:4px 0;color:#d9cede}section{background:#fff;border:1px solid #e3dce8;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 4px 14px #2a173510}h2{font-size:1.05rem;margin:0 0 12px}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #eee8f1;text-align:left;vertical-align:top}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:800;font-size:.75rem}.ok{background:#e8f7ee;color:#24643d}.warn{background:#fff0df;color:#8b541b}.captures{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}figure{margin:0;border:1px solid #e2dbe7;border-radius:12px;overflow:hidden;background:#faf8fb}figcaption{padding:8px 10px;font-weight:750;font-size:.8rem}img{display:block;width:100%;height:auto;background:#eee}details{border:1px solid #e4deea;border-radius:10px;margin:8px 0;overflow:hidden}summary{cursor:pointer;padding:10px 12px;font-weight:800;background:#faf8fb}pre{margin:0;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;background:#19151f;color:#eee;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.meta div{padding:9px;border-radius:9px;background:#f7f4f9}.raw{max-height:360px;overflow:auto}@media print{body{background:#fff}.wrap{max-width:none;padding:0}section,header{box-shadow:none;break-inside:avoid}}'+
+    '</style></head><body><div class="wrap">'+
+    '<header><h1>App Interface Studio — Rapport de contrôle</h1><p>'+reportEscape(source.label||source.url||'Application')+'</p><p>Généré le '+reportEscape(report.generatedAt||new Date().toISOString())+' · Studio '+reportEscape(report.version||'')+'</p></header>'+
+    '<section><h2>Synthèse</h2><div class="meta"><div><strong>Contrôles</strong><br>'+checks.length+'</div><div><strong>Sans anomalie</strong><br>'+checks.filter(x=>x.ok).length+'</div><div><strong>À vérifier</strong><br>'+checks.filter(x=>!x.ok).length+'</div><div><strong>Source</strong><br>'+reportEscape(source.type||'')+'</div></div></section>'+
+    '<section><h2>Contrôles</h2><table><thead><tr><th>Contrôle</th><th>Détail</th><th>État</th></tr></thead><tbody>'+checkHtml+'</tbody></table></section>'+
+    (captureHtml?'<section><h2>Captures de référence</h2><div class="captures">'+captureHtml+'</div></section>':'')+
+    '<section><h2>Détails techniques</h2>'+detailSections+'</section>'+
+    '<section><h2>Données structurées résumées</h2><pre class="raw">'+rawJson+'</pre></section>'+
+    '</div></body></html>';
+}
+
+ipcMain.handle('report:export',async (_event,payload)=>{
+  const report=payload&&payload.report?payload.report:payload;
+  if(!report||typeof report!=='object')return {ok:false,error:'Rapport invalide.'};
+  const result=await dialog.showSaveDialog({
+    title:'Exporter le rapport App Interface Studio',
+    defaultPath:'app-interface-studio-report.html',
+    filters:[{name:'Rapport HTML',extensions:['html']},{name:'Tous les fichiers',extensions:['*']}]
+  });
+  if(result.canceled||!result.filePath)return {ok:false,canceled:true};
+  try{
+    let htmlPath=result.filePath;
+    if(path.extname(htmlPath).toLowerCase()!=='.html')htmlPath+='.html';
+    const jsonPath=htmlPath.replace(/\.html$/i,'.json');
+    fs.writeFileSync(htmlPath,buildStandaloneReport(report),'utf8');
+    fs.writeFileSync(jsonPath,JSON.stringify(report,null,2),'utf8');
+    return {ok:true,htmlPath,jsonPath};
+  }catch(error){
+    return {ok:false,error:'Export du rapport impossible : '+String(error&&error.message||error)};
+  }
+});
+
 ipcMain.handle('layout:save-project',async (_event,project)=>{
   const result=await dialog.showSaveDialog({
     title:'Enregistrer le projet d’interface',
