@@ -1324,6 +1324,16 @@ async function rollbackThroughLocalTransaction(payload){
   const targetIndex=active.findIndex(item=>path.resolve(item.path)===targetPath);
   if(targetIndex<0)return {ok:false,error:'Transaction cible non active.'};
 
+  const planned=active.slice(0,targetIndex+1);
+  for(const item of planned){
+    let tx=null;
+    try{tx=JSON.parse(fs.readFileSync(item.path,'utf8'))}
+    catch(_){return {ok:false,error:'Prévalidation impossible : transaction illisible '+path.basename(item.path)+'.'}};
+    if(!tx.htmlBackupPath||!fs.existsSync(tx.htmlBackupPath))return {ok:false,error:'Prévalidation impossible : sauvegarde HTML manquante pour '+path.basename(item.path)+'.'};
+    if(tx.cssExisted&&(!tx.cssBackupPath||!fs.existsSync(tx.cssBackupPath)))return {ok:false,error:'Prévalidation impossible : sauvegarde CSS manquante pour '+path.basename(item.path)+'.'};
+    if(tx.jsExisted&&(!tx.jsBackupPath||!fs.existsSync(tx.jsBackupPath)))return {ok:false,error:'Prévalidation impossible : sauvegarde JS manquante pour '+path.basename(item.path)+'.'};
+  }
+
   const rolledBack=[];
   for(let i=0;i<=targetIndex;i++){
     const current=listLocalTransactions({source});
