@@ -1521,18 +1521,18 @@ async function smokePortableProjectRoundtrip(){
   const sourceDir=path.join(root,'original-source');
   const externalDir=path.join(root,'external');
   const bundle=path.join(root,'roundtrip.ais-portable');
-  fs.mkdirSync(sourceDir,{recursive:true});
+  fs.mkdirSync(path.join(sourceDir,'dist'),{recursive:true});
   fs.mkdirSync(externalDir,{recursive:true});
-  const htmlPath=path.join(sourceDir,'index.html');
+  const htmlPath=path.join(sourceDir,'dist','index.html');
   const assetPath=path.join(externalDir,'icon.svg');
   const capture='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z2V8AAAAASUVORK5CYII=';
   fs.writeFileSync(htmlPath,'<!doctype html><html><body><div id="portable">Portable</div></body></html>','utf8');
-  fs.writeFileSync(path.join(sourceDir,'app.js'),'document.body.dataset.portable="yes";','utf8');
+  fs.writeFileSync(path.join(sourceDir,'dist','app.js'),'document.body.dataset.portable="yes";','utf8');
   fs.writeFileSync(assetPath,'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><path d="M0 0h4v4H0z"/></svg>','utf8');
   const project={
     format:'app-layout-project',
     version:6,
-    source:{type:'folder',path:sourceDir,root:sourceDir,entry:'index.html',label:'Portable fixture',url:'http://127.0.0.1:1/index.html'},
+    source:{type:'folder',path:sourceDir,root:sourceDir,entry:'dist/index.html',label:'Portable fixture',url:'http://127.0.0.1:1/dist/index.html'},
     snapshot:{items:[{selector:'#portable',mediaAdjusted:true,mediaAssetPath:assetPath,mediaName:'icon.svg'}],generatedNodes:[],selectedSelector:'#portable',selectedSelectors:['#portable']},
     namedVersions:[{id:'portable-v1',name:'Capture portable',createdAt:new Date().toISOString(),project:{snapshot:{items:[]}},thumbnail:capture}],
     hostPreferences:{fontScale:117,density:'compact',autoRecovery:true},
@@ -1555,8 +1555,8 @@ async function smokePortableProjectRoundtrip(){
     if(!loaded.namedVersions||loaded.namedVersions[0].thumbnail!==capture)throw new Error('Capture de version portable perdue.');
     if(!loaded.hostPreferences||loaded.hostPreferences.fontScale!==117||loaded.hostPreferences.density!=='compact')throw new Error('Préférences portables perdues.');
     if(loaded.regressionBaseline!==capture||loaded.referenceCapture!==capture)throw new Error('Captures de référence portables perdues.');
-    const sourceIndex=path.join(bundle,'source','index.html');
-    const sourceScript=path.join(bundle,'source','app.js');
+    const sourceIndex=path.join(bundle,'source','dist','index.html');
+    const sourceScript=path.join(bundle,'source','dist','app.js');
     if(!fs.existsSync(sourceIndex)||!fs.existsSync(sourceScript))throw new Error('Fichiers source portables absents.');
     const serialized=fs.readFileSync(path.join(bundle,'project.json'),'utf8');
     if(serialized.includes(assetPath)||serialized.includes(sourceDir))throw new Error('Le manifest portable contient encore un chemin absolu de la machine source.');
@@ -3749,10 +3749,16 @@ function portableWalkMediaPaths(value,visitor,seen){
   });
 }
 
-function copyPortableSource(root,target){
+function copyPortableSource(root,target,options){
   const skip=new Set(['.git','node_modules','.next','dist','build','coverage','.gradle','.idea','.vscode']);
   const stats={files:0,bytes:0,skipped:[]};
   const maxFiles=20000,maxBytes=300*1024*1024,maxSingle=40*1024*1024;
+  const requiredFile=options&&options.requiredFile?path.resolve(options.requiredFile):'';
+  function containsRequired(candidate){
+    if(!requiredFile)return false;
+    const resolved=path.resolve(candidate);
+    return requiredFile===resolved||requiredFile.startsWith(resolved+path.sep);
+  }
   function walk(src,dst){
     if(stats.files>=maxFiles||stats.bytes>=maxBytes)return;
     fs.mkdirSync(dst,{recursive:true});
@@ -3760,18 +3766,26 @@ function copyPortableSource(root,target){
     try{names=fs.readdirSync(src)}catch(_){return}
     for(const name of names){
       if(stats.files>=maxFiles||stats.bytes>=maxBytes)break;
-      if(skip.has(name)){stats.skipped.push(path.join(src,name));continue}
       const from=path.join(src,name),to=path.join(dst,name);
+      if(skip.has(name)&&!containsRequired(from)){stats.skipped.push(from);continue}
       let stat=null;try{stat=fs.statSync(from)}catch(_){continue}
       if(stat.isDirectory()){walk(from,to);continue}
       if(!stat.isFile())continue;
-      if(stat.size>maxSingle||stats.bytes+stat.size>maxBytes){stats.skipped.push(from);continue}
+      if(stat.size>maxSingle||stats.bytes+stat.size>maxBytes){
+        if(path.resolve(from)===requiredFile)throw new Error('Le fichier d’entrée portable dépasse la limite de '+Math.round(maxSingle/1024/1024)+' Mo.');
+        stats.skipped.push(from);continue
+      }
       fs.mkdirSync(path.dirname(to),{recursive:true});
       fs.copyFileSync(from,to);
       stats.files+=1;stats.bytes+=stat.size;
     }
   }
   walk(root,target);
+  if(requiredFile){
+    const rel=path.relative(path.resolve(root),requiredFile);
+    const copied=path.join(target,rel);
+    if(!fs.existsSync(copied))throw new Error('Le fichier d’entrée du projet n’a pas pu être inclus dans le bundle portable.');
+  }
   return stats;
 }
 
@@ -3830,7 +3844,7 @@ function writePortableBundle(project,bundle){
     if(local&&fs.existsSync(local.root||path.dirname(local.html))){
       const sourceRoot=path.resolve(local.root||path.dirname(local.html));
       const sourceDir=path.join(temp,'source');
-      sourceStats=copyPortableSource(sourceRoot,sourceDir);
+      sourceStats=copyPortableSource(sourceRoot,sourceDir,{requiredFile:path.resolve(local.html)});
       const entryRel=path.relative(sourceRoot,path.resolve(local.html)).replace(/\\/g,'/');
       if(clone.source&&clone.source.type==='html'){
         clone.source.root='portable://source';
