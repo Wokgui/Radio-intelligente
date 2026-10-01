@@ -3318,16 +3318,17 @@ async function analyzeAdvancedCss(source){
   });
 
   variableDefs.forEach((defs,name)=>{
-    const literalRef=new RegExp('var\\(\\s*'+escapeRegex(name)+'(?:\\s*[,\\)])','g');
-    let refs=0;
-    corpus.forEach(doc=>{const m=doc.text.match(literalRef);if(m)refs+=m.length});
-    if(refs===0){
+    const mentionRef=new RegExp(escapeRegex(name),'g');
+    let mentions=0;
+    corpus.forEach(doc=>{const m=doc.text.match(mentionRef);if(m)mentions+=m.length});
+    const definitionMentions=defs.length;
+    if(mentions<=definitionMentions){
       defs.forEach(def=>{
         items.push({
           id:'css-clean-'+(++itemId),kind:'unused-variable',confidence:'high',safe:true,
           file:def.file,relativePath:path.relative(root,def.file),selector:def.selector,context:def.context,
           variable:name,start:def.start,end:def.end,raw:def.raw,
-          reason:'Variable '+name+' définie mais aucune référence var('+name+') trouvée dans les fichiers source analysés.'
+          reason:'Variable '+name+' définie mais aucune autre mention trouvée dans les fichiers source analysés (CSS ou JavaScript).'
         });
       });
     }
