@@ -1944,27 +1944,172 @@
     });
   }
 
-  function parseContainerCondition(condition,rect){
-    const text=String(condition||'').toLowerCase();
-    const width=Number(rect&&rect.width)||0,height=Number(rect&&rect.height)||0;
-    let known=true,ok=true,tests=[];
-    function test(re,actual,op,label){
-      let m;
-      while((m=re.exec(text))){
-        const value=parseFloat(m[1]);
-        if(!Number.isFinite(value))continue;
-        const pass=op==='min'?actual>=value:op==='max'?actual<=value:Math.abs(actual-value)<.75;
-        tests.push({kind:label,actual:actual,expected:value,pass:pass});ok=ok&&pass;
+  function splitLogicalCondition(text,operator){
+    const input=String(text||''),needle=' '+operator+' ',out=[];
+    let depth=0,quote='',start=0;
+    for(let i=0;i<input.length;i+=1){
+      const ch=input[i];
+      if(quote){if(ch===quote&&input[i-1]!=='\\')quote='';continue}
+      if(ch==='"'||ch==="'"){quote=ch;continue}
+      if(ch==='(')depth+=1;else if(ch===')')depth=Math.max(0,depth-1);
+      if(depth===0&&input.slice(i,i+needle.length).toLowerCase()===needle){
+        out.push(input.slice(start,i).trim());start=i+needle.length;i+=needle.length-1;
       }
     }
-    test(/min-width\s*:\s*([\d.]+)px/g,width,'min','min-width');
-    test(/max-width\s*:\s*([\d.]+)px/g,width,'max','max-width');
-    test(/(?<!min-|max-)width\s*:\s*([\d.]+)px/g,width,'eq','width');
-    test(/min-height\s*:\s*([\d.]+)px/g,height,'min','min-height');
-    test(/max-height\s*:\s*([\d.]+)px/g,height,'max','max-height');
-    test(/(?<!min-|max-)height\s*:\s*([\d.]+)px/g,height,'eq','height');
-    if(!tests.length)known=false;
-    return {known:known,active:known?ok:null,tests:tests};
+    out.push(input.slice(start).trim());
+    return out.filter(Boolean);
+  }
+
+  function unwrapCondition(text){
+    let value=String(text||'').trim();
+    let changed=true;
+    while(changed&&value[0]==='('&&value[value.length-1]===')'){
+      changed=false;let depth=0,quote='',wraps=true;
+      for(let i=0;i<value.length;i+=1){
+        const ch=value[i];
+        if(quote){if(ch===quote&&value[i-1]!=='\\')quote='';continue}
+        if(ch==='"'||ch==="'"){quote=ch;continue}
+        if(ch==='(')depth+=1;else if(ch===')')depth-=1;
+        if(depth===0&&i<value.length-1){wraps=false;break}
+      }
+      if(wraps){value=value.slice(1,-1).trim();changed=true}
+    }
+    return value;
+  }
+
+  function containerLengthPx(token,axis,rect,containerEl){
+    const m=String(token||'').trim().match(/^(-?[\d.]+)\s*(px|rem|em|cqw|cqh|cqi|cqb|vw|vh)?$/i);
+    if(!m)return null;
+    const value=parseFloat(m[1]),unit=(m[2]||'px').toLowerCase();
+    if(!Number.isFinite(value))return null;
+    if(unit==='px')return value;
+    const rootSize=parseFloat(getComputedStyle(document.documentElement).fontSize)||16;
+    if(unit==='rem')return value*rootSize;
+    if(unit==='em')return value*(parseFloat(containerEl&&getComputedStyle(containerEl).fontSize)||rootSize);
+    if(unit==='cqw'||unit==='cqi')return value*(Number(rect&&rect.width)||0)/100;
+    if(unit==='cqh'||unit==='cqb')return value*(Number(rect&&rect.height)||0)/100;
+    if(unit==='vw')return value*innerWidth/100;
+    if(unit==='vh')return value*innerHeight/100;
+    return null;
+  }
+
+  function ratioValue(token){
+    const value=String(token||'').trim();
+    const slash=value.match(/^([\d.]+)\s*\/\s*([\d.]+)$/);
+    if(slash&&Number(slash[2]))return Number(slash[1])/Number(slash[2]);
+    const num=parseFloat(value);return Number.isFinite(num)?num:null;
+  }
+
+  function compareNumeric(actual,operator,expected){
+    if(operator==='>')return actual>expected;
+    if(operator==='>=')return actual>=expected;
+    if(operator==='<')return actual<expected;
+    if(operator==='<=')return actual<=expected;
+    if(operator==='='||operator==='==')return Math.abs(actual-expected)<.75;
+    return null;
+  }
+
+  function evaluateContainerAtom(atom,containerEl,rect){
+    const raw=unwrapCondition(atom),text=raw.toLowerCase();
+    const width=Number(rect&&rect.width)||0,height=Number(rect&&rect.height)||0;
+    const tests=[];
+    if(/^style\(/i.test(raw)){
+      const inside=raw.replace(/^style\(/i,'').replace(/\)\s*$/,'').trim();
+      const m=inside.match(/^(--[\w-]+)(?:\s*:\s*(.+))?$/);
+      if(!m||!containerEl)return {known:false,active:null,tests:[{kind:'style',expression:raw,pass:null}]};
+      const actual=getComputedStyle(containerEl).getPropertyValue(m[1]).trim();
+      const expected=m[2]!==undefined?String(m[2]).trim():null;
+      const pass=expected===null?!!actual:actual===expected;
+      return {known:true,active:pass,tests:[{kind:'style',property:m[1],actual:actual,expected:expected,pass:pass}]};
+    }
+
+    let m=text.match(/^(min|max)-(width|height)\s*:\s*(.+)$/);
+    if(m){
+      const axis=m[2],actual=axis==='width'?width:height,expected=containerLengthPx(m[3],axis,rect,containerEl);
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=m[1]==='min'?actual>=expected:actual<=expected;
+      return {known:true,active:pass,tests:[{kind:m[1]+'-'+axis,actual:actual,expected:expected,pass:pass}]};
+    }
+    m=text.match(/^(width|height)\s*:\s*(.+)$/);
+    if(m){
+      const axis=m[1],actual=axis==='width'?width:height,expected=containerLengthPx(m[2],axis,rect,containerEl);
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=Math.abs(actual-expected)<.75;
+      return {known:true,active:pass,tests:[{kind:axis,actual:actual,expected:expected,pass:pass}]};
+    }
+
+    m=text.match(/^(min|max)-aspect-ratio\s*:\s*(.+)$/);
+    if(m){
+      const expected=ratioValue(m[2]),actual=height?width/height:0;
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=m[1]==='min'?actual>=expected:actual<=expected;
+      return {known:true,active:pass,tests:[{kind:m[1]+'-aspect-ratio',actual:actual,expected:expected,pass:pass}]};
+    }
+    m=text.match(/^aspect-ratio\s*:\s*(.+)$/);
+    if(m){
+      const expected=ratioValue(m[1]),actual=height?width/height:0;
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=Math.abs(actual-expected)<.015;
+      return {known:true,active:pass,tests:[{kind:'aspect-ratio',actual:actual,expected:expected,pass:pass}]};
+    }
+
+    m=text.match(/^(width|height)\s*(<=|>=|<|>|=)\s*(.+)$/);
+    if(m){
+      const axis=m[1],actual=axis==='width'?width:height,expected=containerLengthPx(m[3],axis,rect,containerEl);
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=compareNumeric(actual,m[2],expected);
+      return {known:true,active:pass,tests:[{kind:axis+' '+m[2],actual:actual,expected:expected,pass:pass}]};
+    }
+    m=text.match(/^(.+?)\s*(<=|>=|<|>)\s*(width|height)\s*(<=|>=|<|>)\s*(.+)$/);
+    if(m){
+      const axis=m[3],actual=axis==='width'?width:height;
+      const left=containerLengthPx(m[1],axis,rect,containerEl),right=containerLengthPx(m[5],axis,rect,containerEl);
+      if(left===null||right===null)return {known:false,active:null,tests:[]};
+      const leftPass=compareNumeric(left,m[2],actual),rightPass=compareNumeric(actual,m[4],right);
+      return {known:true,active:leftPass&&rightPass,tests:[
+        {kind:'range-left',actual:left,expected:actual,operator:m[2],pass:leftPass},
+        {kind:'range-right',actual:actual,expected:right,operator:m[4],pass:rightPass}
+      ]};
+    }
+    m=text.match(/^(.+?)\s*(<=|>=|<|>)\s*(width|height)$/);
+    if(m){
+      const axis=m[3],actual=axis==='width'?width:height,expected=containerLengthPx(m[1],axis,rect,containerEl);
+      if(expected===null)return {known:false,active:null,tests:[]};
+      const pass=compareNumeric(expected,m[2],actual);
+      return {known:true,active:pass,tests:[{kind:'reverse-'+axis,actual:expected,expected:actual,operator:m[2],pass:pass}]};
+    }
+    return {known:false,active:null,tests:[{kind:'complex',expression:raw,pass:null}]};
+  }
+
+  function combineContainerResults(results,operator){
+    const tests=results.reduce(function(all,r){return all.concat(r.tests||[])},[]);
+    if(operator==='and'){
+      if(results.some(function(r){return r.active===false}))return {known:true,active:false,tests:tests};
+      if(results.every(function(r){return r.known&&r.active===true}))return {known:true,active:true,tests:tests};
+      return {known:false,active:null,tests:tests};
+    }
+    if(results.some(function(r){return r.active===true}))return {known:true,active:true,tests:tests};
+    if(results.every(function(r){return r.known&&r.active===false}))return {known:true,active:false,tests:tests};
+    return {known:false,active:null,tests:tests};
+  }
+
+  function evaluateContainerExpression(expression,containerEl,rect){
+    const raw=unwrapCondition(expression);
+    const orParts=splitLogicalCondition(raw,'or');
+    if(orParts.length>1)return combineContainerResults(orParts.map(function(x){return evaluateContainerExpression(x,containerEl,rect)}),'or');
+    const andParts=splitLogicalCondition(raw,'and');
+    if(andParts.length>1)return combineContainerResults(andParts.map(function(x){return evaluateContainerExpression(x,containerEl,rect)}),'and');
+    if(/^not\s+/i.test(raw)){
+      const inner=evaluateContainerExpression(raw.replace(/^not\s+/i,''),containerEl,rect);
+      return {known:inner.known,active:inner.known?!inner.active:null,tests:(inner.tests||[]).concat([{kind:'not',pass:inner.known?!inner.active:null}])};
+    }
+    return evaluateContainerAtom(raw,containerEl,rect);
+  }
+
+  function parseContainerCondition(condition,rect,containerEl){
+    const result=evaluateContainerExpression(String(condition||''),containerEl,rect);
+    result.expression=String(condition||'');
+    return result;
   }
 
   function inspectContainerQueries(){
@@ -1999,7 +2144,7 @@
             return null;
           })();
           const r=targetContainer&&targetContainer.getBoundingClientRect();
-          const condition=parseContainerCondition(rule.conditionText||'',r);
+          const condition=parseContainerCondition(rule.conditionText||'',r,targetContainer);
           let matchedSelector=false,selectors=[];
           try{
             Array.from(rule.cssRules||[]).forEach(function(inner){
