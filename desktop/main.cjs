@@ -2227,6 +2227,28 @@ async function smokeCascadeFixtures(){
   }finally{try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}}
 }
 if(smokeMode)ipcMain.handle('smoke:cascade-fixtures',async ()=>smokeCascadeFixtures());
+async function smokeScenarioFixture(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-scenario-smoke-'));
+  let server=null;
+  try{
+    const htmlPath=path.join(root,'index.html');
+    fs.writeFileSync(htmlPath,'<!doctype html><html><body><input id="name"><button id="go" onclick="document.getElementById(\'out\').textContent=document.getElementById(\'name\').value">Go</button><div id="out"></div></body></html>','utf8');
+    server=serveStatic(root);const base=await listen(server);
+    const source={type:'folder',path:root,root,entry:'index.html',url:base+'/index.html',label:'scenario fixture'};
+    const actions=[
+      {type:'input',selector:'#name',value:'Studio',waitAfter:30},
+      {type:'click',selector:'#go',waitAfter:40}
+    ];
+    const result=await replayScenarioAtConfig(source,'',actions,{name:'fixture',width:412,height:915});
+    if(!result.ok)throw new Error('Rejeu fixture échoué.');
+    return {ok:true,steps:result.steps.length,issues:result.issues.length};
+  }finally{
+    await closeHttpServer(server);
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+if(smokeMode)ipcMain.handle('smoke:scenario-fixture',async ()=>smokeScenarioFixture());
+
 
 async function profileSourcePerformance(source,css){
   const target=normalizeUrl(source&&source.url);
@@ -2295,6 +2317,56 @@ async function profileSourcePerformance(source,css){
 }
 
 ipcMain.handle('performance:profile',async (_event,payload)=>profileSourcePerformance(payload&&payload.source,payload&&payload.css));
+async function testNetworkProfile(source,css,profile){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)return {ok:false,error:'Source invalide.'};
+  const profiles={
+    slow3g:{label:'3G lent',offline:false,latency:400,downloadThroughput:400*1024/8,uploadThroughput:200*1024/8},
+    slow4g:{label:'4G lente',offline:false,latency:150,downloadThroughput:1600*1024/8,uploadThroughput:750*1024/8},
+    offline:{label:'Hors ligne',offline:true,latency:0,downloadThroughput:0,uploadThroughput:0},
+    imagesBlocked:{label:'Images bloquées',offline:false,latency:50,downloadThroughput:4*1024*1024/8,uploadThroughput:2*1024*1024/8,blockImages:true}
+  };
+  const cfg=profiles[profile]||profiles.slow3g;
+  const win=new BrowserWindow({show:false,width:412,height:915,useContentSize:true,frame:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}});
+  let attached=false;
+  try{
+    win.webContents.debugger.attach('1.3');attached=true;
+    await win.webContents.debugger.sendCommand('Network.enable');
+    if(cfg.blockImages)await win.webContents.debugger.sendCommand('Network.setBlockedURLs',{urls:['*.png','*.jpg','*.jpeg','*.webp','*.gif','*.svg','*.avif']});
+    await win.webContents.debugger.sendCommand('Network.emulateNetworkConditions',{
+      offline:cfg.offline,latency:cfg.latency,downloadThroughput:cfg.downloadThroughput,uploadThroughput:cfg.uploadThroughput,connectionType:cfg.offline?'none':'cellular3g'
+    });
+    const started=Date.now();
+    let loaded=true,error='';
+    try{await win.loadURL(target)}catch(e){loaded=false;error=String(e&&e.message||e)}
+    const loadMs=Date.now()-started;
+    if(loaded){
+      await new Promise(r=>setTimeout(r,Math.min(1800,cfg.offline?100:900)));
+      if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */')try{await win.webContents.insertCSS(String(css),{cssOrigin:'author'})}catch(_){}
+    }
+    let page={usable:false,nodes:0,textLength:0,brokenImages:0,hasErrorUi:false};
+    if(loaded){
+      try{
+        page=await win.webContents.executeJavaScript("(function(){var text=String(document.body&&document.body.innerText||'').trim();var imgs=Array.from(document.images||[]);var errorText=/offline|hors ligne|erreur|error|réessayer|retry|connexion/i.test(text);return {usable:!!(document.body&&document.body.children.length&&text.length>0),nodes:document.getElementsByTagName('*').length,textLength:text.length,brokenImages:imgs.filter(function(i){return i.complete&&!i.naturalWidth}).length,hasErrorUi:errorText};})()",true);
+      }catch(_){}
+    }
+    return {ok:true,profile:profile,label:cfg.label,loaded,loadMs,error,page};
+  }catch(error){
+    return {ok:false,profile:profile,label:cfg.label,error:String(error&&error.message||error)};
+  }finally{
+    try{if(attached&&win.webContents.debugger.isAttached())win.webContents.debugger.detach()}catch(_){}
+    if(!win.isDestroyed())win.destroy();
+  }
+}
+
+ipcMain.handle('network:test',async (_event,payload)=>{
+  const source=payload&&payload.source,css=payload&&payload.css;
+  const requested=Array.isArray(payload&&payload.profiles)&&payload.profiles.length?payload.profiles:['slow4g','slow3g','imagesBlocked','offline'];
+  const results=[];
+  for(const profile of requested.slice(0,6))results.push(await testNetworkProfile(source,css,String(profile)));
+  return {ok:true,results,summary:{tested:results.length,failed:results.filter(x=>!x.ok||(!x.loaded&&x.profile!=='offline')).length,offlineHandled:results.some(x=>x.profile==='offline'&&x.loaded&&x.page&&x.page.usable)}};
+});
+
 ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
   const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
   try{return await runMatrixForSource(source,payload.css)}
