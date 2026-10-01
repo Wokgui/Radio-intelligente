@@ -2222,6 +2222,73 @@ async function smokeCascadeFixtures(){
 }
 if(smokeMode)ipcMain.handle('smoke:cascade-fixtures',async ()=>smokeCascadeFixtures());
 
+async function profileSourcePerformance(source,css){
+  const target=normalizeUrl(source&&source.url);
+  if(!target)return {ok:false,error:'Source invalide.'};
+  const win=new BrowserWindow({
+    show:false,width:412,height:915,useContentSize:true,frame:false,
+    webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}
+  });
+  let attached=false;
+  try{
+    try{
+      win.webContents.debugger.attach('1.3');attached=true;
+      await win.webContents.debugger.sendCommand('Performance.enable');
+      await win.webContents.debugger.sendCommand('Network.enable');
+    }catch(_){}
+    const started=Date.now();
+    await win.loadURL(target);
+    const loadMs=Date.now()-started;
+    await new Promise(r=>setTimeout(r,450));
+    if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */'){
+      await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
+      await new Promise(r=>setTimeout(r,160));
+    }
+    let metricMap={};
+    if(attached){
+      try{
+        const rawMetrics=await win.webContents.debugger.sendCommand('Performance.getMetrics');
+        (rawMetrics.metrics||[]).forEach(item=>{metricMap[item.name]=item.value});
+      }catch(_){}
+    }
+    const page=await win.webContents.executeJavaScript("(function(){var resources=performance.getEntriesByType('resource')||[];var nav=(performance.getEntriesByType('navigation')||[])[0]||null;var paints=performance.getEntriesByType('paint')||[];var images=Array.from(document.images||[]);var imageNaturalBytes=0,brokenImages=0;images.forEach(function(img){if(!img.complete||!img.naturalWidth)brokenImages++;imageNaturalBytes+=Math.max(0,(img.naturalWidth||0)*(img.naturalHeight||0)*4);});var transfer=resources.reduce(function(n,r){return n+(Number(r.transferSize)||0)},0);var encoded=resources.reduce(function(n,r){return n+(Number(r.encodedBodySize)||0)},0);var decoded=resources.reduce(function(n,r){return n+(Number(r.decodedBodySize)||0)},0);var byType={};resources.forEach(function(r){var k=r.initiatorType||'other';if(!byType[k])byType[k]={count:0,transfer:0,duration:0};byType[k].count++;byType[k].transfer+=Number(r.transferSize)||0;byType[k].duration+=Number(r.duration)||0;});return {url:location.href,nodes:document.getElementsByTagName('*').length,images:images.length,brokenImages:brokenImages,estimatedDecodedImageBytes:imageNaturalBytes,resources:resources.length,transferBytes:transfer,encodedBytes:encoded,decodedBytes:decoded,resourceTypes:byType,navigation:nav?{domContentLoaded:nav.domContentLoadedEventEnd,loadEventEnd:nav.loadEventEnd,responseStart:nav.responseStart,responseEnd:nav.responseEnd,duration:nav.duration}:null,paints:paints.map(function(x){return {name:x.name,startTime:x.startTime}})};})()",true);
+    let processMemory=null;
+    try{processMemory=await win.webContents.getProcessMemoryInfo()}catch(_){}
+    const secToMs=name=>Math.round((Number(metricMap[name])||0)*10000)/10;
+    const bytes=name=>Math.round(Number(metricMap[name])||0);
+    const metrics={
+      loadMs,
+      taskDurationMs:secToMs('TaskDuration'),
+      scriptDurationMs:secToMs('ScriptDuration'),
+      layoutDurationMs:secToMs('LayoutDuration'),
+      recalcStyleDurationMs:secToMs('RecalcStyleDuration'),
+      layoutCount:Math.round(Number(metricMap.LayoutCount)||0),
+      recalcStyleCount:Math.round(Number(metricMap.RecalcStyleCount)||0),
+      domNodes:Math.round(Number(metricMap.Nodes)||Number(page.nodes)||0),
+      documents:Math.round(Number(metricMap.Documents)||1),
+      jsHeapUsedBytes:bytes('JSHeapUsedSize'),
+      jsHeapTotalBytes:bytes('JSHeapTotalSize')
+    };
+    const findings=[];
+    if(metrics.domNodes>1500)findings.push({type:'large-dom',value:metrics.domNodes,message:'DOM volumineux : '+metrics.domNodes+' nœuds.'});
+    if(metrics.taskDurationMs>2000)findings.push({type:'task-duration',value:metrics.taskDurationMs,message:'Temps cumulé de tâches Chromium élevé : '+metrics.taskDurationMs+' ms.'});
+    if(metrics.scriptDurationMs>1200)findings.push({type:'script-duration',value:metrics.scriptDurationMs,message:'Temps JavaScript cumulé élevé : '+metrics.scriptDurationMs+' ms.'});
+    if(metrics.layoutCount>100)findings.push({type:'layout-count',value:metrics.layoutCount,message:'Nombre de layouts élevé : '+metrics.layoutCount+'.'});
+    if(metrics.recalcStyleCount>150)findings.push({type:'style-recalc',value:metrics.recalcStyleCount,message:'Nombre de recalculs de style élevé : '+metrics.recalcStyleCount+'.'});
+    if(metrics.jsHeapUsedBytes>100*1024*1024)findings.push({type:'heap',value:metrics.jsHeapUsedBytes,message:'Heap JavaScript utilisé > 100 Mo.'});
+    if(Number(page.transferBytes)>5*1024*1024)findings.push({type:'transfer',value:page.transferBytes,message:'Plus de 5 Mo transférés pour ce chargement.'});
+    if(Number(page.estimatedDecodedImageBytes)>80*1024*1024)findings.push({type:'images-memory',value:page.estimatedDecodedImageBytes,message:'Images potentiellement lourdes une fois décodées en mémoire.'});
+    if(Number(page.brokenImages)>0)findings.push({type:'broken-images',value:page.brokenImages,message:page.brokenImages+' image(s) non chargée(s).'});
+    return {ok:true,metrics,page,processMemory,findings};
+  }catch(error){
+    return {ok:false,error:'Profilage impossible : '+String(error&&error.message||error)};
+  }finally{
+    try{if(attached&&win.webContents.debugger.isAttached())win.webContents.debugger.detach()}catch(_){}
+    if(!win.isDestroyed())win.destroy();
+  }
+}
+
+ipcMain.handle('performance:profile',async (_event,payload)=>profileSourcePerformance(payload&&payload.source,payload&&payload.css));
 ipcMain.handle('capture:test-matrix',async (_event,payload)=>{
   const source=payload&&payload.source;if(!source||!source.url)return {ok:false,error:'Source web requise.'};
   try{return await runMatrixForSource(source,payload.css)}
