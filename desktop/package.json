@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.62.0",
+  "version": "6.63.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec stress internationalisation réversible, audit des polices/fallbacks, audit avancé des animations, Container Queries, stacking contexts et nettoyage CSS avancé",
+  "description": "Éditeur visuel universel Windows avec rapport final HTML/JSON autonome, analyse multi-routes, Container Queries complexes, diagnostics i18n/polices/animations, nettoyage CSS sûr, scénarios persistants et tests de performance/réseau",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
