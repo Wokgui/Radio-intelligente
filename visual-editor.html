@@ -4040,6 +4040,10 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!result||!result.ok){setStatus((result&&result.error)||'Application au code impossible.',true);return}
     patchPreviewModal.classList.remove('visible');
     pendingPatchPayload=null;pendingPatchPreview=null;
+    if(result.noChange){
+      setStatus(result.message||'Le code local est déjà synchronisé.');
+      return;
+    }
     var parts=[];
     if(result.cssApplied||result.cssRemoved)parts.push('CSS');
     if(result.structureApplied||result.structureRemoved)parts.push('structure/DOM');
