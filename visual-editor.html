@@ -1755,7 +1755,6 @@ body.desktop .desktop-badge{display:inline-flex}
   var pendingPatchPreview=null;
   var pendingDirectDiff=null;
   var pendingNativeDiff=null;
-  var pendingCssCleanupPlan=null;
   var pendingDiffKind=null;
   var nativeNodes=[];
   var selectedNativeNode=null;
@@ -4507,6 +4506,9 @@ body.desktop .desktop-badge{display:inline-flex}
     var overridesResult=desktop&&desktop.analyzeOverrides&&['folder','html'].indexOf(currentSource.type)>=0
       ?await desktop.analyzeOverrides(currentSource)
       :null;
+    var advancedCssResult=desktop&&desktop.analyzeCssCleanup&&['folder','html'].indexOf(currentSource.type)>=0
+      ?await desktop.analyzeCssCleanup(currentSource)
+      :null;
     var performanceResult=desktop&&desktop.profilePerformance
       ?await desktop.profilePerformance({source:currentSource,css:project&&project.css||cssOut.value})
       :null;
@@ -4557,6 +4559,13 @@ body.desktop .desktop-badge{display:inline-flex}
         title:'Surcharges historiques',
         detail:overrideItems.length+' règle(s) ou fichier(s) nettoyable(s) en toute sécurité',
         ok:overrideItems.length===0
+      });
+    }
+    if(advancedCssResult&&advancedCssResult.ok){
+      checks.push({
+        title:'Nettoyage CSS avancé',
+        detail:(advancedCssResult.summary&&advancedCssResult.summary.safe||0)+' suppression(s) haute confiance · '+(advancedCssResult.summary&&advancedCssResult.summary.total||0)+' diagnostic(s) total',
+        ok:!(advancedCssResult.summary&&advancedCssResult.summary.safe)
       });
     }
     if(performanceResult&&performanceResult.ok){
