@@ -1,8 +1,8 @@
 {
   "name": "app-interface-studio",
-  "version": "6.59.0",
+  "version": "6.60.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec diagnostics dynamiques MutationObserver/ResizeObserver, profilage Chromium, sélecteurs stables, scénarios utilisateur, audit clavier, cascade CSS moderne et validation responsive",
+  "description": "Éditeur visuel universel Windows avec scénarios persistants rejoués en non-régression, simulation réseau dégradé, référence de performances persistante, diagnostics dynamiques, profilage Chromium et validation responsive",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
