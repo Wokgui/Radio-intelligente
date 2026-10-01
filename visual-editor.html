@@ -3471,7 +3471,7 @@ body.desktop .desktop-badge{display:inline-flex}
         await replayRecordedScenario();
       });
       var del=document.createElement('button');del.className='btn';del.textContent='Supprimer';
-      del.addEventListener('click',function(){namedScenarios.splice(index,1);renderSavedScenarios()});
+      del.addEventListener('click',function(){namedScenarios.splice(index,1);renderSavedScenarios();scheduleRecovery()});
       actions.append(load,replay,del);row.append(text,actions);savedScenarioList.appendChild(row);
     });
   }
@@ -3483,6 +3483,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var record={id:existing>=0?namedScenarios[existing].id:('scenario-'+Date.now()),name:name,createdAt:new Date().toISOString(),actions:JSON.parse(JSON.stringify(recordedScenarioActions))};
     if(existing>=0)namedScenarios[existing]=record;else namedScenarios.push(record);
     renderSavedScenarios();
+    scheduleRecovery();
     scenarioStatus.textContent='Scénario « '+name+' » enregistré dans le projet.';
   }
 
@@ -3774,6 +3775,7 @@ body.desktop .desktop-badge{display:inline-flex}
     referenceOverlay.src=dataUrl;
     referenceOverlay.classList.add('visible');
     applyReferenceComparison();
+    scheduleRecovery();
   }
 
   function toggleReferenceComparison(){
@@ -4344,6 +4346,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var result=await captureCurrentForRegression();
     if(!result||!result.ok){regressionStatus.textContent=result&&result.error||'Capture de référence impossible.';return}
     regressionBaseline=result.dataUrl;
+    scheduleRecovery();
     regressionStatus.textContent='Référence enregistrée pour '+result.width+' × '+result.height+'.';
     regressionDiff.classList.remove('visible');
   }
@@ -4586,6 +4589,7 @@ body.desktop .desktop-badge{display:inline-flex}
     var result=lastPerformanceProfile&&lastPerformanceProfile.ok?lastPerformanceProfile:await runPerformanceProfile();
     if(!result||!result.ok)return;
     performanceBaseline=performanceSnapshot(result);
+    scheduleRecovery();
     performanceRegressionStatus.textContent='Référence de performances définie maintenant.';
   }
 
@@ -5871,6 +5875,7 @@ body.desktop .desktop-badge{display:inline-flex}
   document.getElementById('clearReferenceBtn').addEventListener('click',function(){
     referenceOverlay.classList.remove('visible');
     referenceOverlay.removeAttribute('src');
+    scheduleRecovery();
     applyReferenceComparison();
     compareStatus.textContent='Comparaison retirée.';
   });
