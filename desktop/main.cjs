@@ -3079,6 +3079,7 @@ async function analyzeSourceRoutes(source,options){
   const selectors=Array.isArray(options.selectors)?Array.from(new Set(options.selectors.map(String).filter(Boolean))).slice(0,180):[];
   const queue=[],queued=new Set(),pages=[],selectorUsage={};
   const local=localSourceEntry(source);
+  const followDiscoveredLinks=!!local||options.followRemoteLinks===true;
   function enqueue(url,kind){
     if(!url||queue.length+pages.length>=maxRoutes*4)return;
     let normalized='';
@@ -3130,7 +3131,7 @@ async function analyzeSourceRoutes(source,options){
         if(!selectorUsage[selector])selectorUsage[selector]=[];
         if(!selectorUsage[selector].includes(page.url))selectorUsage[selector].push(page.url);
       });
-      (data.links||[]).forEach(url=>enqueue(url,'link'));
+      if(followDiscoveredLinks)(data.links||[]).forEach(url=>enqueue(url,'link'));
     }
     return {
       ok:true,pages,selectorUsage,
@@ -3139,7 +3140,8 @@ async function analyzeSourceRoutes(source,options){
         failed:pages.filter(x=>!x.ok).length,
         htmlFiles:pages.filter(x=>x.kind==='html-file').length,
         links:pages.filter(x=>x.kind==='link').length,
-        selectorsChecked:selectors.length
+        selectorsChecked:selectors.length,
+        remoteLinkDiscoverySkipped:!local&&!followDiscoveredLinks
       }
     };
   }catch(error){
