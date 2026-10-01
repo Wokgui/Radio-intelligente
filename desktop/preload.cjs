@@ -55,7 +55,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   smokeTransactionRoundtrip: () => ipcRenderer.invoke('smoke:transaction-roundtrip'),
   smokePortableRoundtrip: () => ipcRenderer.invoke('smoke:portable-roundtrip'),
   smokeCascadeFixtures: () => ipcRenderer.invoke('smoke:cascade-fixtures'),
-  smokeScenarioFixture: () => ipcRenderer.invoke('smoke:scenario-fixture')
+  smokeScenarioFixture: () => ipcRenderer.invoke('smoke:scenario-fixture'),
+  smokeCssCleanupFixture: () => ipcRenderer.invoke('smoke:css-cleanup-fixture')
 });
 
 // Compatibilité avec la v1.
