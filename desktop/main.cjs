@@ -1569,17 +1569,46 @@ async function smokePortableProjectRoundtrip(){
 if(smokeMode)ipcMain.handle('smoke:portable-roundtrip',async ()=>smokePortableProjectRoundtrip());
 
 function generatedAssetReferences(local){
-  const dir=path.dirname(local.html);
-  const files=[
-    local.html,
-    path.join(dir,'app-interface-studio.generated.css'),
-    path.join(dir,'app-interface-studio.generated.js')
-  ].filter(fs.existsSync);
+  const root=path.resolve(local.root||path.dirname(local.html));
+  const assetDir=path.resolve(path.dirname(local.html),'app-interface-studio-assets');
+  const extensions=new Set(['.html','.htm','.css','.js','.mjs','.cjs','.ts','.tsx','.jsx','.vue','.svelte','.json']);
+  const files=[],seen=new Set();
+  const maxFiles=3000,maxBytesPerFile=5*1024*1024;
+  let truncated=false;
+
+  function addFile(candidate){
+    const resolved=path.resolve(candidate);
+    if(seen.has(resolved))return;
+    if(files.length>=maxFiles){truncated=true;return}
+    let stat=null;
+    try{stat=fs.statSync(resolved)}catch(_){return}
+    if(!stat.isFile()||stat.size>maxBytesPerFile||!extensions.has(path.extname(resolved).toLowerCase()))return;
+    seen.add(resolved);files.push(resolved);
+  }
+
+  function walk(dir,depth){
+    if(depth>12||files.length>=maxFiles){truncated=true;return}
+    let entries=[];
+    try{entries=fs.readdirSync(dir,{withFileTypes:true})}catch(_){return}
+    for(const entry of entries){
+      if(files.length>=maxFiles){truncated=true;break}
+      if(['node_modules','.git','.gradle','.idea','.vscode','coverage'].includes(entry.name))continue;
+      const candidate=path.join(dir,entry.name);
+      if(path.resolve(candidate)===assetDir)continue;
+      if(entry.isDirectory())walk(candidate,depth+1);
+      else addFile(candidate);
+    }
+  }
+
+  walk(root,0);
+  [local.html,path.join(path.dirname(local.html),'app-interface-studio.generated.css'),path.join(path.dirname(local.html),'app-interface-studio.generated.js')].forEach(addFile);
+
   const used=new Set();
   const pattern=/app-interface-studio-assets\/([^"'\x60)\s?#]+)/g;
-  files.forEach(file=>{
+  files.forEach(sourceFile=>{
     let content='';
-    try{content=fs.readFileSync(file,'utf8')}catch(_){return}
+    try{content=fs.readFileSync(sourceFile,'utf8')}catch(_){return}
+    pattern.lastIndex=0;
     let match;
     while((match=pattern.exec(content))){
       let decoded=match[1];
@@ -1588,6 +1617,8 @@ function generatedAssetReferences(local){
       if(safe===decoded&&safe)used.add(safe);
     }
   });
+  used.scannedFiles=files.length;
+  used.truncated=truncated;
   return used;
 }
 
