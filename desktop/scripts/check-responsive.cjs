@@ -653,4 +653,30 @@ for(const block of blocks)new Function(block);
 const runtimeBlocks=[...runtime.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
 for(const block of runtimeBlocks)new Function(block);
 
-console.log('App Interface Studio 6.49 feature checks passed.');
+
+expect(html,'id="i18nAuditList"','internationalization audit panel');
+expect(html,'id="fontAuditList"','font audit panel');
+expect(html,'id="animationAuditList"','animation audit panel');
+expect(html,'data-stress="rtl"','RTL stress mode');
+expect(html,'data-stress="german-long"','German long-text stress mode');
+expect(engine,"function inspectInternationalization()","internationalization audit engine");
+expect(engine,"async function inspectFonts()","font audit engine");
+expect(engine,"function inspectAnimations()","advanced animation audit engine");
+expect(engine,"function splitLogicalCondition(text,operator)","container logical condition parser");
+expect(engine,"function evaluateContainerExpression(expression,containerEl,rect)","advanced container query evaluator");
+expect(engine,"style(--variant","container style-query support marker");
+expect(html,'id="routeAnalyzeList"','multi-route analysis panel');
+expect(html,'id="exportFinalReportBtn"','final report export button');
+expect(main,"async function analyzeSourceRoutes(source,options)","bounded multi-route crawler");
+expect(main,"ipcMain.handle('routes:analyze'","multi-route IPC");
+expect(preload,"analyzeRoutes: payload => ipcRenderer.invoke('routes:analyze', payload)","multi-route preload bridge");
+expect(main,"function buildStandaloneReport(report)","standalone report generator");
+expect(main,"ipcMain.handle('report:export'","report export IPC");
+expect(preload,"exportReport: payload => ipcRenderer.invoke('report:export', payload)","report export preload bridge");
+expect(main,"async function smokeRouteFixture()","route smoke fixture");
+expect(main,"function smokeReportFixture()","report smoke fixture");
+expect(preload,"smokeRouteFixture: () => ipcRenderer.invoke('smoke:route-fixture')","route smoke bridge");
+expect(preload,"smokeReportFixture: () => ipcRenderer.invoke('smoke:report-fixture')","report smoke bridge");
+expect(main,"kind:sameFile?'exact-duplicate-rule':'cross-file-duplicate-rule'","cross-file CSS duplicate safety");
+
+console.log('App Interface Studio 6.63 feature checks passed.');
