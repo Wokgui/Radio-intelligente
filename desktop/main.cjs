@@ -1916,9 +1916,10 @@ ipcMain.handle('source:prepare-native-edit',async (_event,payload)=>{
 ipcMain.handle('source:apply-native-edit',async (_event,payload)=>{
   const source=payload&&payload.source,file=String(payload&&payload.file||'');
   if(!source||source.type!=='android-project'||!isPathInside(source.path,file))return {ok:false,error:'Patch Android invalide.'};
-  let before='',backup='';
+  let before='',backup='',loadedBefore=false;
   try{
     before=fs.readFileSync(file,'utf8');
+    loadedBefore=true;
     if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier Android a changé. Reprépare le diff.'};
     backup=file+'.ais-backup-'+new Date().toISOString().replace(/[:.]/g,'-');
     fs.copyFileSync(file,backup);
@@ -1926,7 +1927,7 @@ ipcMain.handle('source:apply-native-edit',async (_event,payload)=>{
     return {ok:true,file,backupPath:backup};
   }catch(error){
     let rolledBack=false;
-    if(before){
+    if(loadedBefore){
       try{fs.writeFileSync(file,before,'utf8');rolledBack=true}catch(_){}
     }
     return {ok:false,error:String(error&&error.message||error),rolledBack};
@@ -3251,7 +3252,8 @@ ipcMain.handle('css-cleanup:apply',async (_event,payload)=>{
       fs.copyFileSync(item.file,item.backup);backups.push(item.backup);
     }
     for(const item of staged){
-      fs.writeFileSync(item.file,item.after,'utf8');written.push(item.file);
+      written.push(item.file);
+      fs.writeFileSync(item.file,item.after,'utf8');
     }
     return {ok:true,changed:staged.length,backups};
   }catch(error){
@@ -3295,9 +3297,9 @@ ipcMain.handle('source:cleanup-overrides',async (_event,payload)=>{
     }
     for(const item of staged){fs.copyFileSync(item.file,item.backup);backups.push(item.backup)}
     for(const item of staged){
+      changedFiles.push(item.file);
       if(item.removeWhole){fs.unlinkSync(item.file);removed.push(path.relative(local.root,item.file))}
       else fs.writeFileSync(item.file,item.after,'utf8');
-      changedFiles.push(item.file);
     }
     return {ok:true,removed,backups,changed:selected.length};
   }catch(error){
@@ -3341,8 +3343,8 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
         const href='./'+path.relative(path.dirname(local.html),file).replace(/\\/g,'/');
         const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
         html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,'  '+link+'\n</head>'):link+'\n'+html;
-        fs.writeFileSync(local.html,html,'utf8');
         htmlTouched=true;
+        fs.writeFileSync(local.html,html,'utf8');
       }
     }
     return {ok:true,file,backupPath,htmlBackupPath,created:!existedBefore};
