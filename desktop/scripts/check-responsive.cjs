@@ -501,7 +501,7 @@ expect(html,"async function cleanGeneratedAssetsNow()","manual asset cleanup flo
 expect(css,".ve-media-focal","focal handle styling");
 expect(css,"body.ve-media-drop-ready","image drop visual state");
 expect(main,"function auditProjectAssets(local)","asset audit engine");
-expect(main,"function collectProjectImages(root,limit)","bounded project image scan");
+expect(main,"function collectProjectImages(root,limit,options)","bounded project image scan");
 expect(main,"function svgIntrinsicSize(file)","SVG intrinsic dimension audit");
 expect(main,"source:audit-assets","asset audit IPC");
 expect(preload,"auditAssets: source => ipcRenderer.invoke('source:audit-assets', { source })","asset audit bridge");
