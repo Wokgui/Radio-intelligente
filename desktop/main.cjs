@@ -337,13 +337,14 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
-            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','containerDiagnosticList','stackingDiagnosticList','overrideCleanupList','advancedCssList','componentTestStatus','finalControlList','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','i18nAuditList','fontAuditList','animationAuditList','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
+            const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','containerDiagnosticList','stackingDiagnosticList','overrideCleanupList','advancedCssList','routeAnalyzeList','componentTestStatus','finalControlList','exportFinalReportBtn','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','i18nAuditList','fontAuditList','animationAuditList','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
             if(missing.length)return {ok:false,error:'Éléments UI manquants',missing:missing};
             const sourceSafetyBridge=typeof api.validateDirectEdit==='function'&&typeof api.analyzeOverrides==='function'&&typeof api.cleanupOverrides==='function'&&typeof api.analyzeCssCleanup==='function'&&typeof api.prepareCssCleanup==='function'&&typeof api.applyCssCleanup==='function';
             const interactionBridge=typeof api.replayScenario==='function'&&typeof api.keyboardAccessibilityAudit==='function'&&typeof api.smokeCascadeFixtures==='function';
             const performanceBridge=typeof api.profilePerformance==='function'&&typeof api.testNetwork==='function'&&typeof api.smokeScenarioFixture==='function';
+            const reportBridge=typeof api.analyzeRoutes==='function'&&typeof api.exportReport==='function'&&typeof api.smokeRouteFixture==='function'&&typeof api.smokeReportFixture==='function';
             const info=await api.appInfo();
             const demo=await api.openDemo();
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
@@ -360,13 +361,16 @@ function createWindow(){
             const cascadeFixtures=await api.smokeCascadeFixtures();
             const scenarioFixture=await api.smokeScenarioFixture();
             const cssCleanupFixture=await api.smokeCssCleanupFixture();
+            const routeFixture=await api.smokeRouteFixture();
+            const reportFixture=await api.smokeReportFixture();
             return {
-              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok),
+              ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&reportBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok&&routeFixture&&routeFixture.ok&&reportFixture&&reportFixture.ok),
               version:info&&info.version,
               bridge:true,
               sourceSafetyBridge:sourceSafetyBridge,
               interactionBridge:interactionBridge,
               performanceBridge:performanceBridge,
+              reportBridge:reportBridge,
               ui:true,
               demoUrl:demo.source.url,
               captureOk:captureOk,
@@ -381,7 +385,9 @@ function createWindow(){
               portableRoundtrip:portableRoundtrip,
               cascadeFixtures:cascadeFixtures,
               scenarioFixture:scenarioFixture,
-              cssCleanupFixture:cssCleanupFixture
+              cssCleanupFixture:cssCleanupFixture,
+              routeFixture:routeFixture,
+              reportFixture:reportFixture
             };
           })()
         `,true);
@@ -2999,11 +3005,17 @@ async function analyzeAdvancedCss(source){
       if(seenSignatures.has(sig)){
         const first=seenSignatures.get(sig);
         const start=Math.max(0,Number(block.preludeStart)||0);
+        const sameFile=path.resolve(first.file)===path.resolve(doc.file);
         items.push({
-          id:'css-clean-'+(++itemId),kind:'exact-duplicate-rule',confidence:'high',safe:true,
+          id:'css-clean-'+(++itemId),
+          kind:sameFile?'exact-duplicate-rule':'cross-file-duplicate-rule',
+          confidence:sameFile?'high':'medium',
+          safe:sameFile,
           file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
           raw:doc.text.slice(start,block.close+1),
-          reason:'Règle strictement dupliquée avec '+path.relative(root,first.file)+' dans le même contexte CSS.'
+          reason:sameFile
+            ?'Règle strictement dupliquée plus haut dans le même fichier et le même contexte CSS.'
+            :'Règle identique à '+path.relative(root,first.file)+' mais dans un autre fichier ; elle peut être chargée sur une autre route, donc suppression automatique interdite.'
         });
       }else seenSignatures.set(sig,{file:doc.file,block});
 
