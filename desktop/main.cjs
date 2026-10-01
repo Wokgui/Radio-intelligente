@@ -2596,6 +2596,33 @@ function smokeReportFixture(){
 }
 if(smokeMode)ipcMain.handle('smoke:report-fixture',async ()=>smokeReportFixture());
 
+function smokeGeneratedAssetCleanupFixture(){
+  const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-asset-cleanup-smoke-'));
+  try{
+    const htmlPath=path.join(root,'index.html');
+    const cssPath=path.join(root,'styles.css');
+    const assetDir=path.join(root,'app-interface-studio-assets');
+    fs.mkdirSync(assetDir,{recursive:true});
+    const keep=path.join(assetDir,'keep.png'),orphan=path.join(assetDir,'orphan.png');
+    fs.writeFileSync(htmlPath,'<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body></body></html>','utf8');
+    fs.writeFileSync(cssPath,'.hero{background-image:url("./app-interface-studio-assets/keep.png")}','utf8');
+    fs.writeFileSync(keep,Buffer.from([1,2,3]));
+    fs.writeFileSync(orphan,Buffer.from([4,5,6]));
+    const local={root,html:htmlPath};
+    const refs=generatedAssetReferences(local);
+    if(!refs.has('keep.png'))throw new Error('Asset référencé dans un CSS source non détecté.');
+    const cleanup=cleanupGeneratedAssets(local);
+    if(!fs.existsSync(keep))throw new Error('Asset source référencé supprimé à tort.');
+    if(fs.existsSync(orphan))throw new Error('Asset orphelin non supprimé.');
+    if(cleanup.scanTruncated)throw new Error('Fixture asset marquée tronquée à tort.');
+    return {ok:true,kept:cleanup.kept.length,removed:cleanup.removed.length,scannedFiles:cleanup.scannedFiles};
+  }finally{
+    try{fs.rmSync(root,{recursive:true,force:true})}catch(_){}
+  }
+}
+if(smokeMode)ipcMain.handle('smoke:asset-cleanup-fixture',async ()=>smokeGeneratedAssetCleanupFixture());
+
+
 
 
 
