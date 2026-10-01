@@ -1944,6 +1944,152 @@
     });
   }
 
+  function parseContainerCondition(condition,rect){
+    const text=String(condition||'').toLowerCase();
+    const width=Number(rect&&rect.width)||0,height=Number(rect&&rect.height)||0;
+    let known=true,ok=true,tests=[];
+    function test(re,actual,op,label){
+      let m;
+      while((m=re.exec(text))){
+        const value=parseFloat(m[1]);
+        if(!Number.isFinite(value))continue;
+        const pass=op==='min'?actual>=value:op==='max'?actual<=value:Math.abs(actual-value)<.75;
+        tests.push({kind:label,actual:actual,expected:value,pass:pass});ok=ok&&pass;
+      }
+    }
+    test(/min-width\s*:\s*([\d.]+)px/g,width,'min','min-width');
+    test(/max-width\s*:\s*([\d.]+)px/g,width,'max','max-width');
+    test(/(?<!min-|max-)width\s*:\s*([\d.]+)px/g,width,'eq','width');
+    test(/min-height\s*:\s*([\d.]+)px/g,height,'min','min-height');
+    test(/max-height\s*:\s*([\d.]+)px/g,height,'max','max-height');
+    test(/(?<!min-|max-)height\s*:\s*([\d.]+)px/g,height,'eq','height');
+    if(!tests.length)known=false;
+    return {known:known,active:known?ok:null,tests:tests};
+  }
+
+  function inspectContainerQueries(){
+    if(!selected){emit('container-diagnostic',{selected:false});return}
+    const element=selected;
+    const ancestors=[];
+    let node=element.parentElement,container=null;
+    while(node&&node.nodeType===1){
+      const cs=getComputedStyle(node);
+      const type=String(cs.containerType||cs.getPropertyValue('container-type')||'normal').trim()||'normal';
+      const name=String(cs.containerName||cs.getPropertyValue('container-name')||'none').trim()||'none';
+      const rect=node.getBoundingClientRect();
+      const entry={selector:selectorFor(node),type:type,name:name,width:Math.round(rect.width*10)/10,height:Math.round(rect.height*10)/10};
+      ancestors.push(entry);
+      if(!container&&type!=='normal')container={element:node,entry:entry,rect:rect};
+      node=node.parentElement;
+    }
+    const rules=[],unreadable=[];
+    function walk(cssRules,href,context){
+      Array.from(cssRules||[]).forEach(function(rule){
+        const ctor=String(rule&&rule.constructor&&rule.constructor.name||'');
+        if(/CSSContainerRule/.test(ctor)){
+          const ruleName=String(rule.name||rule.containerName||'').trim();
+          const targetContainer=(function(){
+            let n=element.parentElement;
+            while(n&&n.nodeType===1){
+              const cs=getComputedStyle(n),type=String(cs.containerType||cs.getPropertyValue('container-type')||'normal').trim();
+              const name=String(cs.containerName||cs.getPropertyValue('container-name')||'none').trim();
+              if(type!=='normal'&&(!ruleName||ruleName==='none'||name.split(/\s+/).includes(ruleName)))return n;
+              n=n.parentElement;
+            }
+            return null;
+          })();
+          const r=targetContainer&&targetContainer.getBoundingClientRect();
+          const condition=parseContainerCondition(rule.conditionText||'',r);
+          let matchedSelector=false,selectors=[];
+          try{
+            Array.from(rule.cssRules||[]).forEach(function(inner){
+              if(inner.type===1&&inner.selectorText){
+                splitTopLevelSelectorList(inner.selectorText).forEach(function(sel){
+                  if(selectorMatches(element,sel)){matchedSelector=true;selectors.push(sel)}
+                });
+              }
+            });
+          }catch(_){}
+          if(matchedSelector){
+            rules.push({
+              href:href||'',context:context||'',name:ruleName||'',
+              condition:String(rule.conditionText||''),
+              selectors:Array.from(new Set(selectors)),
+              containerSelector:targetContainer?selectorFor(targetContainer):'',
+              containerWidth:r?Math.round(r.width*10)/10:null,
+              containerHeight:r?Math.round(r.height*10)/10:null,
+              containerType:targetContainer?String(getComputedStyle(targetContainer).containerType||getComputedStyle(targetContainer).getPropertyValue('container-type')||'normal'):'',
+              active:condition.active,known:condition.known,tests:condition.tests
+            });
+          }
+          try{walk(rule.cssRules,href,(context?context+' · ':'')+'@container '+String(rule.conditionText||''))}catch(_){}
+          return;
+        }
+        if(rule.cssRules){
+          let active=true,next=context||'';
+          if(rule.type===4&&rule.conditionText){try{active=matchMedia(rule.conditionText).matches}catch(_){active=true};next=(next?next+' · ':'')+'@media '+rule.conditionText}
+          if(active)try{walk(rule.cssRules,href,next)}catch(_){}
+        }
+      });
+    }
+    Array.from(document.styleSheets||[]).forEach(function(sheet){
+      try{walk(sheet.cssRules,sheet.href||'','')}catch(error){unreadable.push({href:sheet.href||'(inline)',reason:String(error&&error.name||'accès refusé')})}
+    });
+    emit('container-diagnostic',{
+      selected:true,selector:selectorFor(element),
+      nearestContainer:container?container.entry:null,
+      ancestors:ancestors.slice(0,16),rules:rules.slice(0,80),unreadable:unreadable.slice(0,20)
+    });
+  }
+
+  function stackingContextReason(el,cs){
+    if(el===document.documentElement)return 'racine du document';
+    const position=cs.position,z=cs.zIndex;
+    if((position==='absolute'||position==='relative')&&z!=='auto')return 'position '+position+' + z-index '+z;
+    if(position==='fixed'||position==='sticky')return 'position '+position;
+    if(Number(cs.opacity)<1)return 'opacity '+cs.opacity;
+    if(cs.transform&&cs.transform!=='none')return 'transform';
+    if(cs.filter&&cs.filter!=='none')return 'filter';
+    if(cs.perspective&&cs.perspective!=='none')return 'perspective';
+    if(cs.mixBlendMode&&cs.mixBlendMode!=='normal')return 'mix-blend-mode '+cs.mixBlendMode;
+    if(cs.isolation==='isolate')return 'isolation:isolate';
+    if(/paint|layout/.test(cs.contain||''))return 'contain '+cs.contain;
+    if(/transform|opacity|filter|perspective/.test(cs.willChange||''))return 'will-change '+cs.willChange;
+    return '';
+  }
+
+  function inspectStackingContext(){
+    if(!selected){emit('stacking-diagnostic',{selected:false});return}
+    const chain=[];let node=selected,depth=0;
+    while(node&&node.nodeType===1&&depth++<24){
+      const cs=getComputedStyle(node),reason=stackingContextReason(node,cs);
+      if(reason||node===selected){
+        chain.push({
+          selector:selectorFor(node),reason:reason||'élément sélectionné',
+          position:cs.position,zIndex:cs.zIndex,opacity:cs.opacity,transform:cs.transform,
+          filter:cs.filter,isolation:cs.isolation,contain:cs.contain
+        });
+      }
+      node=node.parentElement;
+    }
+    const rect=selected.getBoundingClientRect();
+    const x=Math.max(0,Math.min(innerWidth-1,rect.left+rect.width/2));
+    const y=Math.max(0,Math.min(innerHeight-1,rect.top+rect.height/2));
+    let pile=[];
+    try{
+      pile=(document.elementsFromPoint?document.elementsFromPoint(x,y):[]).filter(function(el){return !isEditorNode(el)}).slice(0,16).map(function(el,index){
+        const cs=getComputedStyle(el);
+        return {selector:selectorFor(el),index:index,selected:el===selected||el.contains(selected),zIndex:cs.zIndex,position:cs.position,context:stackingContextReason(el,cs)};
+      });
+    }catch(_){}
+    const selectedIndex=pile.findIndex(function(x){return x.selected});
+    const blockers=selectedIndex>0?pile.slice(0,selectedIndex):[];
+    emit('stacking-diagnostic',{
+      selected:true,selector:selectorFor(selected),chain:chain,pile:pile,blockers:blockers,
+      point:{x:Math.round(x),y:Math.round(y)},computedZ:getComputedStyle(selected).zIndex
+    });
+  }
+
   function parentLayoutPayload(element) {
     const parent = element && element.parentElement;
     if (!parent || parent === document.body || parent === document.documentElement) {
@@ -5583,6 +5729,8 @@
     if (data.type === 'get-components') emitComponents();
     if (data.type === 'test-components') testComponentIntegrity();
     if (data.type === 'get-css-cascade') inspectCssCascade();
+    if (data.type === 'get-container-diagnostic') inspectContainerQueries();
+    if (data.type === 'get-stacking-diagnostic') inspectStackingContext();
     if (data.type === 'get-selection-groups') emitSelectionGroups();
     if (data.type === 'selection-group-create') createSelectionGroup(payload.name);
     if (data.type === 'selection-group-select') selectSelectionGroup(payload.name);
