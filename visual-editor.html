@@ -4625,12 +4625,40 @@ body.desktop .desktop-badge{display:inline-flex}
     text.append(strong,small);row.append(text,badge);return row;
   }
 
+  function waitForFinalAuditRefresh(previous,timeoutMs){
+    var started=Date.now();
+    return new Promise(function(resolve){
+      function status(){
+        var missing=[];
+        if(lastAuditPayload===previous.audit)missing.push('audit');
+        if(lastConsistencyPayload===previous.consistency)missing.push('cohérence');
+        if(lastComponentTestsPayload===previous.components)missing.push('composants');
+        if(lastI18nPayload===previous.i18n)missing.push('i18n');
+        if(lastFontAuditPayload===previous.fonts)missing.push('polices');
+        if(lastAnimationAuditPayload===previous.animations)missing.push('animations');
+        if(!missing.length)return resolve({ok:true,missing:[],waitedMs:Date.now()-started});
+        if(Date.now()-started>=timeoutMs)return resolve({ok:false,missing:missing,waitedMs:Date.now()-started});
+        setTimeout(status,80);
+      }
+      status();
+    });
+  }
+
   async function runFinalControl(){
     if(!currentSource){finalControlStatus.textContent='Charge d’abord une application.';return}
     finalControlStatus.textContent='Contrôle en cours…';
     finalControlList.innerHTML='';
+    exportFinalReportBtn.disabled=true;
+    var previousAudits={
+      audit:lastAuditPayload,
+      consistency:lastConsistencyPayload,
+      components:lastComponentTestsPayload,
+      i18n:lastI18nPayload,
+      fonts:lastFontAuditPayload,
+      animations:lastAnimationAuditPayload
+    };
     post('audit');post('design-consistency');post('test-components');post('i18n-audit');post('font-audit');post('animation-audit');
-    await new Promise(function(resolve){setTimeout(resolve,750)});
+    var auditRefresh=await waitForFinalAuditRefresh(previousAudits,6000);
     var project=await requestProject();
     var matrixResult=desktop&&desktop.runTestMatrix
       ?await desktop.runTestMatrix({source:currentSource,css:project&&project.css||cssOut.value})
@@ -4669,6 +4697,13 @@ body.desktop .desktop-badge{display:inline-flex}
     var overrideItems=(overridesResult&&overridesResult.items)||[];
 
     var checks=[
+      {
+        title:'Actualisation des audits',
+        detail:auditRefresh.ok
+          ?'Tous les audits écran ont répondu en '+auditRefresh.waitedMs+' ms'
+          :'Résultats incomplets après '+auditRefresh.waitedMs+' ms · manquants : '+auditRefresh.missing.join(', '),
+        ok:auditRefresh.ok
+      },
       {
         title:'Audit écran actuel',
         detail:(auditSummary.errors||0)+' erreur(s) · '+(auditSummary.warnings||0)+' avertissement(s) · AA '+(auditSummary.contrastAaFailures||0)+' échec(s)',
@@ -4775,6 +4810,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:{label:currentSource&&currentSource.label||'',url:currentSource&&currentSource.url||'',type:currentSource&&currentSource.type||''},
       checks:JSON.parse(JSON.stringify(checks)),
       details:{
+        auditRefresh:auditRefresh,
         audit:lastAuditPayload||null,
         matrix:matrixResult?{summary:matrixResult.summary,results:(matrixResult.results||[]).map(function(x){return {config:x.config,issues:x.issues,viewport:x.viewport,diagnostics:x.diagnostics}})}:null,
         components:lastComponentTestsPayload||null,
@@ -4799,7 +4835,8 @@ body.desktop .desktop-badge{display:inline-flex}
 
   async function exportFinalReport(){
     if(!desktop||!desktop.exportReport||!currentSource){finalControlStatus.textContent='Export du rapport disponible dans l’application Windows avec une source chargée.';return}
-    var data=lastFinalControlData||await runFinalControl();
+    finalControlStatus.textContent='Actualisation du contrôle avant export…';
+    var data=await runFinalControl();
     if(!data)return;
     finalControlStatus.textContent='Préparation des captures du rapport…';
     var project=await requestProject();
