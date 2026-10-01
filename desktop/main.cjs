@@ -1825,6 +1825,28 @@ ipcMain.handle('source:git-status',async (_event,payload)=>{
   }catch(error){return {ok:false,error:'Git indisponible ou dépôt invalide : '+String(error&&error.message||error)}}
 });
 
+ipcMain.handle('source:git-prepare-branch',async (_event,payload)=>{
+  const source=payload&&payload.source;
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Préparation Git disponible uniquement pour une source HTML locale.'};
+  const root=local.root||path.dirname(local.html);
+  const branch=String(payload&&payload.branch||('app-interface-studio-'+Date.now())).replace(/[^a-zA-Z0-9._\/-]/g,'-');
+  if(!branch)return {ok:false,error:'Nom de branche Git invalide.'};
+  try{
+    execFileSync('git',['-C',root,'rev-parse','--is-inside-work-tree'],{encoding:'utf8',windowsHide:true,timeout:5000});
+    const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(staged)return {ok:false,error:'L’index Git contient déjà des modifications préparées. Commit ou désindexe-les avant la publication Studio.',staged};
+    const previousBranch=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(previousBranch!==branch){
+      try{execFileSync('git',['-C',root,'checkout','-b',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
+      catch(_){execFileSync('git',['-C',root,'checkout',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
+    }
+    return {ok:true,root,branch,previousBranch,changed:previousBranch!==branch};
+  }catch(error){
+    return {ok:false,error:'Préparation de la branche Git impossible : '+String(error&&error.message||error)};
+  }
+});
+
 ipcMain.handle('source:git-publish',async (_event,payload)=>{
   const source=payload&&payload.source;
   const local=localSourceEntry(source);
