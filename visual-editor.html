@@ -4446,6 +4446,12 @@ body.desktop .desktop-badge{display:inline-flex}
         return;
       }
     }
+    var targetBranch=document.getElementById('gitBranch').value;
+    if(desktop.prepareGitBranch){
+      gitStatusText.textContent='Préparation de la branche Git…';
+      var preparedBranch=await desktop.prepareGitBranch({source:currentSource,branch:targetBranch});
+      if(!preparedBranch||!preparedBranch.ok){gitStatusText.textContent=preparedBranch&&preparedBranch.error||'Impossible de préparer la branche Git.';return}
+    }
     gitStatusText.textContent='Préparation du patch puis publication…';
     if(desktop.applyCssToSource){
       var project=await requestProject();
@@ -4458,7 +4464,7 @@ body.desktop .desktop-badge{display:inline-flex}
     }
     var result=await desktop.gitPublish({
       source:currentSource,
-      branch:document.getElementById('gitBranch').value,
+      branch:targetBranch,
       title:document.getElementById('gitTitle').value,
       body:'Modifications visuelles générées avec App Interface Studio 6.63.'
     });
