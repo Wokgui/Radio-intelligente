@@ -2655,7 +2655,7 @@ function directSourceCandidate(source,selector,css,sourceSelector,preferredHref,
   if(preferredHref){
     try{
       const hrefUrl=new URL(String(preferredHref),source&&source.url||'http://127.0.0.1/');
-      const pathname=decodeURIComponent(hrefUrl.pathname||'').replace(/^\\/+/, '');
+      const pathname=decodeURIComponent(hrefUrl.pathname||'').replace(/^\/+/, '');
       const candidate=path.join(local.root,pathname);
       if(isPathInside(local.root,candidate)&&fs.existsSync(candidate))preferredPath=candidate;
     }catch(_){}
