@@ -677,7 +677,13 @@ expect(main,"async function smokeRouteFixture()","route smoke fixture");
 expect(main,"function smokeReportFixture()","report smoke fixture");
 expect(preload,"smokeRouteFixture: () => ipcRenderer.invoke('smoke:route-fixture')","route smoke bridge");
 expect(preload,"smokeReportFixture: () => ipcRenderer.invoke('smoke:report-fixture')","report smoke bridge");
-expect(main,"kind:sameFile?'exact-duplicate-rule':'cross-file-duplicate-rule'","cross-file CSS duplicate safety");
+expect(main,"kind:adjacent?'exact-duplicate-rule'","adjacent-only CSS duplicate cleanup");
+expect(main,"'repeated-identical-rule'","non-adjacent duplicate kept manual");
+expect(main,"safe:adjacent","duplicate cleanup safety flag");
+expect(main,"used.truncated=truncated","generated asset reference scan completeness");
+expect(main,"if(used.truncated)","conservative asset cleanup on truncated scan");
+expect(main,"studioTouchedFilesByRoot","Studio-only Git staging tracking");
+expect(main,"studioPendingPushByRoot","failed Git push resume tracking");
 
 
 const htmlIds=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
