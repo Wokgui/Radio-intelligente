@@ -2782,6 +2782,234 @@ function analyzeLegacyOverrides(source){
 
 ipcMain.handle('source:analyze-overrides',async (_event,payload)=>analyzeLegacyOverrides(payload&&payload.source));
 
+
+function cssRuleDeclarations(body){
+  const entries=[];
+  String(body||'').split(';').forEach((part,index)=>{
+    const i=part.indexOf(':');if(i<0)return;
+    const property=part.slice(0,i).trim(),value=part.slice(i+1).trim();
+    if(property&&value)entries.push({property,value,index,raw:part});
+  });
+  return entries;
+}
+
+function cssRuleSignature(selector,context,body){
+  const props=cssRuleDeclarations(body).map(x=>x.property+':'+x.value.replace(/\s+/g,' ').trim()).sort();
+  return normalizeCssContext(context)+'|'+String(selector||'').trim()+'|'+props.join(';');
+}
+
+function sourceTextCorpus(root){
+  const exts=['.css','.html','.htm','.js','.mjs','.cjs','.ts','.tsx','.jsx','.vue','.svelte'];
+  return walkFiles(root,exts,700).map(file=>{
+    let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){}
+    return {file,text};
+  });
+}
+
+async function analyzeAdvancedCss(source){
+  const local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Analyse CSS avancée disponible uniquement pour une source locale.',items:[]};
+  const root=local.root;
+  const cssFiles=walkFiles(root,['.css'],300).filter(file=>!file.includes('.ais-cleanup-backup-'));
+  const corpus=sourceTextCorpus(root);
+  const items=[],seenSignatures=new Map(),variableDefs=new Map();
+  let itemId=0;
+
+  const parsedFiles=cssFiles.map(file=>{
+    let text='';try{text=fs.readFileSync(file,'utf8')}catch(_){}
+    return {file,text,blocks:parseCssBlocks(text)};
+  });
+
+  parsedFiles.forEach(doc=>{
+    doc.blocks.forEach(block=>{
+      const prelude=String(block.prelude||'').trim();
+      if(!prelude||prelude.startsWith('@'))return;
+      const body=doc.text.slice(block.bodyStart,block.close);
+      const decls=cssRuleDeclarations(body);
+      const sig=cssRuleSignature(prelude,block.context,body);
+      if(seenSignatures.has(sig)){
+        const first=seenSignatures.get(sig);
+        const start=Math.max(0,block.open-prelude.length);
+        items.push({
+          id:'css-clean-'+(++itemId),kind:'exact-duplicate-rule',confidence:'high',safe:true,
+          file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
+          raw:doc.text.slice(start,block.close+1),
+          reason:'Règle strictement dupliquée avec '+path.relative(root,first.file)+' dans le même contexte CSS.'
+        });
+      }else seenSignatures.set(sig,{file:doc.file,block});
+
+      const propertyPositions=new Map();
+      decls.forEach(entry=>{
+        if(!propertyPositions.has(entry.property))propertyPositions.set(entry.property,[]);
+        propertyPositions.get(entry.property).push(entry);
+        if(entry.property.startsWith('--')){
+          if(!variableDefs.has(entry.property))variableDefs.set(entry.property,[]);
+          variableDefs.get(entry.property).push({file:doc.file,selector:prelude,context:block.context||''});
+        }
+      });
+      propertyPositions.forEach((entries,property)=>{
+        if(entries.length>1){
+          items.push({
+            id:'css-clean-'+(++itemId),kind:'shadowed-declaration',confidence:'medium',safe:false,
+            file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
+            property,reason:'La propriété '+property+' apparaît '+entries.length+' fois dans la même règle ; les occurrences précédentes sont écrasées.'
+          });
+        }
+      });
+    });
+  });
+
+  variableDefs.forEach((defs,name)=>{
+    const literalRef=new RegExp('var\\(\\s*'+escapeRegex(name)+'(?:\\s*[,\\)])','g');
+    let refs=0;
+    corpus.forEach(doc=>{const m=doc.text.match(literalRef);if(m)refs+=m.length});
+    if(refs===0){
+      defs.forEach(def=>{
+        items.push({
+          id:'css-clean-'+(++itemId),kind:'unused-variable',confidence:'high',safe:true,
+          file:def.file,relativePath:path.relative(root,def.file),selector:def.selector,context:def.context,
+          variable:name,reason:'Variable '+name+' définie mais aucune référence var('+name+') trouvée dans les fichiers source analysés.'
+        });
+      });
+    }
+  });
+
+  parsedFiles.forEach(doc=>{
+    const rules=doc.blocks.filter(b=>{const p=String(b.prelude||'').trim();return p&&!p.startsWith('@')}).slice(0,180);
+    for(let i=0;i<rules.length;i++){
+      const a=rules[i],aSel=String(a.prelude||'').trim(),aBody=doc.text.slice(a.bodyStart,a.close);
+      const aMap=new Map(cssRuleDeclarations(aBody).map(x=>[x.property,x.value.replace(/\s+/g,' ').trim()]));
+      if(aMap.size<3)continue;
+      for(let j=i+1;j<rules.length&&j<i+45;j++){
+        const b=rules[j];if(normalizeCssContext(a.context)!==normalizeCssContext(b.context))continue;
+        const bSel=String(b.prelude||'').trim(),bBody=doc.text.slice(b.bodyStart,b.close);
+        const bMap=new Map(cssRuleDeclarations(bBody).map(x=>[x.property,x.value.replace(/\s+/g,' ').trim()]));
+        if(bMap.size<3)continue;
+        const keys=new Set([...aMap.keys(),...bMap.keys()]);
+        let same=0;keys.forEach(k=>{if(aMap.has(k)&&bMap.has(k)&&aMap.get(k)===bMap.get(k))same++});
+        const ratio=same/Math.max(aMap.size,bMap.size);
+        if(ratio>=.8&&aSel!==bSel){
+          items.push({
+            id:'css-clean-'+(++itemId),kind:'near-duplicate-rule',confidence:'low',safe:false,
+            file:doc.file,relativePath:path.relative(root,doc.file),selector:aSel+' ↔ '+bSel,context:a.context||'',
+            reason:'Règles très proches ('+Math.round(ratio*100)+' % de déclarations identiques). À factoriser éventuellement.'
+          });
+        }
+      }
+    }
+  });
+
+  let win=null;
+  try{
+    if(source&&source.url){
+      win=await scenarioWindow(source,'',412,915);
+      for(const doc of parsedFiles){
+        const rules=doc.blocks.filter(b=>{const p=String(b.prelude||'').trim();return p&&!p.startsWith('@')}).slice(0,220);
+        for(const block of rules){
+          const selector=String(block.prelude||'').trim();
+          if(!selector||selector.includes(':hover')||selector.includes(':active')||selector.includes(':focus')||selector.includes('::'))continue;
+          const checkScript='(function(){try{return !!document.querySelector('+JSON.stringify(selector)+')}catch(_){return true}})()';
+          const exists=await win.webContents.executeJavaScript(checkScript,true);
+          if(!exists){
+            items.push({
+              id:'css-clean-'+(++itemId),kind:'unused-on-current-screen',confidence:'low',safe:false,
+              file:doc.file,relativePath:path.relative(root,doc.file),selector,context:block.context||'',
+              reason:'Aucun élément correspondant sur l’écran courant. Peut être utilisé sur une autre route ou dans un état dynamique.'
+            });
+          }
+        }
+      }
+    }
+  }catch(_){}
+  finally{if(win&&!win.isDestroyed())win.destroy()}
+
+  const order={high:0,medium:1,low:2};
+  items.sort((a,b)=>(order[a.confidence]??9)-(order[b.confidence]??9)||String(a.relativePath).localeCompare(String(b.relativePath)));
+  return {
+    ok:true,root,items:items.slice(0,500),
+    summary:{
+      total:items.length,
+      safe:items.filter(x=>x.safe).length,
+      high:items.filter(x=>x.confidence==='high').length,
+      medium:items.filter(x=>x.confidence==='medium').length,
+      low:items.filter(x=>x.confidence==='low').length
+    }
+  };
+}
+
+function removeUnusedVariableDefinition(text,item){
+  const name=String(item.variable||'');
+  if(!name)return text;
+  const re=new RegExp('(^|[;{]\\s*)'+escapeRegex(name)+'\\s*:\\s*[^;}{]+;?','m');
+  return String(text).replace(re,(m,prefix)=>prefix);
+}
+
+function advancedCssCleanupPlan(analysis,ids){
+  const selected=analysis.items.filter(x=>ids.has(String(x.id))&&x.safe&&x.confidence==='high');
+  const byFile=new Map();
+  selected.forEach(item=>{
+    if(!byFile.has(item.file))byFile.set(item.file,[]);
+    byFile.get(item.file).push(item);
+  });
+  const files=[];
+  byFile.forEach((items,file)=>{
+    const before=fs.readFileSync(file,'utf8');
+    let after=before;
+    items.filter(x=>x.kind==='exact-duplicate-rule').forEach(item=>{
+      if(item.raw&&after.includes(item.raw))after=after.replace(item.raw,'');
+    });
+    items.filter(x=>x.kind==='unused-variable').forEach(item=>{after=removeUnusedVariableDefinition(after,item)});
+    after=after.replace(/\n{3,}/g,'\n\n');
+    if(after!==before)files.push({
+      file,relativePath:path.relative(analysis.root,file),before,after,beforeHash:hashText(before),
+      diff:simpleUnifiedDiff(before,after,path.relative(analysis.root,file))
+    });
+  });
+  return {selected,files};
+}
+
+ipcMain.handle('css-cleanup:analyze',async (_event,payload)=>{
+  try{return await analyzeAdvancedCss(payload&&payload.source)}
+  catch(error){return {ok:false,error:'Analyse CSS avancée impossible : '+String(error&&error.message||error),items:[]}}
+});
+
+ipcMain.handle('css-cleanup:prepare',async (_event,payload)=>{
+  try{
+    const analysis=await analyzeAdvancedCss(payload&&payload.source);
+    if(!analysis.ok)return analysis;
+    const ids=new Set(Array.isArray(payload&&payload.ids)?payload.ids.map(String):[]);
+    const plan=advancedCssCleanupPlan(analysis,ids);
+    if(!plan.files.length)return {ok:false,error:'Aucune modification haute confiance sélectionnée.',files:[]};
+    return {
+      ok:true,files:plan.files,
+      selected:plan.selected.map(x=>({id:x.id,kind:x.kind,relativePath:x.relativePath,selector:x.selector||'',variable:x.variable||''})),
+      diff:plan.files.map(f=>f.diff).join('\n\n')
+    };
+  }catch(error){return {ok:false,error:'Préparation du nettoyage CSS impossible : '+String(error&&error.message||error),files:[]}}
+});
+
+ipcMain.handle('css-cleanup:apply',async (_event,payload)=>{
+  const source=payload&&payload.source,local=localSourceEntry(source);
+  if(!local)return {ok:false,error:'Source locale requise.'};
+  const files=Array.isArray(payload&&payload.files)?payload.files:[];
+  if(!files.length)return {ok:false,error:'Plan de nettoyage vide.'};
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[];
+  try{
+    for(const entry of files){
+      const file=String(entry&&entry.file||'');
+      if(!file||!isPathInside(local.root,file))throw new Error('Chemin refusé.');
+      const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+      if(entry.beforeHash&&hashText(before)!==entry.beforeHash)throw new Error('Le fichier '+path.relative(local.root,file)+' a changé depuis le diff.');
+      const backup=file+'.ais-cleanup-backup-'+stamp;
+      fs.copyFileSync(file,backup);backups.push(backup);
+      fs.writeFileSync(file,String(entry.after||''),'utf8');
+    }
+    return {ok:true,changed:files.length,backups};
+  }catch(error){
+    return {ok:false,error:'Application du nettoyage CSS impossible : '+String(error&&error.message||error),backups};
+  }
+});
+
 ipcMain.handle('source:cleanup-overrides',async (_event,payload)=>{
   const source=payload&&payload.source,local=localSourceEntry(source);
   if(!local)return {ok:false,error:'Source locale requise.'};
