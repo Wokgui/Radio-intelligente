@@ -1060,42 +1060,54 @@ async function applyLocalPatch(payload){
 
   const stamp=new Date().toISOString().replace(/[:.]/g,'-')+'-'+crypto.randomBytes(3).toString('hex');
   const htmlBackupPath=path.join(plan.dir,path.basename(plan.local.html)+'.ais-backup-'+stamp);
-  const cssBackup=optionalFileBackup(plan.cssPath,stamp);
-  const jsBackup=optionalFileBackup(plan.jsPath,stamp);
+  const transactionPath=transactionFile(plan.dir,stamp);
   const createdAssets=[];
+  let cssBackup=null,jsBackup=null;
+  const existedBefore={
+    css:fs.existsSync(plan.cssPath),
+    js:fs.existsSync(plan.jsPath)
+  };
+  const touched={html:false,css:false,js:false,transaction:false};
 
   try{
     fs.copyFileSync(plan.local.html,htmlBackupPath);
+    cssBackup=optionalFileBackup(plan.cssPath,stamp);
+    jsBackup=optionalFileBackup(plan.jsPath,stamp);
+
     for(const asset of plan.assetCopies||[]){
       fs.mkdirSync(path.dirname(asset.target),{recursive:true});
       if(!fs.existsSync(asset.target)){
-        fs.copyFileSync(asset.source,asset.target);
         createdAssets.push(asset.target);
+        fs.copyFileSync(asset.source,asset.target);
       }
     }
 
     if(plan.changed.css){
+      touched.css=true;
       if(plan.after.css)fs.writeFileSync(plan.cssPath,plan.after.css,'utf8');
       else if(fs.existsSync(plan.cssPath))fs.unlinkSync(plan.cssPath);
     }
     if(plan.changed.structure){
+      touched.js=true;
       if(plan.after.js)fs.writeFileSync(plan.jsPath,plan.after.js,'utf8');
       else if(fs.existsSync(plan.jsPath))fs.unlinkSync(plan.jsPath);
     }
-    if(plan.changed.html)fs.writeFileSync(plan.local.html,plan.after.html,'utf8');
+    if(plan.changed.html){
+      touched.html=true;
+      fs.writeFileSync(plan.local.html,plan.after.html,'utf8');
+    }
 
-    const transactionPath=transactionFile(plan.dir,stamp);
     const transaction={
       version:4,
       createdAt:new Date().toISOString(),
       sourceHtml:path.resolve(plan.local.html),
       htmlBackupPath,
       cssPath:plan.cssPath,
-      cssExisted:cssBackup.existed,
-      cssBackupPath:cssBackup.backupPath,
+      cssExisted:cssBackup&&cssBackup.existed,
+      cssBackupPath:cssBackup&&cssBackup.backupPath,
       jsPath:plan.jsPath,
-      jsExisted:jsBackup.existed,
-      jsBackupPath:jsBackup.backupPath,
+      jsExisted:jsBackup&&jsBackup.existed,
+      jsBackupPath:jsBackup&&jsBackup.backupPath,
       createdAssets,
       applyParts:plan.parts,
       generatedCount:plan.generatedCount,
@@ -1108,6 +1120,7 @@ async function applyLocalPatch(payload){
       structureChanged:!!plan.changed.structure,
       rolledBack:false
     };
+    touched.transaction=true;
     fs.writeFileSync(transactionPath,JSON.stringify(transaction,null,2)+'\n','utf8');
 
     return {
@@ -1129,10 +1142,44 @@ async function applyLocalPatch(payload){
       structureRemoved:plan.parts.structure&&!plan.after.js&&!!plan.before.js
     };
   }catch(error){
-    cleanupOptionalBackup(cssBackup);
-    cleanupOptionalBackup(jsBackup);
-    createdAssets.forEach(file=>{try{if(fs.existsSync(file))fs.unlinkSync(file)}catch(_){}});
-    return {ok:false,error:'Application au code impossible : '+String(error&&error.message||error)};
+    const rollbackErrors=[];
+    if(touched.html){
+      try{fs.writeFileSync(plan.local.html,plan.before.html,'utf8')}
+      catch(restoreError){rollbackErrors.push('HTML: '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    if(touched.css){
+      try{
+        if(existedBefore.css)fs.writeFileSync(plan.cssPath,plan.before.css,'utf8');
+        else if(fs.existsSync(plan.cssPath))fs.unlinkSync(plan.cssPath);
+      }catch(restoreError){rollbackErrors.push('CSS: '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    if(touched.js){
+      try{
+        if(existedBefore.js)fs.writeFileSync(plan.jsPath,plan.before.js,'utf8');
+        else if(fs.existsSync(plan.jsPath))fs.unlinkSync(plan.jsPath);
+      }catch(restoreError){rollbackErrors.push('JS: '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    createdAssets.forEach(assetFile=>{
+      try{if(assetFile&&fs.existsSync(assetFile))fs.unlinkSync(assetFile)}
+      catch(restoreError){rollbackErrors.push('asset '+path.basename(assetFile)+': '+String(restoreError&&restoreError.message||restoreError))}
+    });
+    if(touched.transaction){
+      try{if(fs.existsSync(transactionPath))fs.unlinkSync(transactionPath)}
+      catch(restoreError){rollbackErrors.push('transaction: '+String(restoreError&&restoreError.message||restoreError))}
+    }
+
+    if(!rollbackErrors.length){
+      try{if(fs.existsSync(htmlBackupPath))fs.unlinkSync(htmlBackupPath)}catch(_){}
+      cleanupOptionalBackup(cssBackup);
+      cleanupOptionalBackup(jsBackup);
+    }
+
+    return {
+      ok:false,
+      error:'Application au code impossible : '+String(error&&error.message||error)+(rollbackErrors.length?' · rollback incomplet : '+rollbackErrors.join(' | '):''),
+      rolledBack:rollbackErrors.length===0,
+      recoveryBackups:rollbackErrors.length?[htmlBackupPath,cssBackup&&cssBackup.backupPath,jsBackup&&jsBackup.backupPath].filter(Boolean):[]
+    };
   }
 }
 
