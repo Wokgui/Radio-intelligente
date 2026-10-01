@@ -4595,8 +4595,8 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!currentSource){finalControlStatus.textContent='Charge d’abord une application.';return}
     finalControlStatus.textContent='Contrôle en cours…';
     finalControlList.innerHTML='';
-    post('audit');post('design-consistency');post('test-components');
-    await new Promise(function(resolve){setTimeout(resolve,550)});
+    post('audit');post('design-consistency');post('test-components');post('i18n-audit');post('font-audit');post('animation-audit');
+    await new Promise(function(resolve){setTimeout(resolve,750)});
     var project=await requestProject();
     var matrixResult=desktop&&desktop.runTestMatrix
       ?await desktop.runTestMatrix({source:currentSource,css:project&&project.css||cssOut.value})
@@ -4610,6 +4610,10 @@ body.desktop .desktop-badge{display:inline-flex}
     var advancedCssResult=desktop&&desktop.analyzeCssCleanup&&['folder','html'].indexOf(currentSource.type)>=0
       ?await desktop.analyzeCssCleanup(currentSource)
       :null;
+    var keyboardResult=desktop&&desktop.keyboardAccessibilityAudit
+      ?await desktop.keyboardAccessibilityAudit({source:currentSource,css:project&&project.css||cssOut.value})
+      :null;
+    if(keyboardResult&&keyboardResult.ok)lastReducedMotionResult=keyboardResult;
     var performanceResult=desktop&&desktop.profilePerformance
       ?await desktop.profilePerformance({source:currentSource,css:project&&project.css||cssOut.value})
       :null;
@@ -4648,6 +4652,26 @@ body.desktop .desktop-badge{display:inline-flex}
         ok:consistencyIssues.length===0&&!(lastConsistencyPayload&&lastConsistencyPayload.scan&&lastConsistencyPayload.scan.truncated)
       }
     ];
+    var i18nSummary=(lastI18nPayload&&lastI18nPayload.summary)||{};
+    var fontSummary=(lastFontAuditPayload&&lastFontAuditPayload.summary)||{};
+    var animationSummary=(lastAnimationAuditPayload&&lastAnimationAuditPayload.summary)||{};
+    var reducedSummary=keyboardResult&&keyboardResult.reducedMotion||{};
+    checks.push({
+      title:'Internationalisation',
+      detail:(i18nSummary.issues||0)+' chaîne(s)/élément(s) à vérifier · lang '+(i18nSummary.lang||'—')+' · dir '+(i18nSummary.dir||'—'),
+      ok:!(i18nSummary.issues||0)&&!i18nSummary.truncated
+    });
+    checks.push({
+      title:'Polices',
+      detail:(fontSummary.groups||0)+' combinaison(s) · '+(fontSummary.unavailable||0)+' famille(s) indisponible(s) · '+(fontSummary.loadedFaces||0)+' face(s) chargée(s)',
+      ok:!(fontSummary.unavailable||0)&&!fontSummary.truncated
+    });
+    checks.push({
+      title:'Animations',
+      detail:(animationSummary.issues||0)+' problème(s) · '+(animationSummary.infinite||0)+' animation(s) infinie(s) · '+(animationSummary.layoutSensitive||0)+' sensible(s) au layout · reduced-motion '+(reducedSummary.violations||0)+' violation(s)',
+      ok:!(animationSummary.issues||0)&&!(reducedSummary.violations||0)&&!animationSummary.truncated
+    });
+
     if(assetsResult&&assetsResult.ok){
       checks.push({
         title:'Assets',
