@@ -1805,6 +1805,7 @@ ipcMain.handle('source:clean-assets',async (_event,payload)=>{
   if(!local)return {ok:false,error:'Nettoyage disponible uniquement pour une source HTML locale.'};
   try{
     const cleanup=cleanupGeneratedAssets(local);
+    markStudioTouched(payload&&payload.source,cleanup.removed);
     return {ok:true,removed:cleanup.removed,kept:cleanup.kept,scanTruncated:!!cleanup.scanTruncated,scannedFiles:cleanup.scannedFiles||0};
   }catch(error){return {ok:false,error:'Nettoyage des assets impossible : '+String(error&&error.message||error)}}
 });
@@ -1833,12 +1834,15 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
   const pendingKey=pendingStudioPushKey(source);
   try{
     execFileSync('git',['-C',root,'rev-parse','--is-inside-work-tree'],{encoding:'utf8',windowsHide:true,timeout:5000});
+    const preStaged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    if(preStaged)return {ok:false,error:'L’index Git contient déjà des modifications préparées qui ne viennent pas nécessairement de Studio. Commit ou désindexe-les avant la publication Studio.',preStaged};
     const current=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     if(current!==branch){
       try{execFileSync('git',['-C',root,'checkout','-b',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
       catch(_){execFileSync('git',['-C',root,'checkout',branch],{encoding:'utf8',windowsHide:true,timeout:10000})}
     }
     const cleanup=cleanupGeneratedAssets(local);
+    markStudioTouched(source,cleanup.removed);
     const files=[path.relative(root,local.html)].concat(studioTouchedRelativePaths(source));
     const generated=path.join(path.dirname(local.html),'app-interface-studio.generated.css');
     const generatedRelative=path.relative(root,generated);
@@ -1847,7 +1851,8 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
     const generatedStructureRelative=path.relative(root,generatedStructure);
     if(fs.existsSync(generatedStructure)||gitPathTracked(root,generatedStructureRelative))files.push(generatedStructureRelative);
     const assetDir=path.join(path.dirname(local.html),'app-interface-studio-assets');
-    if(fs.existsSync(assetDir))files.push(path.relative(root,assetDir));
+    const assetDirRelative=path.relative(root,assetDir);
+    if(fs.existsSync(assetDir)||gitPathTracked(root,assetDirRelative))files.push(assetDirRelative);
     const uniqueFiles=Array.from(new Set(files.filter(Boolean)));
     execFileSync('git',['-C',root,'add','-A','--'].concat(uniqueFiles),{encoding:'utf8',windowsHide:true,timeout:10000});
     const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
