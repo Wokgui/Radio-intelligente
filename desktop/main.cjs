@@ -2653,9 +2653,33 @@ async function profileSourcePerformance(source,css){
       await win.webContents.debugger.sendCommand('Network.enable');
     }catch(_){}
     const started=Date.now();
-    await win.loadURL(target);
+    let mainLoadFailure=null;
+    const domReady=new Promise((resolve,reject)=>{
+      let settled=false;
+      const finish=(error)=>{
+        if(settled)return;
+        settled=true;
+        clearTimeout(timer);
+        win.webContents.removeListener('dom-ready',onReady);
+        win.webContents.removeListener('did-fail-load',onFail);
+        if(error)reject(error);else resolve();
+      };
+      const onReady=()=>finish();
+      const onFail=(_event,code,description,_url,isMainFrame)=>{
+        if(isMainFrame===false)return;
+        mainLoadFailure=new Error('Chargement échoué ('+code+') : '+description);
+        finish(mainLoadFailure);
+      };
+      const timer=setTimeout(()=>finish(new Error('Chargement DOM > 15000 ms.')),15000);
+      win.webContents.once('dom-ready',onReady);
+      win.webContents.on('did-fail-load',onFail);
+    });
+    const navigation=win.loadURL(target).catch(error=>{mainLoadFailure=error;return null});
+    await domReady;
     const loadMs=Date.now()-started;
     await new Promise(r=>setTimeout(r,450));
+    try{win.webContents.stop()}catch(_){}
+    navigation.catch(()=>{});
     if(css&&String(css).trim()&&String(css).trim()!=='/* Aucun ajustement. */'){
       await win.webContents.insertCSS(String(css),{cssOrigin:'author'});
       await new Promise(r=>setTimeout(r,160));
