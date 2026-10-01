@@ -3617,17 +3617,6 @@ body.desktop .desktop-badge{display:inline-flex}
     renderMatrix(result);
   }
 
-  function rotateDevice(){
-    var size=currentDeviceSize();
-    preset.value='custom';
-    screenCustomW.value=size.height;
-    screenCustomH.value=size.width;
-    customDeviceWidth.value=size.height;
-    customDeviceHeight.value=size.width;
-    customScreenSize.style.display='grid';
-    setDevice();
-  }
-
   function multiFrameRecord(sourceWindow){
     return multiFrames.find(function(rec){return rec.iframe&&rec.iframe.contentWindow===sourceWindow})||null;
   }
