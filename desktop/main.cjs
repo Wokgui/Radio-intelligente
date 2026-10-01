@@ -3313,7 +3313,7 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
   const file=String(payload&&payload.file||'');
   if(!file||!isPathInside(local.root,file))return {ok:false,error:'Chemin source refusé.'};
   const existedBefore=fs.existsSync(file);
-  let original='',backupPath='';
+  let original='',backupPath='',htmlOriginal='',htmlTouched=false;
   try{
     original=existedBefore?fs.readFileSync(file,'utf8'):'';
     if(payload.beforeHash&&hashText(original)!==payload.beforeHash)return {ok:false,error:'Le fichier a changé depuis la préparation du diff. Reprépare la modification.'};
@@ -3324,6 +3324,7 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
     let htmlBackupPath='';
     if(path.basename(file)==='app-interface-studio.direct.css'&&local.html&&fs.existsSync(local.html)){
       let html=fs.readFileSync(local.html,'utf8');
+      htmlOriginal=html;
       const marker='data-app-interface-studio="direct"';
       if(!html.includes(marker)){
         const stamp2=new Date().toISOString().replace(/[:.]/g,'-');
@@ -3333,15 +3334,25 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
         const link='<link rel="stylesheet" href="'+href+'" '+marker+'>';
         html=/<\/head>/i.test(html)?html.replace(/<\/head>/i,'  '+link+'\n</head>'):link+'\n'+html;
         fs.writeFileSync(local.html,html,'utf8');
+        htmlTouched=true;
       }
     }
     return {ok:true,file,backupPath,htmlBackupPath,created:!existedBefore};
   }catch(error){
+    const rollbackErrors=[];
     try{
       if(existedBefore)fs.writeFileSync(file,original,'utf8');
       else if(fs.existsSync(file))fs.unlinkSync(file);
-    }catch(_){}
-    return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error),rolledBack:true};
+    }catch(restoreError){rollbackErrors.push('CSS: '+String(restoreError&&restoreError.message||restoreError))}
+    if(htmlTouched&&local.html){
+      try{fs.writeFileSync(local.html,htmlOriginal,'utf8')}
+      catch(restoreError){rollbackErrors.push('HTML: '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    return {
+      ok:false,
+      error:'Écriture source impossible : '+String(error&&error.message||error)+(rollbackErrors.length?' · rollback incomplet : '+rollbackErrors.join(' | '):''),
+      rolledBack:rollbackErrors.length===0
+    };
   }
 });
 
