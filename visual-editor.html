@@ -4421,7 +4421,7 @@ body.desktop .desktop-badge{display:inline-flex}
     if(!desktop||!desktop.gitStatus){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
     var result=await desktop.gitStatus({source:currentSource});
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Git indisponible.';return}
-    gitStatusText.textContent='Branche : '+(result.branch||'—')+' · '+(result.status?'modifications locales détectées':'propre')+(result.ghAvailable?' · GitHub CLI disponible':' · GitHub CLI absent');
+    gitStatusText.textContent='Branche : '+(result.branch||'—')+' · '+(result.status?'modifications locales détectées':'propre')+(result.staged?' · index déjà préparé':'')+(result.ghAvailable?' · GitHub CLI disponible':' · GitHub CLI absent');
   }
 
   async function cleanGeneratedAssetsNow(){
@@ -4437,6 +4437,15 @@ body.desktop .desktop-badge{display:inline-flex}
   async function publishGit(){
     if(!desktop||!desktop.gitPublish){gitStatusText.textContent='Fonction disponible dans l’application Windows.';return}
     if(!currentSource||['folder','html'].indexOf(currentSource.type)<0){gitStatusText.textContent='Ouvre le dépôt en dossier/fichier HTML local pour publier.';return}
+    gitStatusText.textContent='Vérification Git avant publication…';
+    if(desktop.gitStatus){
+      var beforePublish=await desktop.gitStatus({source:currentSource});
+      if(!beforePublish||!beforePublish.ok){gitStatusText.textContent=beforePublish&&beforePublish.error||'Git indisponible.';return}
+      if(beforePublish.staged){
+        gitStatusText.textContent='Publication interrompue : l’index Git contient déjà des fichiers préparés. Commit ou désindexe-les pour éviter de mélanger tes changements avec ceux de Studio.';
+        return;
+      }
+    }
     gitStatusText.textContent='Préparation du patch puis publication…';
     if(desktop.applyCssToSource){
       var project=await requestProject();
