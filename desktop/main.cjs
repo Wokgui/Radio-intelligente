@@ -3795,7 +3795,10 @@ function resolvePortableStrings(value,bundle,seen){
 function writePortableBundle(project,bundle){
   bundle=path.resolve(bundle);
   const clone=JSON.parse(JSON.stringify(project||{}));
-  const temp=bundle+'.tmp-'+Date.now()+'-'+crypto.randomBytes(3).toString('hex');
+  const token=Date.now()+'-'+crypto.randomBytes(3).toString('hex');
+  const temp=bundle+'.tmp-'+token;
+  const previous=bundle+'.previous-'+token;
+  let previousMoved=false;
   try{
     fs.rmSync(temp,{recursive:true,force:true});
     fs.mkdirSync(temp,{recursive:true});
@@ -3849,11 +3852,28 @@ function writePortableBundle(project,bundle){
       sourceSkipped:sourceStats.skipped.length
     };
     fs.writeFileSync(path.join(temp,'project.json'),JSON.stringify(clone,null,2),'utf8');
-    fs.rmSync(bundle,{recursive:true,force:true});
-    fs.renameSync(temp,bundle);
+    if(fs.existsSync(bundle)){
+      fs.renameSync(bundle,previous);
+      previousMoved=true;
+    }
+    try{
+      fs.renameSync(temp,bundle);
+    }catch(error){
+      if(previousMoved&&fs.existsSync(previous)&&!fs.existsSync(bundle)){
+        try{fs.renameSync(previous,bundle);previousMoved=false}catch(_){}
+      }
+      throw error;
+    }
+    if(previousMoved&&fs.existsSync(previous)){
+      try{fs.rmSync(previous,{recursive:true,force:true})}catch(_){}
+      previousMoved=false;
+    }
     return {ok:true,path:bundle,assetCount,assetBytes,sourceFiles:sourceStats.files,sourceBytes:sourceStats.bytes,sourceSkipped:sourceStats.skipped.length};
   }catch(error){
     try{fs.rmSync(temp,{recursive:true,force:true})}catch(_){}
+    if(previousMoved&&fs.existsSync(previous)&&!fs.existsSync(bundle)){
+      try{fs.renameSync(previous,bundle);previousMoved=false}catch(_){}
+    }
     return {ok:false,error:'Export portable impossible : '+String(error&&error.message||error)};
   }
 }
