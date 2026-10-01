@@ -2862,12 +2862,40 @@ ipcMain.handle('source:analyze-overrides',async (_event,payload)=>analyzeLegacyO
 
 
 function cssRuleDeclarations(body){
-  const entries=[];
-  String(body||'').split(';').forEach((part,index)=>{
-    const i=part.indexOf(':');if(i<0)return;
-    const property=part.slice(0,i).trim(),value=part.slice(i+1).trim();
-    if(property&&value)entries.push({property,value,index,raw:part});
-  });
+  const text=String(body||''),entries=[];
+  let start=0,quote='',comment=false,paren=0,bracket=0,brace=0,index=0;
+  function push(end){
+    const raw=text.slice(start,end),segment=raw.replace(/;\s*$/,'');
+    let colon=-1,q='',comm=false,p=0,b=0,br=0;
+    for(let i=0;i<segment.length;i+=1){
+      const ch=segment[i],next=segment[i+1];
+      if(comm){if(ch==='*'&&next==='/'){comm=false;i+=1}continue}
+      if(q){if(ch===q&&segment[i-1]!=='\\')q='';continue}
+      if(ch==='/'&&next==='*'){comm=true;i+=1;continue}
+      if(ch==='"'||ch==="'"){q=ch;continue}
+      if(ch==='(')p+=1;else if(ch===')')p=Math.max(0,p-1);
+      else if(ch==='[')b+=1;else if(ch===']')b=Math.max(0,b-1);
+      else if(ch==='{')br+=1;else if(ch==='}')br=Math.max(0,br-1);
+      else if(ch===':'&&p===0&&b===0&&br===0){colon=i;break}
+    }
+    if(colon>=0){
+      const property=segment.slice(0,colon).trim(),value=segment.slice(colon+1).trim();
+      if(property&&value)entries.push({property,value,index:index++,raw,start,end});
+    }
+    start=end;
+  }
+  for(let i=0;i<text.length;i+=1){
+    const ch=text[i],next=text[i+1];
+    if(comment){if(ch==='*'&&next==='/'){comment=false;i+=1}continue}
+    if(quote){if(ch===quote&&text[i-1]!=='\\')quote='';continue}
+    if(ch==='/'&&next==='*'){comment=true;i+=1;continue}
+    if(ch==='"'||ch==="'"){quote=ch;continue}
+    if(ch==='(')paren+=1;else if(ch===')')paren=Math.max(0,paren-1);
+    else if(ch==='[')bracket+=1;else if(ch===']')bracket=Math.max(0,bracket-1);
+    else if(ch==='{')brace+=1;else if(ch==='}')brace=Math.max(0,brace-1);
+    else if(ch===';'&&paren===0&&bracket===0&&brace===0)push(i+1);
+  }
+  if(start<text.length)push(text.length);
   return entries;
 }
 
@@ -3012,7 +3040,7 @@ async function analyzeAdvancedCss(source){
           confidence:sameFile?'high':'medium',
           safe:sameFile,
           file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
-          raw:doc.text.slice(start,block.close+1),
+          start:start,end:block.close+1,raw:doc.text.slice(start,block.close+1),
           reason:sameFile
             ?'Règle strictement dupliquée plus haut dans le même fichier et le même contexte CSS.'
             :'Règle identique à '+path.relative(root,first.file)+' mais dans un autre fichier ; elle peut être chargée sur une autre route, donc suppression automatique interdite.'
@@ -3025,7 +3053,11 @@ async function analyzeAdvancedCss(source){
         propertyPositions.get(entry.property).push(entry);
         if(entry.property.startsWith('--')){
           if(!variableDefs.has(entry.property))variableDefs.set(entry.property,[]);
-          variableDefs.get(entry.property).push({file:doc.file,selector:prelude,context:block.context||''});
+          const absoluteStart=block.bodyStart+entry.start,absoluteEnd=block.bodyStart+entry.end;
+          variableDefs.get(entry.property).push({
+            file:doc.file,selector:prelude,context:block.context||'',
+            start:absoluteStart,end:absoluteEnd,raw:doc.text.slice(absoluteStart,absoluteEnd)
+          });
         }
       });
       propertyPositions.forEach((entries,property)=>{
@@ -3049,7 +3081,8 @@ async function analyzeAdvancedCss(source){
         items.push({
           id:'css-clean-'+(++itemId),kind:'unused-variable',confidence:'high',safe:true,
           file:def.file,relativePath:path.relative(root,def.file),selector:def.selector,context:def.context,
-          variable:name,reason:'Variable '+name+' définie mais aucune référence var('+name+') trouvée dans les fichiers source analysés.'
+          variable:name,start:def.start,end:def.end,raw:def.raw,
+          reason:'Variable '+name+' définie mais aucune référence var('+name+') trouvée dans les fichiers source analysés.'
         });
       });
     }
@@ -3140,13 +3173,6 @@ async function analyzeAdvancedCss(source){
   };
 }
 
-function removeUnusedVariableDefinition(text,item){
-  const name=String(item.variable||'');
-  if(!name)return text;
-  const re=new RegExp('(^|[;{]\\s*)'+escapeRegex(name)+'\\s*:\\s*[^;}{]+;?','m');
-  return String(text).replace(re,(m,prefix)=>prefix);
-}
-
 function advancedCssCleanupPlan(analysis,ids){
   const selected=analysis.items.filter(x=>ids.has(String(x.id))&&x.safe&&x.confidence==='high');
   const byFile=new Map();
@@ -3157,11 +3183,18 @@ function advancedCssCleanupPlan(analysis,ids){
   const files=[];
   byFile.forEach((items,file)=>{
     const before=fs.readFileSync(file,'utf8');
-    let after=before;
-    items.filter(x=>x.kind==='exact-duplicate-rule').forEach(item=>{
-      if(item.raw&&after.includes(item.raw))after=after.replace(item.raw,'');
-    });
-    items.filter(x=>x.kind==='unused-variable').forEach(item=>{after=removeUnusedVariableDefinition(after,item)});
+    const deletions=items.map(item=>({
+      start:Number(item.start),end:Number(item.end),raw:String(item.raw||''),item
+    })).filter(x=>Number.isInteger(x.start)&&Number.isInteger(x.end)&&x.start>=0&&x.end>x.start&&x.end<=before.length)
+      .sort((a,b)=>b.start-a.start);
+    let after=before,lastStart=Infinity;
+    for(const deletion of deletions){
+      if(deletion.end>lastStart)continue;
+      const current=after.slice(deletion.start,deletion.end);
+      if(deletion.raw&&current!==deletion.raw)continue;
+      after=after.slice(0,deletion.start)+after.slice(deletion.end);
+      lastStart=deletion.start;
+    }
     after=after.replace(/\n{3,}/g,'\n\n');
     if(after!==before)files.push({
       file,relativePath:path.relative(analysis.root,file),before,after,beforeHash:hashText(before),
