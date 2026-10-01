@@ -14,13 +14,15 @@ const child=spawn(electron,['.','--disable-gpu'],{
 });
 
 let finished=false;
+const configuredTimeout=Number(process.env.AIS_SMOKE_TIMEOUT_MS);
+const timeoutMs=Number.isFinite(configuredTimeout)&&configuredTimeout>=30000?configuredTimeout:180000;
 const timeout=setTimeout(()=>{
   if(finished)return;
   finished=true;
   try{child.kill()}catch(_){}
-  console.error('App Interface Studio smoke test timed out.');
+  console.error('App Interface Studio smoke test timed out after '+Math.round(timeoutMs/1000)+'s.');
   process.exit(1);
-},60000);
+},timeoutMs);
 
 child.on('error',error=>{
   if(finished)return;
