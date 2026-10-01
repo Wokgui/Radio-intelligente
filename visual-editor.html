@@ -1895,18 +1895,39 @@ body.desktop .desktop-badge{display:inline-flex}
     recoveryTimer=setTimeout(saveRecovery,1200);
   }
 
+  function recoveryProjectPayload(project){
+    var copy=JSON.parse(JSON.stringify(project||{}));
+    decorateProjectForStorage(copy);
+    copy.recoveredAt=new Date().toISOString();
+    copy.namedVersions=(copy.namedVersions||[]).slice(-8).map(function(v){
+      return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:null};
+    });
+    if(copy.referenceCapture&&String(copy.referenceCapture).length>350000)copy.referenceCapture='';
+    if(copy.regressionBaseline&&String(copy.regressionBaseline).length>350000)copy.regressionBaseline=null;
+    return copy;
+  }
+
+  function compactRecoveryPayload(project){
+    var compact=JSON.parse(JSON.stringify(project||{}));
+    compact.namedVersions=[];
+    compact.referenceCapture='';
+    compact.regressionBaseline=null;
+    compact.recoveryCompacted=true;
+    return compact;
+  }
+
   async function saveRecovery(){
     if(recoveryBusy||prefs.autoRecovery===false||!currentSource)return;
     recoveryBusy=true;
     try{
       var project=await requestProject();
       if(!project)return;
-      project.source=currentSource;
-      project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
-      project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.63.0'};
-      project.recoveredAt=new Date().toISOString();
-      localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
+      var recovery=recoveryProjectPayload(project);
+      try{
+        localStorage.setItem(RECOVERY_KEY,JSON.stringify(recovery));
+      }catch(storageError){
+        localStorage.setItem(RECOVERY_KEY,JSON.stringify(compactRecoveryPayload(recovery)));
+      }
       refreshRecoveryStatus();
     }catch(_){}
     finally{recoveryBusy=false}
@@ -1916,29 +1937,11 @@ body.desktop .desktop-badge{display:inline-flex}
     var project=null;
     try{project=JSON.parse(localStorage.getItem(RECOVERY_KEY)||'null')}catch(_){}
     if(!project){setStatus('Aucun état de récupération disponible.',true);return}
-    if(project.source){
-      if(desktop&&desktop.restoreSource){
-        var restored=await desktop.restoreSource(project.source);
-        if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Source du projet introuvable.',true);return}
-        await loadSource(restored.source);
-      }else if(project.source.url){
-        await loadSource(project.source);
-      }
-    }
-    if(project.preview){
-      selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
-      if(project.preview.preset&&Array.from(preset.options).some(function(o){return o.value===project.preview.preset}))preset.value=project.preview.preset;
-      if(project.preview.size&&preset.value==='custom'){
-        screenCustomW.value=project.preview.size.width||412;
-        screenCustomH.value=project.preview.size.height||915;
-      }
-      if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
-      setDevice();
-    }
-    namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
-    renderVersions();
-    post('load-project',{project:project});
-    setStatus('Dernier état de travail restauré.');
+    var ok=await loadStoredProject(project,'état de récupération');
+    if(!ok)return;
+    setStatus(project.recoveryCompacted
+      ?'Dernier état de travail restauré. Les captures lourdes avaient été omises pour sécuriser la récupération.'
+      :'Dernier état de travail restauré.');
     settingsModal.hidden=true;
   }
 
@@ -4924,9 +4927,15 @@ body.desktop .desktop-badge{display:inline-flex}
       savePrefs();applyPrefs();
     }
     if(project.source){
-      var restored=await desktop.restoreSource(project.source);
-      if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return false}
-      await loadSource(restored.source);
+      if(desktop&&desktop.restoreSource){
+        var restored=await desktop.restoreSource(project.source);
+        if(!restored||!restored.ok){setStatus(restored&&restored.error?restored.error:'Impossible de retrouver la source.',true);return false}
+        await loadSource(restored.source);
+      }else if(project.source.url){
+        await loadSource(project.source);
+      }else{
+        setStatus('La source locale de ce projet nécessite l’application Windows.',true);return false;
+      }
     }
     if(project.preview){
       selectedDeviceKind=project.preview.deviceKind||selectedDeviceKind;
@@ -4935,7 +4944,7 @@ body.desktop .desktop-badge{display:inline-flex}
         screenCustomW.value=project.preview.size.width||412;screenCustomH.value=project.preview.size.height||915;
       }
       if(project.preview.safeProfile)safeProfile.value=project.preview.safeProfile;
-      setDevice();
+      await setPreviewMode(project.preview.mode||'edit');
     }
     if(project.environment){
       document.getElementById('systemFontScale').value=String(project.environment.fontScale||1);
@@ -4950,10 +4959,16 @@ body.desktop .desktop-badge{display:inline-flex}
     namedScenarios=Array.isArray(project.namedScenarios)?project.namedScenarios:[];
     renderSavedScenarios();
     renderPerformanceRegression(null);
-    if(project.referenceCapture&&referenceOverlay){
-      referenceOverlay.src=project.referenceCapture;
-      referenceOverlay.classList.add('visible');
-      applyReferenceComparison();
+    if(referenceOverlay){
+      if(project.referenceCapture){
+        referenceOverlay.src=project.referenceCapture;
+        referenceOverlay.classList.add('visible');
+        applyReferenceComparison();
+      }else{
+        referenceOverlay.removeAttribute('src');
+        referenceOverlay.classList.remove('visible');
+        compareStatus.textContent='Aucune capture de référence dans ce projet.';
+      }
     }
     if(project.editingBreakpoint&&Array.from(breakpointEdit.options).some(function(o){return o.value===project.editingBreakpoint})){
       breakpointEdit.value=project.editingBreakpoint;
