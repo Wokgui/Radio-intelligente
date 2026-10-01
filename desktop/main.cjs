@@ -345,25 +345,37 @@ function createWindow(){
             const interactionBridge=typeof api.replayScenario==='function'&&typeof api.keyboardAccessibilityAudit==='function'&&typeof api.smokeCascadeFixtures==='function';
             const performanceBridge=typeof api.profilePerformance==='function'&&typeof api.testNetwork==='function'&&typeof api.smokeScenarioFixture==='function';
             const reportBridge=typeof api.analyzeRoutes==='function'&&typeof api.exportReport==='function'&&typeof api.smokeRouteFixture==='function'&&typeof api.smokeReportFixture==='function';
-            const info=await api.appInfo();
-            const demo=await api.openDemo();
+            const smokeStep=async function(name,task,timeoutMs){
+              const limit=Math.max(1000,Number(timeoutMs)||30000);
+              let timer;
+              try{
+                return await Promise.race([
+                  Promise.resolve().then(task),
+                  new Promise(function(_resolve,reject){
+                    timer=setTimeout(function(){reject(new Error('Smoke step timeout: '+name+' after '+limit+'ms'));},limit);
+                  })
+                ]);
+              }finally{if(timer)clearTimeout(timer)}
+            };
+            const info=await smokeStep('appInfo',function(){return api.appInfo()},10000);
+            const demo=await smokeStep('openDemo',function(){return api.openDemo()},20000);
             if(!demo||!demo.ok||!demo.source)return {ok:false,error:'Ouverture de la démo impossible',demo:demo};
-            const shot=await api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'});
+            const shot=await smokeStep('captureCurrentSource',function(){return api.captureCurrentSource({source:demo.source,width:360,height:800,css:'/* smoke test */'})},30000);
             const captureOk=!!(shot&&shot.ok&&typeof shot.dataUrl==='string'&&shot.dataUrl.indexOf('data:image/png')===0);
-            const regression=await api.compareRegression({baseline:shot&&shot.dataUrl,current:shot&&shot.dataUrl});
+            const regression=await smokeStep('compareRegression',function(){return api.compareRegression({baseline:shot&&shot.dataUrl,current:shot&&shot.dataUrl})},30000);
             const regressionOk=!!(regression&&regression.ok&&regression.changedPixels===0&&regression.differencePercent===0&&typeof regression.diffDataUrl==='string'&&regression.diffDataUrl.indexOf('data:image/png')===0);
-            const matrix=await api.runTestMatrix({source:demo.source,css:'/* smoke test */'});
+            const matrix=await smokeStep('runTestMatrix',function(){return api.runTestMatrix({source:demo.source,css:'/* smoke test */'})},60000);
             const matrixOk=!!(matrix&&matrix.ok&&matrix.summary&&matrix.summary.tested===12&&Array.isArray(matrix.results)&&matrix.results.length===12);
-            const performanceProfile=await api.profilePerformance({source:demo.source,css:'/* smoke test */'});
+            const performanceProfile=await smokeStep('profilePerformance',function(){return api.profilePerformance({source:demo.source,css:'/* smoke test */'})},30000);
             const performanceOk=!!(performanceProfile&&performanceProfile.ok&&performanceProfile.metrics&&Number.isFinite(Number(performanceProfile.metrics.domNodes)));
-            const roundtrip=await api.smokeTransactionRoundtrip();
-            const atomicFailure=await api.smokeAtomicFailureRollback();
-            const portableRoundtrip=await api.smokePortableRoundtrip();
-            const cascadeFixtures=await api.smokeCascadeFixtures();
-            const scenarioFixture=await api.smokeScenarioFixture();
-            const cssCleanupFixture=await api.smokeCssCleanupFixture();
-            const routeFixture=await api.smokeRouteFixture();
-            const reportFixture=await api.smokeReportFixture();
+            const roundtrip=await smokeStep('smokeTransactionRoundtrip',function(){return api.smokeTransactionRoundtrip()},40000);
+            const atomicFailure=await smokeStep('smokeAtomicFailureRollback',function(){return api.smokeAtomicFailureRollback()},30000);
+            const portableRoundtrip=await smokeStep('smokePortableRoundtrip',function(){return api.smokePortableRoundtrip()},30000);
+            const cascadeFixtures=await smokeStep('smokeCascadeFixtures',function(){return api.smokeCascadeFixtures()},30000);
+            const scenarioFixture=await smokeStep('smokeScenarioFixture',function(){return api.smokeScenarioFixture()},30000);
+            const cssCleanupFixture=await smokeStep('smokeCssCleanupFixture',function(){return api.smokeCssCleanupFixture()},30000);
+            const routeFixture=await smokeStep('smokeRouteFixture',function(){return api.smokeRouteFixture()},30000);
+            const reportFixture=await smokeStep('smokeReportFixture',function(){return api.smokeReportFixture()},30000);
             return {
               ok:!!(info&&info.name==='App Interface Studio'&&sourceSafetyBridge&&interactionBridge&&performanceBridge&&reportBridge&&captureOk&&regressionOk&&matrixOk&&performanceOk&&roundtrip&&roundtrip.ok&&atomicFailure&&atomicFailure.ok&&portableRoundtrip&&portableRoundtrip.ok&&cascadeFixtures&&cascadeFixtures.ok&&scenarioFixture&&scenarioFixture.ok&&cssCleanupFixture&&cssCleanupFixture.ok&&routeFixture&&routeFixture.ok&&reportFixture&&reportFixture.ok),
               version:info&&info.version,
