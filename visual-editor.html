@@ -497,8 +497,8 @@ body.desktop .desktop-badge{display:inline-flex}
   <div class="source-dialog">
     <div class="source-dialog-head">
       <div class="source-dialog-logo"><svg viewBox="0 0 64 64" aria-hidden="true">
-  <defs><linearGradient id="aisg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#6D4AFF"/><stop offset=".55" stop-color="#8F4BFF"/><stop offset="1" stop-color="#D85CFF"/></linearGradient></defs>
-  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#aisg)"/>
+  <defs><linearGradient id="aisg-source" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse"><stop stop-color="#6D4AFF"/><stop offset=".55" stop-color="#8F4BFF"/><stop offset="1" stop-color="#D85CFF"/></linearGradient></defs>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#aisg-source)"/>
   <path d="M15 21h34M15 32h34M15 43h34M21 15v34M32 15v34M43 15v34" stroke="#fff" stroke-opacity=".18" stroke-width="1.6"/>
   <rect x="18" y="18" width="28" height="28" rx="7" fill="#fff" fill-opacity=".13" stroke="#fff" stroke-opacity=".32"/>
   <path d="M23.3 22.5l15.2 7.1-6.2 2.5 4.9 9.7-4.1 2.1-5-9.9-4.8 5V22.5z" fill="#fff" stroke="#fff" stroke-width=".9" stroke-linejoin="round"/>
@@ -766,7 +766,7 @@ body.desktop .desktop-badge{display:inline-flex}
         </select></div>
       </div>
       <div class="toolbar" style="margin-top:8px">
-        <button class="btn wide" id="rotateDeviceBtn">↻ Portrait / paysage</button>
+        <button class="btn wide" id="rotateDeviceBtn2">↻ Portrait / paysage</button>
         <button class="btn wide" id="multiPreviewBtn">▦ Comparer plusieurs écrans</button>
         <button class="btn wide" id="resetCanvasBtn">◎ Recentrer le canevas</button>
       </div>
@@ -5419,7 +5419,7 @@ body.desktop .desktop-badge{display:inline-flex}
     setDevice();
   });
   zoom.addEventListener('change',setDevice);
-  document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
+  ['rotateDeviceBtn','rotateDeviceBtn2'].forEach(function(id){var btn=document.getElementById(id);if(btn)btn.addEventListener('click',rotateDevice)});
   safeProfile.addEventListener('change',applySafeArea);
   screenCustomW.addEventListener('input',function(){customDeviceWidth.value=screenCustomW.value;setDevice()});
   screenCustomH.addEventListener('input',function(){customDeviceHeight.value=screenCustomH.value;setDevice()});
@@ -5589,7 +5589,7 @@ body.desktop .desktop-badge{display:inline-flex}
   rulerX.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('x',event.offsetX/currentZoomScale())});
   rulerY.addEventListener('click',function(event){if(currentPreviewMode==='edit')addCustomGuide('y',event.offsetY/currentZoomScale())});
 
-  document.getElementById('rotateDeviceBtn').addEventListener('click',rotateDevice);
+
   document.getElementById('multiPreviewBtn').addEventListener('click',openMultiPreview);
   document.getElementById('multiCloseBtn').addEventListener('click',closeMultiPreview);
   document.getElementById('multiSyncBtn').addEventListener('click',syncMultiPreview);
