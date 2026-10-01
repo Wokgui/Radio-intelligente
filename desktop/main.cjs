@@ -2832,6 +2832,103 @@ function cssRuleSignature(selector,context,body){
   return normalizeCssContext(context)+'|'+String(selector||'').trim()+'|'+props.join(';');
 }
 
+
+function sourceRouteUrl(source,relativePath){
+  try{
+    const base=new URL(String(source&&source.url||''));
+    base.pathname='/'+String(relativePath||'').split(/[\\/]+/).filter(Boolean).map(encodeURIComponent).join('/');
+    base.search='';base.hash='';
+    return base.toString();
+  }catch(_){return ''}
+}
+
+function routeUrlKey(value){
+  try{
+    const u=new URL(String(value||''));
+    u.hash=u.hash||'';
+    return u.origin+u.pathname+u.search+u.hash;
+  }catch(_){return String(value||'')}
+}
+
+async function analyzeSourceRoutes(source,options){
+  options=options||{};
+  const maxRoutes=Math.max(1,Math.min(24,Number(options.maxRoutes)||12));
+  const selectors=Array.isArray(options.selectors)?Array.from(new Set(options.selectors.map(String).filter(Boolean))).slice(0,180):[];
+  const queue=[],queued=new Set(),pages=[],selectorUsage={};
+  const local=localSourceEntry(source);
+  function enqueue(url,kind){
+    if(!url||queue.length+pages.length>=maxRoutes*4)return;
+    let normalized='';
+    try{
+      const u=new URL(String(url),String(source&&source.url||url));
+      if(!/^https?:$/.test(u.protocol))return;
+      if(source&&source.url){
+        const origin=new URL(String(source.url)).origin;
+        if(u.origin!==origin)return;
+      }
+      normalized=u.toString();
+    }catch(_){return}
+    const key=routeUrlKey(normalized);
+    if(queued.has(key))return;
+    queued.add(key);queue.push({url:normalized,kind:kind||'link'});
+  }
+  enqueue(source&&source.url,'entry');
+  if(local){
+    walkFiles(local.root,['.html','.htm'],80).slice(0,maxRoutes*2).forEach(file=>{
+      const rel=path.relative(local.root,file).replace(/\\/g,'/');
+      enqueue(sourceRouteUrl(source,rel),'html-file');
+    });
+  }
+
+  const win=new BrowserWindow({show:false,width:412,height:915,useContentSize:true,frame:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:false,allowRunningInsecureContent:true,backgroundThrottling:false}});
+  try{
+    while(queue.length&&pages.length<maxRoutes){
+      const item=queue.shift();
+      let loaded=true,error='';
+      try{await win.loadURL(item.url);await new Promise(r=>setTimeout(r,220))}
+      catch(e){loaded=false;error=String(e&&e.message||e)}
+      if(!loaded){
+        pages.push({url:item.url,kind:item.kind,ok:false,error});
+        continue;
+      }
+      let data={};
+      try{
+        const selectorJson=JSON.stringify(selectors);
+        const script="(function(){"+
+          "var links=Array.from(document.querySelectorAll('a[href]')).slice(0,160).map(function(a){try{return new URL(a.getAttribute('href'),location.href).toString()}catch(_){return ''}}).filter(Boolean);"+
+          "var selectors="+selectorJson+";var found=[];selectors.forEach(function(sel){try{if(document.querySelector(sel))found.push(sel)}catch(_){}});"+
+          "return {url:location.href,title:document.title||'',lang:document.documentElement.lang||'',dir:document.documentElement.dir||getComputedStyle(document.documentElement).direction||'ltr',nodes:document.getElementsByTagName('*').length,textLength:String(document.body&&document.body.innerText||'').trim().length,links:links,foundSelectors:found};"+
+        "})()";
+        data=await win.webContents.executeJavaScript(script,true);
+      }catch(e){data={url:item.url,links:[],foundSelectors:[],error:String(e&&e.message||e)}}
+      const page={url:data.url||item.url,kind:item.kind,ok:true,title:data.title||'',lang:data.lang||'',dir:data.dir||'',nodes:Number(data.nodes)||0,textLength:Number(data.textLength)||0,links:(data.links||[]).slice(0,160)};
+      pages.push(page);
+      (data.foundSelectors||[]).forEach(selector=>{
+        if(!selectorUsage[selector])selectorUsage[selector]=[];
+        if(!selectorUsage[selector].includes(page.url))selectorUsage[selector].push(page.url);
+      });
+      (data.links||[]).forEach(url=>enqueue(url,'link'));
+    }
+    return {
+      ok:true,pages,selectorUsage,
+      summary:{
+        scanned:pages.length,
+        failed:pages.filter(x=>!x.ok).length,
+        htmlFiles:pages.filter(x=>x.kind==='html-file').length,
+        links:pages.filter(x=>x.kind==='link').length,
+        selectorsChecked:selectors.length
+      }
+    };
+  }catch(error){
+    return {ok:false,error:'Analyse multi-routes impossible : '+String(error&&error.message||error),pages,selectorUsage};
+  }finally{if(!win.isDestroyed())win.destroy()}
+}
+
+ipcMain.handle('routes:analyze',async (_event,payload)=>analyzeSourceRoutes(payload&&payload.source,{
+  maxRoutes:payload&&payload.maxRoutes,
+  selectors:payload&&payload.selectors
+}));
+
 function sourceTextCorpus(root){
   const exts=['.css','.html','.htm','.js','.mjs','.cjs','.ts','.tsx','.jsx','.vue','.svelte'];
   return walkFiles(root,exts,700).map(file=>{
@@ -2957,6 +3054,26 @@ async function analyzeAdvancedCss(source){
   }catch(_){}
   finally{if(win&&!win.isDestroyed())win.destroy()}
 
+  const absentItems=items.filter(x=>x.kind==='unused-on-current-screen').slice(0,180);
+  let routeScan=null;
+  if(absentItems.length){
+    try{
+      routeScan=await analyzeSourceRoutes(source,{maxRoutes:12,selectors:Array.from(new Set(absentItems.map(x=>x.selector)))});
+      if(routeScan&&routeScan.ok){
+        absentItems.forEach(item=>{
+          const used=(routeScan.selectorUsage&&routeScan.selectorUsage[item.selector])||[];
+          if(used.length){
+            item.kind='used-on-other-route';
+            item.reason='Absent de l’écran courant mais présent sur '+used.length+' route(s) scannée(s), par exemple '+used[0]+'.';
+          }else{
+            item.kind='unused-across-scanned-routes';
+            item.reason='Aucun élément correspondant sur les '+(routeScan.summary&&routeScan.summary.scanned||0)+' route(s) scannée(s). Diagnostic uniquement : une route dynamique non découverte peut encore l’utiliser.';
+          }
+        });
+      }
+    }catch(_){}
+  }
+
   const order={high:0,medium:1,low:2};
   items.sort((a,b)=>(order[a.confidence]??9)-(order[b.confidence]??9)||String(a.relativePath).localeCompare(String(b.relativePath)));
   return {
@@ -2966,8 +3083,10 @@ async function analyzeAdvancedCss(source){
       safe:items.filter(x=>x.safe).length,
       high:items.filter(x=>x.confidence==='high').length,
       medium:items.filter(x=>x.confidence==='medium').length,
-      low:items.filter(x=>x.confidence==='low').length
-    }
+      low:items.filter(x=>x.confidence==='low').length,
+      routesScanned:routeScan&&routeScan.summary?routeScan.summary.scanned:0
+    },
+    routeSummary:routeScan&&routeScan.summary||null
   };
 }
 
