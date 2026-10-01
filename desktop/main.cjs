@@ -3275,22 +3275,28 @@ async function analyzeAdvancedCss(source){
       const body=doc.text.slice(block.bodyStart,block.close);
       const decls=cssRuleDeclarations(body);
       const sig=cssRuleSignature(prelude,block.context,body);
+      const start=Math.max(0,Number(block.preludeStart)||0);
       if(seenSignatures.has(sig)){
-        const first=seenSignatures.get(sig);
-        const start=Math.max(0,Number(block.preludeStart)||0);
-        const sameFile=path.resolve(first.file)===path.resolve(doc.file);
+        const previous=seenSignatures.get(sig);
+        const sameFile=path.resolve(previous.file)===path.resolve(doc.file);
+        const sameParent=sameFile&&previous.block.parent===block.parent;
+        const between=sameFile?doc.text.slice(previous.block.close+1,start).replace(/\/\*[\s\S]*?\*\//g,'').trim():'';
+        const adjacent=sameFile&&sameParent&&!between;
         items.push({
           id:'css-clean-'+(++itemId),
-          kind:sameFile?'exact-duplicate-rule':'cross-file-duplicate-rule',
-          confidence:sameFile?'high':'medium',
-          safe:sameFile,
+          kind:adjacent?'exact-duplicate-rule':(sameFile?'repeated-identical-rule':'cross-file-duplicate-rule'),
+          confidence:adjacent?'high':'medium',
+          safe:adjacent,
           file:doc.file,relativePath:path.relative(root,doc.file),selector:prelude,context:block.context||'',
           start:start,end:block.close+1,raw:doc.text.slice(start,block.close+1),
-          reason:sameFile
-            ?'Règle strictement dupliquée plus haut dans le même fichier et le même contexte CSS.'
-            :'Règle identique à '+path.relative(root,first.file)+' mais dans un autre fichier ; elle peut être chargée sur une autre route, donc suppression automatique interdite.'
+          reason:adjacent
+            ?'Règle strictement dupliquée juste avant dans le même bloc CSS.'
+            :(sameFile
+              ?'Règle identique répétée plus loin dans le fichier ; une déclaration intermédiaire peut rendre sa position significative, donc suppression automatique interdite.'
+              :'Règle identique à '+path.relative(root,previous.file)+' mais dans un autre fichier ; elle peut être chargée sur une autre route, donc suppression automatique interdite.')
         });
-      }else seenSignatures.set(sig,{file:doc.file,block});
+      }
+      seenSignatures.set(sig,{file:doc.file,block});
 
       const propertyPositions=new Map();
       decls.forEach(entry=>{
