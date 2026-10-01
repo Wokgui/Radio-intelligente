@@ -679,4 +679,12 @@ expect(preload,"smokeRouteFixture: () => ipcRenderer.invoke('smoke:route-fixture
 expect(preload,"smokeReportFixture: () => ipcRenderer.invoke('smoke:report-fixture')","report smoke bridge");
 expect(main,"kind:sameFile?'exact-duplicate-rule':'cross-file-duplicate-rule'","cross-file CSS duplicate safety");
 
+
+const htmlIds=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+const htmlIdCounts={};htmlIds.forEach(id=>htmlIdCounts[id]=(htmlIdCounts[id]||0)+1);
+const duplicateHtmlIds=Object.entries(htmlIdCounts).filter(([,count])=>count>1);
+if(duplicateHtmlIds.length)throw new Error('Duplicate HTML ids: '+duplicateHtmlIds.map(([id,count])=>id+' x'+count).join(', '));
+const hostRotateDefinitions=(html.match(/function\s+rotateDevice\s*\(/g)||[]).length;
+if(hostRotateDefinitions!==1)throw new Error('rotateDevice must have exactly one host implementation, got '+hostRotateDefinitions);
+
 console.log('App Interface Studio 6.63 feature checks passed.');
