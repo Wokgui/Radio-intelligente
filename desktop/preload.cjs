@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   keyboardAccessibilityAudit: payload => ipcRenderer.invoke('accessibility:keyboard-audit', payload),
   profilePerformance: payload => ipcRenderer.invoke('performance:profile', payload),
   testNetwork: payload => ipcRenderer.invoke('network:test', payload),
+  analyzeRoutes: payload => ipcRenderer.invoke('routes:analyze', payload),
+  exportReport: payload => ipcRenderer.invoke('report:export', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   exportPortableProject: project => ipcRenderer.invoke('layout:export-portable', project),
