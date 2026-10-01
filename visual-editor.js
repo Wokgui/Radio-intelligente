@@ -166,6 +166,9 @@
   let stressBackup = null;
   let contrastPreview = null;
   let layoutDiagnostics = [];
+  let scenarioRecording = false;
+  let scenarioActions = [];
+  let scenarioLastInput = new WeakMap();
   let responsiveResizeTimer = null;
   let spacingVisualTimer = null;
 
@@ -5052,6 +5055,77 @@
     event.stopImmediatePropagation();
   }, true);
 
+  function scenarioRecordAction(action) {
+    if(!scenarioRecording||!action||!action.selector)return;
+    const clean={
+      type:String(action.type||''),
+      selector:String(action.selector||''),
+      waitAfter:Math.max(20,Math.min(500,Number(action.waitAfter)||90))
+    };
+    if(action.value!==undefined)clean.value=String(action.value);
+    if(action.key!==undefined)clean.key=String(action.key);
+    if(action.code!==undefined)clean.code=String(action.code);
+    const previous=scenarioActions[scenarioActions.length-1];
+    if(previous&&clean.type==='input'&&previous.type==='input'&&previous.selector===clean.selector){
+      previous.value=clean.value;
+      emit('scenario-recording',{active:true,actions:scenarioActions.slice(),count:scenarioActions.length});
+      return;
+    }
+    scenarioActions.push(clean);
+    if(scenarioActions.length>160)scenarioActions=scenarioActions.slice(-160);
+    emit('scenario-recording',{active:true,actions:scenarioActions.slice(),count:scenarioActions.length});
+  }
+
+  function scenarioRecordingStart(clear) {
+    if(clear!==false)scenarioActions=[];
+    scenarioRecording=true;
+    emit('scenario-recording',{active:true,actions:scenarioActions.slice(),count:scenarioActions.length});
+  }
+
+  function scenarioRecordingStop() {
+    scenarioRecording=false;
+    emit('scenario-recording',{active:false,actions:scenarioActions.slice(),count:scenarioActions.length});
+  }
+
+  function scenarioRecordingClear() {
+    scenarioActions=[];
+    emit('scenario-recording',{active:scenarioRecording,actions:[],count:0});
+  }
+
+  document.addEventListener('click',function(event){
+    if(!scenarioRecording||isEditorNode(event.target))return;
+    const el=event.target&&event.target.closest?event.target.closest('button,a,input,select,textarea,[role="button"],[role="link"],[tabindex]'):event.target;
+    if(!el||isEditorNode(el))return;
+    const selector=selectorFor(el);if(!selector)return;
+    scenarioRecordAction({type:'click',selector:selector,waitAfter:120});
+  },true);
+
+  document.addEventListener('input',function(event){
+    if(!scenarioRecording||isEditorNode(event.target))return;
+    const el=event.target;
+    if(!el||!/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))return;
+    const selector=selectorFor(el);if(!selector)return;
+    scenarioRecordAction({type:'input',selector:selector,value:el.value,waitAfter:70});
+  },true);
+
+  document.addEventListener('change',function(event){
+    if(!scenarioRecording||isEditorNode(event.target))return;
+    const el=event.target;
+    if(!el||!/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))return;
+    const selector=selectorFor(el);if(!selector)return;
+    scenarioRecordAction({type:'change',selector:selector,value:el.value,waitAfter:90});
+  },true);
+
+  document.addEventListener('keydown',function(event){
+    if(!scenarioRecording||isEditorNode(event.target))return;
+    if(['Tab','Shift','Control','Alt','Meta'].includes(event.key))return;
+    const el=event.target;
+    const selector=selectorFor(el);if(!selector)return;
+    if(event.key==='Enter'||event.key==='Escape'||event.key===' '||event.key.indexOf('Arrow')===0){
+      scenarioRecordAction({type:'keydown',selector:selector,key:event.key,code:event.code||'',waitAfter:80});
+    }
+  },true);
+
   function cancelActiveInteraction() {
     const kind=drag?'move':(resizeDrag?'resize':'');
     const snap=drag&&drag.startSnapshot?drag.startSnapshot:(resizeDrag&&resizeDrag.startSnapshot?resizeDrag.startSnapshot:null);
@@ -5244,6 +5318,10 @@
     if (data.type === 'delete') deleteSelected();
     if (data.type === 'move') adjustMove(Number(payload.dx) || 0, Number(payload.dy) || 0, payload.commit !== false);
     if (data.type === 'resize') adjustSize(Number(payload.dw) || 0, Number(payload.dh) || 0, payload.commit !== false, !!payload.proportional);
+    if (data.type === 'scenario-record-start') scenarioRecordingStart(payload.clear!==false);
+    if (data.type === 'scenario-record-stop') scenarioRecordingStop();
+    if (data.type === 'scenario-record-clear') scenarioRecordingClear();
+    if (data.type === 'scenario-record-get') emit('scenario-recording',{active:scenarioRecording,actions:scenarioActions.slice(),count:scenarioActions.length});
     if (data.type === 'interaction-cancel') cancelActiveInteraction();
     if (data.type === 'keyboard-commit') flushKeyboardCommit();
     if (data.type === 'responsive-set') setResponsiveConfig(payload);
