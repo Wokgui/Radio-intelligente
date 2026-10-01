@@ -186,6 +186,15 @@ body.no-animations *,body.no-animations *::before,body.no-animations *::after{tr
 .field select,.field input{display:flex;align-items:center}
 .field textarea{padding:10px;min-height:70px;resize:vertical;line-height:1.4}
 .selector{
+.selector-stability{margin-top:5px;font-size:.62rem;color:var(--muted)}
+.selector-stability.good,.selector-stability.strong{color:#287047}
+.selector-stability.medium{color:#9a6822}
+.selector-stability.fragile{color:#a93d58}
+.dynamic-status{margin-top:7px;font-size:.68rem;line-height:1.4;color:var(--muted)}
+.performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.performance-metric{padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff}
+.performance-metric b{display:block;font-size:.76rem}.performance-metric small{display:block;color:var(--muted);font-size:.6rem;margin-top:2px}
+.performance-findings{display:grid;gap:6px;margin-top:8px}
   min-height:43px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);
   display:flex;align-items:center;
   font:700 10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all
@@ -755,6 +764,7 @@ body.desktop .desktop-badge{display:inline-flex}
     <section class="card">
       <h2>Sélection <small>ajustement fin</small></h2>
       <div class="selector" id="selector">Clique un élément dans l’aperçu.</div>
+      <div class="selector-stability" id="selectorStability">Stabilité du sélecteur : —</div>
       <div class="selection-breadcrumbs" id="selectionBreadcrumbs"><span>Aucune hiérarchie sélectionnée.</span></div>
       <div class="metrics">
         <div class="metric"><b id="mx">—</b><small>X</small></div>
@@ -1291,6 +1301,16 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
     <section class="card">
+      <h2>Surveillance dynamique <small>DOM / redimensionnements</small></h2>
+      <div class="toolbar">
+        <button class="btn primary wide" id="dynamicDiagnosticsBtn">Activer</button>
+        <button class="btn wide" id="dynamicDiagnosticsRefreshBtn">État</button>
+      </div>
+      <div class="dynamic-status" id="dynamicDiagnosticsStatus">Surveillance désactivée.</div>
+      <p>Observe les changements de DOM, attributs et dimensions. Studio relance uniquement l’audit, la cohérence ou le diagnostic de layout nécessaires, avec temporisation pour éviter les boucles.</p>
+    </section>
+
+    <section class="card">
       <h2>Diagnostic de mise en page <small>Flex / Grid / débordements</small></h2>
       <div class="toolbar">
         <button class="btn primary wide" id="layoutDiagnosticBtn">Analyser l’écran</button>
@@ -1311,6 +1331,15 @@ body.desktop .desktop-badge{display:inline-flex}
       <div class="toolbar" style="margin-top:7px"><button class="btn wide" id="repairAssistantBtn">Réparer avec aperçu</button><button class="btn wide desktop-only" id="testMatrixBtn">Tester 12 configurations</button></div>
       <div class="audit-summary" id="auditSummary"></div>
       <div class="audit-list" id="auditList"><div class="hint">Aucun audit lancé.</div></div>
+    </section>
+
+    <section class="card desktop-only">
+      <h2>Performances <small>métriques Chromium</small></h2>
+      <button class="btn primary" id="performanceProfileBtn" style="width:100%">Profiler l’écran</button>
+      <div class="compare-status" id="performanceProfileStatus">Aucun profil lancé.</div>
+      <div class="performance-grid" id="performanceMetrics"></div>
+      <div class="performance-findings" id="performanceFindings"></div>
+      <p>Mesure chargement, temps de tâches/JavaScript/layout, recalculs de style, taille du DOM, heap JS et poids des ressources dans une fenêtre isolée.</p>
     </section>
 
     <section class="card desktop-only">
@@ -1433,6 +1462,7 @@ body.desktop .desktop-badge{display:inline-flex}
   var grid=document.getElementById('grid');
   var step=document.getElementById('step');
   var selector=document.getElementById('selector');
+  var selectorStability=document.getElementById('selectorStability');
   var cssOut=document.getElementById('cssOut');
   var status=document.getElementById('status');
   var undoBtn=document.getElementById('undoEdit');
@@ -1629,6 +1659,12 @@ body.desktop .desktop-badge{display:inline-flex}
   var recordedScenarioActions=[];
   var scenarioRecordingActive=false;
   var componentTestStatus=document.getElementById('componentTestStatus');
+  var dynamicDiagnosticsBtn=document.getElementById('dynamicDiagnosticsBtn');
+  var dynamicDiagnosticsStatus=document.getElementById('dynamicDiagnosticsStatus');
+  var performanceProfileStatus=document.getElementById('performanceProfileStatus');
+  var performanceMetrics=document.getElementById('performanceMetrics');
+  var performanceFindings=document.getElementById('performanceFindings');
+  var lastPerformanceProfile=null;
   var finalControlStatus=document.getElementById('finalControlStatus');
   var finalControlList=document.getElementById('finalControlList');
   var lastAuditPayload=null;
@@ -1749,7 +1785,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.58.0'};
+      project.studio={name:'App Interface Studio',version:'6.59.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -2497,6 +2533,11 @@ body.desktop .desktop-badge{display:inline-flex}
     hasSelection=!!p.selected;
     var selectionCount=Number(p.selectionCount)||0;
     selector.textContent=p.selected?(selectionCount>1?selectionCount+' objets sélectionnés · Maj+clic pour modifier la sélection':p.selector):'Clique un élément dans l’aperçu.';
+    var stability=p.selected&&p.selectorStability?p.selectorStability:null;
+    selectorStability.className='selector-stability '+(stability&&stability.level||'');
+    selectorStability.textContent=stability
+      ?'Stabilité du sélecteur : '+stability.score+'/100 · '+stability.reason
+      :'Stabilité du sélecteur : —';
     renderSelectionBreadcrumbs(p.selected?p.selectionPath:[]);
     metrics.x.textContent=p.selected?p.x:'—';
     metrics.y.textContent=p.selected?p.y:'—';
@@ -4060,12 +4101,70 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.58.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.59.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
     gitStatusText.textContent=(result.prUrl?'Pull Request créée : '+result.prUrl:'Branche publiée : '+result.branch+'. Ouvre GitHub pour créer la Pull Request.')+cleanNote;
     if(result.prUrl&&desktop.copyText)desktop.copyText(result.prUrl);
+  }
+
+  function bytesLabel(value){
+    var n=Number(value)||0;
+    if(n>=1024*1024)return (n/1024/1024).toFixed(1)+' Mo';
+    if(n>=1024)return (n/1024).toFixed(1)+' Ko';
+    return Math.round(n)+' o';
+  }
+
+  function renderPerformanceProfile(result){
+    lastPerformanceProfile=result&&result.ok?result:null;
+    performanceMetrics.innerHTML='';performanceFindings.innerHTML='';
+    if(!result||!result.ok){
+      performanceProfileStatus.textContent=result&&result.error||'Profilage impossible.';
+      return;
+    }
+    var m=result.metrics||{},page=result.page||{};
+    var entries=[
+      ['Chargement',Math.round(m.loadMs||0)+' ms'],
+      ['Tâches Chromium',Math.round(m.taskDurationMs||0)+' ms'],
+      ['JavaScript',Math.round(m.scriptDurationMs||0)+' ms'],
+      ['Layout',Math.round(m.layoutDurationMs||0)+' ms'],
+      ['Recalcul style',Math.round(m.recalcStyleDurationMs||0)+' ms'],
+      ['Layouts',String(m.layoutCount||0)],
+      ['Recalculs style',String(m.recalcStyleCount||0)],
+      ['DOM',String(m.domNodes||0)+' nœuds'],
+      ['Heap JS',bytesLabel(m.jsHeapUsedBytes||0)],
+      ['Ressources',String(page.resources||0)],
+      ['Transféré',bytesLabel(page.transferBytes||0)],
+      ['Images décodées estimées',bytesLabel(page.estimatedDecodedImageBytes||0)]
+    ];
+    entries.forEach(function(entry){
+      var box=document.createElement('div');box.className='performance-metric';
+      var b=document.createElement('b');b.textContent=entry[1];
+      var small=document.createElement('small');small.textContent=entry[0];
+      box.append(b,small);performanceMetrics.appendChild(box);
+    });
+    var findings=result.findings||[];
+    performanceProfileStatus.textContent=findings.length
+      ?findings.length+' point(s) de performance à vérifier.'
+      :'Aucun seuil de vigilance dépassé dans ce profil.';
+    findings.forEach(function(item){
+      var row=document.createElement('div');row.className='audit-item warning';
+      row.innerHTML='<b></b><span></span>';
+      row.querySelector('b').textContent=item.type||'performance';
+      row.querySelector('span').textContent=item.message||'';
+      performanceFindings.appendChild(row);
+    });
+  }
+
+  async function runPerformanceProfile(){
+    if(!desktop||!desktop.profilePerformance||!currentSource){performanceProfileStatus.textContent='Fonction disponible dans l’application Windows avec une source chargée.';return null}
+    performanceProfileStatus.textContent='Profilage en cours…';
+    performanceMetrics.innerHTML='';performanceFindings.innerHTML='';
+    var project=await requestProject();
+    var result=await desktop.profilePerformance({source:currentSource,css:project&&project.css||cssOut.value});
+    renderPerformanceProfile(result);
+    return result;
   }
 
   function finalControlRow(title,detail,ok){
@@ -4094,6 +4193,10 @@ body.desktop .desktop-badge{display:inline-flex}
     var overridesResult=desktop&&desktop.analyzeOverrides&&['folder','html'].indexOf(currentSource.type)>=0
       ?await desktop.analyzeOverrides(currentSource)
       :null;
+    var performanceResult=desktop&&desktop.profilePerformance
+      ?await desktop.profilePerformance({source:currentSource,css:project&&project.css||cssOut.value})
+      :null;
+    if(performanceResult&&performanceResult.ok)lastPerformanceProfile=performanceResult;
 
     var auditSummary=(lastAuditPayload&&lastAuditPayload.summary)||{};
     var consistencyIssues=(lastConsistencyPayload&&lastConsistencyPayload.issues)||[];
@@ -4135,6 +4238,13 @@ body.desktop .desktop-badge{display:inline-flex}
         title:'Surcharges historiques',
         detail:overrideItems.length+' règle(s) ou fichier(s) nettoyable(s) en toute sécurité',
         ok:overrideItems.length===0
+      });
+    }
+    if(performanceResult&&performanceResult.ok){
+      checks.push({
+        title:'Performances',
+        detail:(performanceResult.findings||[]).length+' seuil(s) de vigilance dépassé(s) · DOM '+((performanceResult.metrics||{}).domNodes||0)+' nœuds · heap '+bytesLabel((performanceResult.metrics||{}).jsHeapUsedBytes||0),
+        ok:(performanceResult.findings||[]).length===0
       });
     }
     checks.forEach(function(check){finalControlList.appendChild(finalControlRow(check.title,check.detail,check.ok))});
@@ -4187,7 +4297,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.58.0'};
+    project.studio={name:'App Interface Studio',version:'6.59.0'};
     return project;
   }
 
@@ -4284,7 +4394,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.58.0'};
+    project.studio={name:'App Interface Studio',version:'6.59.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -4670,6 +4780,13 @@ body.desktop .desktop-badge{display:inline-flex}
     if(data.type==='design-consistency')renderConsistency(p);
     if(data.type==='css-cascade')renderCssCascade(p);
     if(data.type==='scenario-recording')renderScenario(p.actions||[],p.active);
+    if(data.type==='dynamic-diagnostics'){
+      var stats=p.stats||{};
+      dynamicDiagnosticsBtn.textContent=p.active?'Désactiver':'Activer';
+      dynamicDiagnosticsBtn.classList.toggle('primary',!p.active);
+      dynamicDiagnosticsStatus.textContent=(p.message||'')+
+        ' Mutations '+(stats.mutations||0)+' · redimensionnements '+(stats.resizes||0)+' · actualisations '+(stats.runs||0)+'.';
+    }
     if(data.type==='layout-diagnostic')renderLayoutDiagnostic(p);
     if(data.type==='layout-diagnostic-applied'){setStatus('Correction structurelle appliquée à '+(p.selector||'l’objet')+'.');post('get-css')}
     if(data.type==='layout-diagnostic-batch'){setStatus((p.count||0)+' correction(s) structurelle(s) appliquée(s) dans une seule étape Undo.');post('get-css')}
@@ -4972,6 +5089,9 @@ body.desktop .desktop-badge{display:inline-flex}
   scenarioClearBtn.addEventListener('click',function(){recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);post('scenario-record-clear')});
   scenarioReplayBtn.addEventListener('click',replayRecordedScenario);
   document.getElementById('keyboardAuditBtn').addEventListener('click',runKeyboardAudit);
+  dynamicDiagnosticsBtn.addEventListener('click',function(){post('dynamic-diagnostics-toggle')});
+  document.getElementById('dynamicDiagnosticsRefreshBtn').addEventListener('click',function(){post('dynamic-diagnostics-status')});
+  document.getElementById('performanceProfileBtn').addEventListener('click',runPerformanceProfile);
   document.getElementById('testComponentsBtn').addEventListener('click',function(){post('test-components')});
   document.getElementById('runFinalControlBtn').addEventListener('click',runFinalControl);
   document.getElementById('createComponentBtn').addEventListener('click',function(){
@@ -5165,6 +5285,7 @@ body.desktop .desktop-badge{display:inline-flex}
     cssOut.value='/* Aucun ajustement. */';
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
     recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
+    performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;post('dynamic-diagnostics-stop');
     directSourceStatus.textContent=source.type==='android-project'
       ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
       : (['folder','html'].indexOf(source.type)>=0?'Sélectionne un objet puis prépare le diff de sa vraie règle CSS.':'L’édition source directe nécessite une source locale.');
