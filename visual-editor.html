@@ -1206,8 +1206,11 @@ body.desktop .desktop-badge{display:inline-flex}
         <button class="btn wide" id="scenarioReplayBtn" disabled>Rejouer sur 3 formats</button>
         <button class="btn wide" id="scenarioClearBtn">Effacer</button>
       </div>
+      <div class="field" style="margin-top:8px"><label>Nom du scénario</label><input id="scenarioName" type="text" placeholder="Ouverture du lecteur"></div>
+      <button class="btn" id="scenarioSaveBtn" style="width:100%;margin-top:7px">Enregistrer ce scénario dans le projet</button>
       <div class="scenario-state" id="scenarioStatus">Aucun parcours enregistré.</div>
       <div class="scenario-list" id="scenarioList"><div class="hint">Les clics, saisies et touches d’action apparaîtront ici.</div></div>
+      <div class="version-list" id="savedScenarioList"><div class="hint">Aucun scénario enregistré dans le projet.</div></div>
       <div class="matrix-list" id="scenarioReplayResults"></div>
       <p>Le rejeu est exécuté sur téléphone, tablette et desktop, puis vérifie aussi les débordements et textes coupés après le parcours.</p>
     </section>
@@ -1334,9 +1337,22 @@ body.desktop .desktop-badge{display:inline-flex}
     </section>
 
     <section class="card desktop-only">
+      <h2>Réseau dégradé <small>lent / images / hors ligne</small></h2>
+      <button class="btn primary" id="networkTestBtn" style="width:100%">Tester les profils réseau</button>
+      <div class="compare-status" id="networkTestStatus">Aucun test réseau lancé.</div>
+      <div class="matrix-list" id="networkTestResults"></div>
+      <p>Teste 4G lente, 3G lente, images bloquées et démarrage hors ligne. Le mode hors ligne est considéré comme géré si l’application charge encore une interface exploitable.</p>
+    </section>
+
+    <section class="card desktop-only">
       <h2>Performances <small>métriques Chromium</small></h2>
-      <button class="btn primary" id="performanceProfileBtn" style="width:100%">Profiler l’écran</button>
+      <div class="toolbar">
+        <button class="btn primary wide" id="performanceProfileBtn">Profiler l’écran</button>
+        <button class="btn wide" id="performanceBaselineBtn">Définir comme référence</button>
+      </div>
+      <button class="btn" id="performanceCompareBtn" style="width:100%;margin-top:7px">Comparer à la référence</button>
       <div class="compare-status" id="performanceProfileStatus">Aucun profil lancé.</div>
+      <div class="compare-status" id="performanceRegressionStatus">Aucune référence de performances.</div>
       <div class="performance-grid" id="performanceMetrics"></div>
       <div class="performance-findings" id="performanceFindings"></div>
       <p>Mesure chargement, temps de tâches/JavaScript/layout, recalculs de style, taille du DOM, heap JS et poids des ressources dans une fenêtre isolée.</p>
@@ -1654,6 +1670,9 @@ body.desktop .desktop-badge{display:inline-flex}
   var scenarioStatus=document.getElementById('scenarioStatus');
   var scenarioList=document.getElementById('scenarioList');
   var scenarioReplayResults=document.getElementById('scenarioReplayResults');
+  var scenarioName=document.getElementById('scenarioName');
+  var savedScenarioList=document.getElementById('savedScenarioList');
+  var namedScenarios=[];
   var keyboardAuditStatus=document.getElementById('keyboardAuditStatus');
   var keyboardAuditResult=document.getElementById('keyboardAuditResult');
   var recordedScenarioActions=[];
@@ -1661,10 +1680,14 @@ body.desktop .desktop-badge{display:inline-flex}
   var componentTestStatus=document.getElementById('componentTestStatus');
   var dynamicDiagnosticsBtn=document.getElementById('dynamicDiagnosticsBtn');
   var dynamicDiagnosticsStatus=document.getElementById('dynamicDiagnosticsStatus');
+  var networkTestStatus=document.getElementById('networkTestStatus');
+  var networkTestResults=document.getElementById('networkTestResults');
   var performanceProfileStatus=document.getElementById('performanceProfileStatus');
+  var performanceRegressionStatus=document.getElementById('performanceRegressionStatus');
   var performanceMetrics=document.getElementById('performanceMetrics');
   var performanceFindings=document.getElementById('performanceFindings');
   var lastPerformanceProfile=null;
+  var performanceBaseline=null;
   var finalControlStatus=document.getElementById('finalControlStatus');
   var finalControlList=document.getElementById('finalControlList');
   var lastAuditPayload=null;
@@ -1785,7 +1808,7 @@ body.desktop .desktop-badge{display:inline-flex}
       project.source=currentSource;
       project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
       project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
-      project.studio={name:'App Interface Studio',version:'6.59.0'};
+      project.studio={name:'App Interface Studio',version:'6.60.0'};
       project.recoveredAt=new Date().toISOString();
       localStorage.setItem(RECOVERY_KEY,JSON.stringify(project));
       refreshRecoveryStatus();
@@ -3213,6 +3236,56 @@ body.desktop .desktop-badge{display:inline-flex}
     });
   }
 
+  function renderSavedScenarios(){
+    savedScenarioList.innerHTML='';
+    if(!namedScenarios.length){
+      savedScenarioList.innerHTML='<div class="hint">Aucun scénario enregistré dans le projet.</div>';
+      return;
+    }
+    namedScenarios.forEach(function(item,index){
+      var row=document.createElement('div');row.className='version-item';
+      var text=document.createElement('div');
+      var strong=document.createElement('strong');strong.textContent=item.name||('Scénario '+(index+1));
+      var small=document.createElement('small');small.textContent=(item.actions||[]).length+' action(s) · '+new Date(item.createdAt||Date.now()).toLocaleString();
+      text.append(strong,small);
+      var actions=document.createElement('div');actions.className='layout-diagnostic-actions';
+      var load=document.createElement('button');load.className='btn';load.textContent='Charger';
+      load.addEventListener('click',function(){renderScenario(JSON.parse(JSON.stringify(item.actions||[])),false);scenarioName.value=item.name||''});
+      var replay=document.createElement('button');replay.className='btn';replay.textContent='Rejouer';
+      replay.addEventListener('click',async function(){
+        renderScenario(JSON.parse(JSON.stringify(item.actions||[])),false);
+        scenarioName.value=item.name||'';
+        await replayRecordedScenario();
+      });
+      var del=document.createElement('button');del.className='btn';del.textContent='Supprimer';
+      del.addEventListener('click',function(){namedScenarios.splice(index,1);renderSavedScenarios()});
+      actions.append(load,replay,del);row.append(text,actions);savedScenarioList.appendChild(row);
+    });
+  }
+
+  function saveCurrentScenario(){
+    var name=String(scenarioName.value||'').trim()||('Scénario '+(namedScenarios.length+1));
+    if(!recordedScenarioActions.length){scenarioStatus.textContent='Enregistre au moins une action avant de sauvegarder.';return}
+    var existing=namedScenarios.findIndex(function(x){return x.name===name});
+    var record={id:existing>=0?namedScenarios[existing].id:('scenario-'+Date.now()),name:name,createdAt:new Date().toISOString(),actions:JSON.parse(JSON.stringify(recordedScenarioActions))};
+    if(existing>=0)namedScenarios[existing]=record;else namedScenarios.push(record);
+    renderSavedScenarios();
+    scenarioStatus.textContent='Scénario « '+name+' » enregistré dans le projet.';
+  }
+
+  async function replayAllSavedScenarios(css){
+    if(!desktop||!desktop.replayScenario||!currentSource||!namedScenarios.length)return {ok:true,tested:0,failed:0,details:[]};
+    var details=[],failed=0;
+    for(var i=0;i<namedScenarios.length;i+=1){
+      var item=namedScenarios[i];
+      var result=await desktop.replayScenario({source:currentSource,css:css||cssOut.value,actions:item.actions||[]});
+      var bad=!result||!result.ok||Number(result.summary&&result.summary.failed)>0;
+      if(bad)failed++;
+      details.push({name:item.name,ok:!bad,summary:result&&result.summary||{},error:result&&result.error||''});
+    }
+    return {ok:true,tested:namedScenarios.length,failed:failed,details:details};
+  }
+
   function renderScenarioReplay(result){
     scenarioReplayResults.innerHTML='';
     if(!result||!result.ok){
@@ -4101,7 +4174,7 @@ body.desktop .desktop-badge{display:inline-flex}
       source:currentSource,
       branch:document.getElementById('gitBranch').value,
       title:document.getElementById('gitTitle').value,
-      body:'Modifications visuelles générées avec App Interface Studio 6.59.'
+      body:'Modifications visuelles générées avec App Interface Studio 6.60.'
     });
     if(!result||!result.ok){gitStatusText.textContent=result&&result.error||'Publication impossible.';return}
     var cleanNote=result.cleanedAssets?' · '+result.cleanedAssets+' asset(s) orphelin(s) supprimé(s)':'';
@@ -4167,6 +4240,91 @@ body.desktop .desktop-badge{display:inline-flex}
     return result;
   }
 
+  function renderNetworkTest(result){
+    networkTestResults.innerHTML='';
+    if(!result||!result.ok){networkTestStatus.textContent=result&&result.error||'Test réseau impossible.';return}
+    var summary=result.summary||{};
+    networkTestStatus.textContent=(summary.tested||0)+' profil(s) testés · '+(summary.failed||0)+' échec(s) technique(s) · hors ligne '+(summary.offlineHandled?'géré':'non géré')+'.';
+    (result.results||[]).forEach(function(item){
+      var expectedOffline=item.profile==='offline';
+      var pass=item.ok&&(item.loaded||expectedOffline);
+      var row=document.createElement('div');row.className='matrix-item '+(pass?'pass':'fail');
+      var title=document.createElement('b');title.textContent=item.label||item.profile||'réseau';
+      var detail=document.createElement('div');
+      detail.textContent=item.loaded
+        ?'Chargé en '+Math.round(item.loadMs||0)+' ms · '+(item.page&&item.page.nodes||0)+' nœuds · '+(item.page&&item.page.brokenImages||0)+' image(s) cassée(s)'
+        :(expectedOffline?'Démarrage hors ligne indisponible'+(item.error?' · '+item.error:''):'Échec de chargement · '+(item.error||''));
+      row.append(title,detail);networkTestResults.appendChild(row);
+    });
+  }
+
+  async function runNetworkTests(){
+    if(!desktop||!desktop.testNetwork||!currentSource){networkTestStatus.textContent='Fonction disponible dans l’application Windows avec une source chargée.';return null}
+    networkTestStatus.textContent='Tests réseau en cours…';networkTestResults.innerHTML='';
+    var project=await requestProject();
+    var result=await desktop.testNetwork({source:currentSource,css:project&&project.css||cssOut.value,profiles:['slow4g','slow3g','imagesBlocked','offline']});
+    renderNetworkTest(result);return result;
+  }
+
+  function performanceSnapshot(result){
+    if(!result||!result.ok)return null;
+    return {createdAt:new Date().toISOString(),metrics:Object.assign({},result.metrics||{}),page:{
+      transferBytes:Number(result.page&&result.page.transferBytes)||0,
+      resources:Number(result.page&&result.page.resources)||0,
+      estimatedDecodedImageBytes:Number(result.page&&result.page.estimatedDecodedImageBytes)||0
+    }};
+  }
+
+  function comparePerformanceToBaseline(result){
+    if(!performanceBaseline||!result||!result.ok)return null;
+    var now=performanceSnapshot(result),base=performanceBaseline;
+    var fields=[
+      ['taskDurationMs','Temps tâches',20,80],
+      ['scriptDurationMs','JavaScript',20,60],
+      ['layoutDurationMs','Layout',25,20],
+      ['recalcStyleDurationMs','Styles',25,20],
+      ['layoutCount','Nombre layouts',25,10],
+      ['recalcStyleCount','Recalculs styles',25,15],
+      ['domNodes','DOM',15,100],
+      ['jsHeapUsedBytes','Heap JS',20,5*1024*1024]
+    ];
+    var regressions=[];
+    fields.forEach(function(f){
+      var before=Number(base.metrics&&base.metrics[f[0]])||0,after=Number(now.metrics&&now.metrics[f[0]])||0;
+      var delta=after-before,pct=before>0?delta/before*100:0;
+      if(delta>f[3]&&pct>f[2])regressions.push({key:f[0],label:f[1],before:before,after:after,pct:pct});
+    });
+    var transferBefore=Number(base.page&&base.page.transferBytes)||0,transferAfter=Number(now.page&&now.page.transferBytes)||0;
+    if(transferBefore>0&&transferAfter-transferBefore>200*1024&&(transferAfter/transferBefore-1)*100>15){
+      regressions.push({key:'transferBytes',label:'Poids transféré',before:transferBefore,after:transferAfter,pct:(transferAfter/transferBefore-1)*100,bytes:true});
+    }
+    return {ok:regressions.length===0,regressions:regressions,current:now};
+  }
+
+  function renderPerformanceRegression(compare){
+    if(!performanceBaseline){performanceRegressionStatus.textContent='Aucune référence de performances.';return}
+    if(!compare){performanceRegressionStatus.textContent='Référence définie. Lance un profil pour comparer.';return}
+    if(compare.ok){performanceRegressionStatus.textContent='Aucune régression significative par rapport à la référence.';return}
+    performanceRegressionStatus.textContent=compare.regressions.length+' régression(s) de performances détectée(s) : '+compare.regressions.map(function(x){
+      return x.label+' +'+Math.round(x.pct)+' %';
+    }).join(' · ');
+  }
+
+  async function setPerformanceBaseline(){
+    var result=lastPerformanceProfile&&lastPerformanceProfile.ok?lastPerformanceProfile:await runPerformanceProfile();
+    if(!result||!result.ok)return;
+    performanceBaseline=performanceSnapshot(result);
+    performanceRegressionStatus.textContent='Référence de performances définie maintenant.';
+  }
+
+  async function comparePerformanceNow(){
+    if(!performanceBaseline){performanceRegressionStatus.textContent='Définis d’abord une référence de performances.';return null}
+    var result=await runPerformanceProfile();
+    var comparison=comparePerformanceToBaseline(result);
+    renderPerformanceRegression(comparison);
+    return comparison;
+  }
+
   function finalControlRow(title,detail,ok){
     var row=document.createElement('div');row.className='version-item';
     row.style.gridTemplateColumns='minmax(0,1fr) auto';
@@ -4197,6 +4355,11 @@ body.desktop .desktop-badge{display:inline-flex}
       ?await desktop.profilePerformance({source:currentSource,css:project&&project.css||cssOut.value})
       :null;
     if(performanceResult&&performanceResult.ok)lastPerformanceProfile=performanceResult;
+    var scenarioResult=await replayAllSavedScenarios(project&&project.css||cssOut.value);
+    var networkResult=desktop&&desktop.testNetwork
+      ?await desktop.testNetwork({source:currentSource,css:project&&project.css||cssOut.value,profiles:['slow4g','imagesBlocked','offline']})
+      :null;
+    var performanceComparison=performanceResult&&performanceResult.ok?comparePerformanceToBaseline(performanceResult):null;
 
     var auditSummary=(lastAuditPayload&&lastAuditPayload.summary)||{};
     var consistencyIssues=(lastConsistencyPayload&&lastConsistencyPayload.issues)||[];
@@ -4245,6 +4408,27 @@ body.desktop .desktop-badge{display:inline-flex}
         title:'Performances',
         detail:(performanceResult.findings||[]).length+' seuil(s) de vigilance dépassé(s) · DOM '+((performanceResult.metrics||{}).domNodes||0)+' nœuds · heap '+bytesLabel((performanceResult.metrics||{}).jsHeapUsedBytes||0),
         ok:(performanceResult.findings||[]).length===0
+      });
+    }
+    if(performanceBaseline&&performanceComparison){
+      checks.push({
+        title:'Régression performances',
+        detail:(performanceComparison.regressions||[]).length+' dérive(s) significative(s) par rapport à la référence',
+        ok:performanceComparison.ok
+      });
+    }
+    if(namedScenarios.length){
+      checks.push({
+        title:'Scénarios enregistrés',
+        detail:(scenarioResult.tested||0)+' scénario(s) rejoué(s) · '+(scenarioResult.failed||0)+' en échec',
+        ok:(scenarioResult.failed||0)===0
+      });
+    }
+    if(networkResult&&networkResult.ok){
+      checks.push({
+        title:'Réseau dégradé',
+        detail:(networkResult.summary&&networkResult.summary.tested||0)+' profil(s) · hors ligne '+(networkResult.summary&&networkResult.summary.offlineHandled?'géré':'non géré'),
+        ok:!(networkResult.summary&&networkResult.summary.failed)
       });
     }
     checks.forEach(function(check){finalControlList.appendChild(finalControlRow(check.title,check.detail,check.ok))});
@@ -4296,8 +4480,10 @@ body.desktop .desktop-badge{display:inline-flex}
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt,project:v.project,thumbnail:v.thumbnail||null}});
     project.hostPreferences=JSON.parse(JSON.stringify(prefs||{}));
     project.regressionBaseline=regressionBaseline||null;
+    project.performanceBaseline=performanceBaseline||null;
+    project.namedScenarios=JSON.parse(JSON.stringify(namedScenarios||[]));
     project.referenceCapture=referenceOverlay&&referenceOverlay.getAttribute('src')||'';
-    project.studio={name:'App Interface Studio',version:'6.59.0'};
+    project.studio={name:'App Interface Studio',version:'6.60.0'};
     return project;
   }
 
@@ -4330,6 +4516,10 @@ body.desktop .desktop-badge{display:inline-flex}
     namedVersions=Array.isArray(project.namedVersions)?project.namedVersions:[];
     renderVersions();
     regressionBaseline=project.regressionBaseline||null;
+    performanceBaseline=project.performanceBaseline||null;
+    namedScenarios=Array.isArray(project.namedScenarios)?project.namedScenarios:[];
+    renderSavedScenarios();
+    renderPerformanceRegression(null);
     if(project.referenceCapture&&referenceOverlay){
       referenceOverlay.src=project.referenceCapture;
       referenceOverlay.classList.add('visible');
@@ -4394,7 +4584,7 @@ body.desktop .desktop-badge{display:inline-flex}
     project.source=currentSource;
     project.preview={mode:currentPreviewMode,deviceKind:selectedDeviceKind,preset:preset.value,size:currentDeviceSize(),safeProfile:safeProfile.value};
     project.namedVersions=namedVersions.map(function(v){return {id:v.id,name:v.name,createdAt:v.createdAt}});
-    project.studio={name:'App Interface Studio',version:'6.59.0'};
+    project.studio={name:'App Interface Studio',version:'6.60.0'};
     var text=projectPrompt(project);
     if(copyOnly){
       if(desktop)await desktop.copyText(text);
@@ -5088,10 +5278,14 @@ body.desktop .desktop-badge{display:inline-flex}
   scenarioStopBtn.addEventListener('click',function(){post('scenario-record-stop')});
   scenarioClearBtn.addEventListener('click',function(){recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);post('scenario-record-clear')});
   scenarioReplayBtn.addEventListener('click',replayRecordedScenario);
+  document.getElementById('scenarioSaveBtn').addEventListener('click',saveCurrentScenario);
   document.getElementById('keyboardAuditBtn').addEventListener('click',runKeyboardAudit);
   dynamicDiagnosticsBtn.addEventListener('click',function(){post('dynamic-diagnostics-toggle')});
   document.getElementById('dynamicDiagnosticsRefreshBtn').addEventListener('click',function(){post('dynamic-diagnostics-status')});
   document.getElementById('performanceProfileBtn').addEventListener('click',runPerformanceProfile);
+  document.getElementById('performanceBaselineBtn').addEventListener('click',setPerformanceBaseline);
+  document.getElementById('performanceCompareBtn').addEventListener('click',comparePerformanceNow);
+  document.getElementById('networkTestBtn').addEventListener('click',runNetworkTests);
   document.getElementById('testComponentsBtn').addEventListener('click',function(){post('test-components')});
   document.getElementById('runFinalControlBtn').addEventListener('click',runFinalControl);
   document.getElementById('createComponentBtn').addEventListener('click',function(){
@@ -5285,7 +5479,7 @@ body.desktop .desktop-badge{display:inline-flex}
     cssOut.value='/* Aucun ajustement. */';
     lastOverrideItems=[];overrideCleanupList.innerHTML='<div class="hint">Aucune analyse lancée.</div>';cleanupOverridesBtn.disabled=true;overrideCleanupStatus.textContent='Seules les règles strictement redondantes et les fichiers générés vides sont proposés.';
     recordedScenarioActions=[];scenarioReplayResults.innerHTML='';renderScenario([],false);keyboardAuditStatus.textContent='Aucun audit clavier lancé.';keyboardAuditResult.innerHTML='';
-    performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;post('dynamic-diagnostics-stop');
+    performanceProfileStatus.textContent='Aucun profil lancé.';performanceMetrics.innerHTML='';performanceFindings.innerHTML='';lastPerformanceProfile=null;performanceRegressionStatus.textContent=performanceBaseline?'Référence de performances disponible.':'Aucune référence de performances.';networkTestStatus.textContent='Aucun test réseau lancé.';networkTestResults.innerHTML='';post('dynamic-diagnostics-stop');
     directSourceStatus.textContent=source.type==='android-project'
       ? 'Projet Android natif : utilise le panneau Android natif pour modifier XML/Compose avec diff.'
       : (['folder','html'].indexOf(source.type)>=0?'Sélectionne un objet puis prépare le diff de sa vraie règle CSS.':'L’édition source directe nécessite une source locale.');
