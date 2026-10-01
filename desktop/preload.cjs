@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   runTestMatrix: payload => ipcRenderer.invoke('capture:test-matrix', payload),
   replayScenario: payload => ipcRenderer.invoke('scenario:replay', payload),
   keyboardAccessibilityAudit: payload => ipcRenderer.invoke('accessibility:keyboard-audit', payload),
+  profilePerformance: payload => ipcRenderer.invoke('performance:profile', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   exportPortableProject: project => ipcRenderer.invoke('layout:export-portable', project),
