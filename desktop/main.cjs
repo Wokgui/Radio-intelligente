@@ -1724,7 +1724,7 @@ function auditProjectAssets(local){
       byHash.get(hash).push(file);
     }
     const generated=path.dirname(file)===generatedDir;
-    const orphan=generated&&!usedGenerated.has(path.basename(file));
+    const orphan=generated&&!usedGenerated.truncated&&!usedGenerated.has(path.basename(file));
     const megapixels=width&&height?(width*height/1000000):0;
     const issues=[];
     if(orphan)issues.push('orphan');
@@ -1748,7 +1748,8 @@ function auditProjectAssets(local){
     duplicateCount:files.filter(x=>x.issues.includes('duplicate')).length,
     largeCount:files.filter(x=>x.issues.includes('large-file')||x.issues.includes('large-svg')).length,
     oversizedCount:files.filter(x=>x.issues.includes('oversized-dimensions')).length,
-    files:files.slice(0,500)
+    files:files.slice(0,500),
+    referenceScan:{scannedFiles:usedGenerated.scannedFiles||0,truncated:!!usedGenerated.truncated}
   };
 }
 
@@ -1764,7 +1765,7 @@ ipcMain.handle('source:clean-assets',async (_event,payload)=>{
   if(!local)return {ok:false,error:'Nettoyage disponible uniquement pour une source HTML locale.'};
   try{
     const cleanup=cleanupGeneratedAssets(local);
-    return {ok:true,removed:cleanup.removed,kept:cleanup.kept};
+    return {ok:true,removed:cleanup.removed,kept:cleanup.kept,scanTruncated:!!cleanup.scanTruncated,scannedFiles:cleanup.scannedFiles||0};
   }catch(error){return {ok:false,error:'Nettoyage des assets impossible : '+String(error&&error.message||error)}}
 });
 
@@ -1818,7 +1819,7 @@ ipcMain.handle('source:git-publish',async (_event,payload)=>{
         prUrl=execFileSync('gh',['pr','create','--title',title,'--body',body,'--head',branch],{cwd:root,encoding:'utf8',windowsHide:true,timeout:30000}).trim();
       }catch(_){}
     }
-    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length};
+    return {ok:true,branch,staged,prUrl,cleanedAssets:cleanup.removed.length,keptAssets:cleanup.kept.length,assetScanTruncated:!!cleanup.scanTruncated};
   }catch(error){return {ok:false,error:'Publication Git/GitHub impossible : '+String(error&&error.message||error)}}
 });
 
