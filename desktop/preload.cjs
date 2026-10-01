@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   replayScenario: payload => ipcRenderer.invoke('scenario:replay', payload),
   keyboardAccessibilityAudit: payload => ipcRenderer.invoke('accessibility:keyboard-audit', payload),
   profilePerformance: payload => ipcRenderer.invoke('performance:profile', payload),
+  testNetwork: payload => ipcRenderer.invoke('network:test', payload),
   saveProject: project => ipcRenderer.invoke('layout:save-project', project),
   openProject: () => ipcRenderer.invoke('layout:open-project'),
   exportPortableProject: project => ipcRenderer.invoke('layout:export-portable', project),
@@ -50,7 +51,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   appInfo: () => ipcRenderer.invoke('layout:app-info'),
   smokeTransactionRoundtrip: () => ipcRenderer.invoke('smoke:transaction-roundtrip'),
   smokePortableRoundtrip: () => ipcRenderer.invoke('smoke:portable-roundtrip'),
-  smokeCascadeFixtures: () => ipcRenderer.invoke('smoke:cascade-fixtures')
+  smokeCascadeFixtures: () => ipcRenderer.invoke('smoke:cascade-fixtures'),
+  smokeScenarioFixture: () => ipcRenderer.invoke('smoke:scenario-fixture')
 });
 
 // Compatibilité avec la v1.
