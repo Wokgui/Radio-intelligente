@@ -62,7 +62,8 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   smokeScenarioFixture: () => ipcRenderer.invoke('smoke:scenario-fixture'),
   smokeCssCleanupFixture: () => ipcRenderer.invoke('smoke:css-cleanup-fixture'),
   smokeRouteFixture: () => ipcRenderer.invoke('smoke:route-fixture'),
-  smokeReportFixture: () => ipcRenderer.invoke('smoke:report-fixture')
+  smokeReportFixture: () => ipcRenderer.invoke('smoke:report-fixture'),
+  smokeAssetCleanupFixture: () => ipcRenderer.invoke('smoke:asset-cleanup-fixture')
 });
 
 // Compatibilité avec la v1.
