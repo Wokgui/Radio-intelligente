@@ -3229,20 +3229,34 @@ ipcMain.handle('css-cleanup:apply',async (_event,payload)=>{
   if(!local)return {ok:false,error:'Source locale requise.'};
   const files=Array.isArray(payload&&payload.files)?payload.files:[];
   if(!files.length)return {ok:false,error:'Plan de nettoyage vide.'};
-  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[];
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[],staged=[],written=[];
   try{
     for(const entry of files){
       const file=String(entry&&entry.file||'');
       if(!file||!isPathInside(local.root,file))throw new Error('Chemin refusé.');
-      const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
+      if(!fs.existsSync(file))throw new Error('Fichier introuvable : '+path.relative(local.root,file));
+      const before=fs.readFileSync(file,'utf8');
       if(entry.beforeHash&&hashText(before)!==entry.beforeHash)throw new Error('Le fichier '+path.relative(local.root,file)+' a changé depuis le diff.');
-      const backup=file+'.ais-cleanup-backup-'+stamp;
-      fs.copyFileSync(file,backup);backups.push(backup);
-      fs.writeFileSync(file,String(entry.after||''),'utf8');
+      staged.push({file,before,after:String(entry.after||''),backup:file+'.ais-cleanup-backup-'+stamp});
     }
-    return {ok:true,changed:files.length,backups};
+    for(const item of staged){
+      fs.copyFileSync(item.file,item.backup);backups.push(item.backup);
+    }
+    for(const item of staged){
+      fs.writeFileSync(item.file,item.after,'utf8');written.push(item.file);
+    }
+    return {ok:true,changed:staged.length,backups};
   }catch(error){
-    return {ok:false,error:'Application du nettoyage CSS impossible : '+String(error&&error.message||error),backups};
+    const rollbackErrors=[];
+    for(const item of staged){
+      if(!written.includes(item.file))continue;
+      try{fs.writeFileSync(item.file,item.before,'utf8')}catch(restoreError){rollbackErrors.push(path.relative(local.root,item.file)+': '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    return {
+      ok:false,
+      error:'Application du nettoyage CSS impossible : '+String(error&&error.message||error)+(rollbackErrors.length?' · rollback incomplet : '+rollbackErrors.join(' | '):''),
+      backups,rolledBack:written.length>0&&rollbackErrors.length===0
+    };
   }
 });
 
@@ -3254,28 +3268,41 @@ ipcMain.handle('source:cleanup-overrides',async (_event,payload)=>{
   const ids=new Set(Array.isArray(payload&&payload.ids)?payload.ids.map(String):[]);
   const selected=analysis.items.filter(x=>ids.has(String(x.id)));
   if(!selected.length)return {ok:false,error:'Aucune surcharge sûre sélectionnée.'};
-  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[],removed=[];
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backups=[],removed=[],staged=[],changedFiles=[];
   const byFile=new Map();
   selected.forEach(item=>{
     if(!byFile.has(item.file))byFile.set(item.file,[]);
     byFile.get(item.file).push(item);
   });
   try{
-    byFile.forEach((items,file)=>{
-      if(!fs.existsSync(file))return;
+    for(const [file,items] of byFile.entries()){
+      if(!file||!isPathInside(local.root,file))throw new Error('Chemin refusé.');
+      if(!fs.existsSync(file))throw new Error('Fichier introuvable : '+path.relative(local.root,file));
       const before=fs.readFileSync(file,'utf8');
-      const backup=file+'.ais-cleanup-backup-'+stamp;
-      fs.copyFileSync(file,backup);backups.push(backup);
       let after=before;
       items.filter(x=>x.kind==='redundant-rule').forEach(item=>{after=after.replace(item.raw,'')});
       after=after.replace(/\n{3,}/g,'\n\n').trim();
       const removeWhole=items.some(x=>x.kind==='empty-file')||!after;
-      if(removeWhole){fs.unlinkSync(file);removed.push(path.relative(local.root,file))}
-      else fs.writeFileSync(file,after+'\n','utf8');
-    });
+      staged.push({file,before,after:removeWhole?'':after+'\n',removeWhole,backup:file+'.ais-cleanup-backup-'+stamp});
+    }
+    for(const item of staged){fs.copyFileSync(item.file,item.backup);backups.push(item.backup)}
+    for(const item of staged){
+      if(item.removeWhole){fs.unlinkSync(item.file);removed.push(path.relative(local.root,item.file))}
+      else fs.writeFileSync(item.file,item.after,'utf8');
+      changedFiles.push(item.file);
+    }
     return {ok:true,removed,backups,changed:selected.length};
   }catch(error){
-    return {ok:false,error:'Nettoyage impossible : '+String(error&&error.message||error),backups};
+    const rollbackErrors=[];
+    for(const item of staged){
+      if(!changedFiles.includes(item.file))continue;
+      try{fs.writeFileSync(item.file,item.before,'utf8')}catch(restoreError){rollbackErrors.push(path.relative(local.root,item.file)+': '+String(restoreError&&restoreError.message||restoreError))}
+    }
+    return {
+      ok:false,
+      error:'Nettoyage impossible : '+String(error&&error.message||error)+(rollbackErrors.length?' · rollback incomplet : '+rollbackErrors.join(' | '):''),
+      backups,rolledBack:changedFiles.length>0&&rollbackErrors.length===0
+    };
   }
 });
 
@@ -3285,12 +3312,13 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
   if(!local)return {ok:false,error:'Source locale requise.'};
   const file=String(payload&&payload.file||'');
   if(!file||!isPathInside(local.root,file))return {ok:false,error:'Chemin source refusé.'};
+  const existedBefore=fs.existsSync(file);
+  let original='',backupPath='';
   try{
-    const before=fs.existsSync(file)?fs.readFileSync(file,'utf8'):'';
-    if(payload.beforeHash&&hashText(before)!==payload.beforeHash)return {ok:false,error:'Le fichier a changé depuis la préparation du diff. Reprépare la modification.'};
+    original=existedBefore?fs.readFileSync(file,'utf8'):'';
+    if(payload.beforeHash&&hashText(original)!==payload.beforeHash)return {ok:false,error:'Le fichier a changé depuis la préparation du diff. Reprépare la modification.'};
     const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-    let backupPath='';
-    if(fs.existsSync(file)){backupPath=file+'.ais-backup-'+stamp;fs.copyFileSync(file,backupPath)}
+    if(existedBefore){backupPath=file+'.ais-backup-'+stamp;fs.copyFileSync(file,backupPath)}
     fs.mkdirSync(path.dirname(file),{recursive:true});
     fs.writeFileSync(file,String(payload.after||''),'utf8');
     let htmlBackupPath='';
@@ -3307,8 +3335,14 @@ ipcMain.handle('source:apply-direct-edit',async (_event,payload)=>{
         fs.writeFileSync(local.html,html,'utf8');
       }
     }
-    return {ok:true,file,backupPath,htmlBackupPath,created:!before};
-  }catch(error){return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error)}}
+    return {ok:true,file,backupPath,htmlBackupPath,created:!existedBefore};
+  }catch(error){
+    try{
+      if(existedBefore)fs.writeFileSync(file,original,'utf8');
+      else if(fs.existsSync(file))fs.unlinkSync(file);
+    }catch(_){}
+    return {ok:false,error:'Écriture source impossible : '+String(error&&error.message||error),rolledBack:true};
+  }
 });
 
 ipcMain.handle('source:open-url',async (_event,value)=>{
