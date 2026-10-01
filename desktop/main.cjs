@@ -1466,6 +1466,44 @@ async function smokeTransactionRoundtrip(){
 
 if(smokeMode)ipcMain.handle('smoke:transaction-roundtrip',async ()=>smokeTransactionRoundtrip());
 
+async function smokeAtomicFailureRollback(){
+  const dir=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-atomic-failure-'));
+  const htmlPath=path.join(dir,'index.html');
+  const original='<!doctype html><html><head><meta charset="utf-8"></head><body><div id="title">Original</div></body></html>';
+  fs.writeFileSync(htmlPath,original,'utf8');
+  const source={type:'html',path:htmlPath,root:dir,entry:'index.html',url:'http://127.0.0.1:1/index.html',label:'atomic failure fixture'};
+  const payload={
+    source,
+    css:'#title { color: rgb(9, 8, 7) !important; }',
+    generatedNodes:[],
+    sourceSelectors:['#title'],
+    prototypeLinks:{},
+    domPatches:[{selector:'#title',textAdjusted:true,textContent:'Changed'}],
+    applyParts:{css:true,structure:true}
+  };
+  const originalWrite=fs.writeFileSync;
+  try{
+    fs.writeFileSync=function(file,...args){
+      if(/app-interface-studio\.transaction-.*\.json$/i.test(String(file)))throw new Error('AIS forced transaction write failure');
+      return originalWrite.call(fs,file,...args);
+    };
+    const result=await applyLocalPatch(payload);
+    if(result&&result.ok)throw new Error('La panne forcée aurait dû faire échouer le patch.');
+    if(!result||result.rolledBack!==true)throw new Error('Le rollback atomique n’a pas été confirmé : '+JSON.stringify(result));
+    if(fs.readFileSync(htmlPath,'utf8')!==original)throw new Error('HTML non restauré après panne forcée.');
+    if(fs.existsSync(path.join(dir,'app-interface-studio.generated.css')))throw new Error('CSS généré restant après panne forcée.');
+    if(fs.existsSync(path.join(dir,'app-interface-studio.generated.js')))throw new Error('JS généré restant après panne forcée.');
+    const debris=fs.readdirSync(dir).filter(name=>/\.ais-backup-|app-interface-studio\.transaction-/i.test(name));
+    if(debris.length)throw new Error('Débris transactionnels après rollback : '+debris.join(', '));
+    return {ok:true,forcedFailure:true,rolledBack:true,clean:true};
+  }finally{
+    fs.writeFileSync=originalWrite;
+    try{fs.rmSync(dir,{recursive:true,force:true})}catch(_){}
+  }
+}
+if(smokeMode)ipcMain.handle('smoke:atomic-failure-rollback',async ()=>smokeAtomicFailureRollback());
+
+
 async function smokePortableProjectRoundtrip(){
   const root=fs.mkdtempSync(path.join(app.getPath('temp'),'ais-portable-smoke-'));
   const sourceDir=path.join(root,'original-source');
