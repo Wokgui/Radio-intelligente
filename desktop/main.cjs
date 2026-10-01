@@ -1819,7 +1819,9 @@ ipcMain.handle('source:git-status',async (_event,payload)=>{
     const branch=execFileSync('git',['-C',root,'branch','--show-current'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     const remote=execFileSync('git',['-C',root,'remote','get-url','origin'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
     const status=execFileSync('git',['-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
-    return {ok:true,root,branch,remote,status,ghAvailable:commandExists('gh')};
+    const staged=execFileSync('git',['-C',root,'diff','--cached','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    const unstaged=execFileSync('git',['-C',root,'diff','--name-only'],{encoding:'utf8',windowsHide:true,timeout:5000}).trim();
+    return {ok:true,root,branch,remote,status,staged,unstaged,ghAvailable:commandExists('gh')};
   }catch(error){return {ok:false,error:'Git indisponible ou dépôt invalide : '+String(error&&error.message||error)}}
 });
 
