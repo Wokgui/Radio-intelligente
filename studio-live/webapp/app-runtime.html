@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aperçu application</title>
+<style>
+:root{
+  --top:0px;--bottom:0px;--left:0px;--right:0px;
+  --status:#111;--nav:#000;--bg:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#shell{position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg)}
+#status,#nav{overflow:hidden;display:none;position:absolute;left:0;right:0;z-index:5;pointer-events:none;color:#fff}
+#status{top:0;height:var(--top);background:var(--status);align-items:center;justify-content:space-between;padding:0 9px;font-size:10px;font-weight:750}
+#status .icons{display:flex;align-items:center;gap:5px;font-size:9px}
+#nav{bottom:0;height:var(--bottom);background:var(--nav);align-items:center;justify-content:center}
+#nav::after{content:"";width:34%;max-width:110px;height:4px;border-radius:999px;background:#fff;opacity:.92}
+#content{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg);display:block}
+body.android #status,body.android #nav{display:flex}
+body.android #content{top:var(--top);bottom:var(--bottom);left:var(--left);right:var(--right);width:calc(100% - var(--left) - var(--right));height:auto}
+body.android.overlay #content{top:0;bottom:0;left:0;right:0;width:100%;height:100%}body.android #nav{pointer-events:auto}#keys{display:none;font-size:22px;word-spacing:30px}body.three-button #keys{display:block}body.three-button #nav::after{display:none}</style>
+</head>
+<body>
+<div id="shell">
+  <div id="status"><span id="clock">12:00</span><span class="icons">● ◒ ▰</span></div>
+  <iframe id="content" title="Application"></iframe>
+  <div id="nav"><span id="keys">Ⅲ　　▢　　‹</span></div>
+</div>
+<script>
+(function(){
+  var p=new URLSearchParams(location.search);
+  var mode=p.get('mode')==='android'?'android':'preview';
+  var root=document.documentElement.style;
+  var screenWidth=Math.max(240,Number(p.get('screenWidth'))||innerWidth),screenHeight=Math.max(240,Number(p.get('screenHeight'))||innerHeight);
+  function fitScreen(){var shell=document.getElementById('shell');shell.style.position='absolute';shell.style.left='50%';shell.style.top='50%';shell.style.width=screenWidth+'px';shell.style.height=screenHeight+'px';shell.style.transform='translate(-50%,-50%) scale('+Math.min(1,innerWidth/screenWidth,innerHeight/screenHeight)+')';}
+  fitScreen();window.addEventListener('resize',fitScreen);
+
+  root.setProperty('--top',(Number(p.get('top'))||0)+'px');
+  root.setProperty('--bottom',(Number(p.get('bottom'))||0)+'px');
+  root.setProperty('--left',(Number(p.get('left'))||0)+'px');
+  root.setProperty('--right',(Number(p.get('right'))||0)+'px');
+  root.setProperty('--status',p.get('status')||'#111111');
+  root.setProperty('--nav',p.get('nav')||'#000000');
+  root.setProperty('--bg',p.get('background')||'#ffffff');
+  document.body.classList.toggle('android',mode==='android');document.body.classList.toggle('overlay',p.get('bars')!=='inset');document.body.classList.toggle('three-button',p.get('navigation')!=='gesture');
+  document.getElementById('content').src=p.get('target')||'about:blank';
+  function clock(){
+    var d=new Date();
+    document.getElementById('clock').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+  clock();setInterval(clock,30000);
+})();
+</script>
+</body>
+</html>

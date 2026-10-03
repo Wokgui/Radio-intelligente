@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "systemBarsLayout": "inset",
+  "handling": "native-window-insets",
+  "keyboard": "resize",
+  "layout": "adaptive-scroll-with-fixed-navigation"
+}

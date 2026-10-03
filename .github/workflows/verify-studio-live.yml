@@ -1,0 +1,26 @@
+name: Verify Interface Studio on Windows
+on:
+  push:
+    branches: [feature/interface-studio-live]
+    paths: ['studio-live/**', '.github/workflows/verify-studio-live.yml']
+  pull_request:
+    paths: ['studio-live/**', '.github/workflows/verify-studio-live.yml']
+permissions:
+  contents: read
+jobs:
+  electron-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare packaged Electron and sources
+        shell: pwsh
+        run: |
+          mkdir native-test
+          cd native-test
+          npm init -y
+          npm install electron@31.7.7 yauzl@3.2.0
+          node ../studio-live/verify-windows.cjs

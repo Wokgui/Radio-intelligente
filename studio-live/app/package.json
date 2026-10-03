@@ -1,0 +1,10 @@
+{
+  "name": "app-interface-studio",
+  "version": "6.75.0",
+  "private": true,
+  "description": "Editeur visuel Windows et laboratoire APK Android",
+  "main": "main.cjs",
+  "dependencies": {
+    "yauzl": "^3.2.0"
+  }
+}

@@ -1,0 +1,5 @@
+const {contextBridge,ipcRenderer}=require('electron');
+const allowed=new Set(['status','sdk','pick','create','start','connect','install','launch','key','pointer','text','frame','capture','logs','stop','video-start','video-stop','installed','launch-installed','geometry']);
+contextBridge.exposeInMainWorld('AndroidLab',{command:(action,payload={})=>{if(!allowed.has(action))return Promise.reject(Error('Action refusée'));return ipcRenderer.invoke('android:'+action,payload)},onVideo:callback=>{const packet=(_event,p)=>{try{callback({type:'packet',...p})}finally{ipcRenderer.send('android:video-ack',{id:p.id,sequence:p.sequence})}};const state=(_event,p)=>callback({type:'state',...p});ipcRenderer.on('android:video-packet',packet);ipcRenderer.on('android:video-state',state);return ()=>{ipcRenderer.removeListener('android:video-packet',packet);ipcRenderer.removeListener('android:video-state',state)}}});
+
+contextBridge.exposeInMainWorld("StudioAndroidReturn",()=>ipcRenderer.invoke("studio:android-return"));
