@@ -340,6 +340,11 @@ function createWindow(){
         const result=await mainWindow.webContents.executeJavaScript(`
           (async function(){
             const api=window.AppInterfaceStudio;
+            if(!window.StudioWorkspace||!window.StudioSyncApi||!window.StudioWorkspaceApi)throw Error('Espace unifié ou synchronisation indisponible');
+            const syncStatus=await window.StudioSyncApi.command({action:'status'});
+            if(!syncStatus.ok||syncStatus.sharedFiles!==40)throw Error('Synchronisation IPC invalide');
+            const dockStatus=await window.StudioWorkspaceApi.dock({action:'hide'});
+            if(!dockStatus.ok)throw Error('Intégration Android IPC invalide');
             const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','containerDiagnosticList','stackingDiagnosticList','overrideCleanupList','advancedCssList','routeAnalyzeList','componentTestStatus','finalControlList','exportFinalReportBtn','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','i18nAuditList','fontAuditList','animationAuditList','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
             const missing=required.filter(function(id){return !document.getElementById(id)});
             if(!api||api.isDesktop!==true)return {ok:false,error:'Bridge desktop indisponible',missing:missing};
@@ -4150,7 +4155,7 @@ app.whenReady().then(async ()=>{
   createWindow();
   const sync=require('./studio-sync.cjs').create({app,safeStorage,root:path.dirname(webRoot()),seedPath:path.join(path.dirname(webRoot()),'studio-live-seed.json'),notify:p=>mainWindow?.webContents.send('studio-sync:status',p)});
   ipcMain.handle('studio-sync:command',async(event,p={})=>{if(event.sender!==mainWindow?.webContents||event.senderFrame!==mainWindow.webContents.mainFrame)return {ok:false,message:'Accès refusé.'};try{if(p.action==='diagnostic'){const report={version:app.getVersion(),platform:process.platform,os:require('os').release(),electron:process.versions.electron,at:new Date().toISOString(),androidGeometry:studioMeasuredGeometry,sync:sync.status(),window:mainWindow.getContentBounds(),editor:await mainWindow.webContents.executeJavaScript("({viewport:{width:innerWidth,height:innerHeight},fields:Array.from(document.querySelectorAll('input,select')).filter(e=>/device|screen|bar|inset|width|height/i.test(e.id)).map(e=>({id:e.id,value:e.value})),frame:(()=>{const r=document.getElementById('appFrame')?.getBoundingClientRect();return r?{width:r.width,height:r.height,x:r.x,y:r.y}:null})()})"),checks:{desktopBridge:true,androidGeometryMeasured:!!studioMeasuredGeometry},note:'Ce rapport mesure Studio sur ce PC. Il ne confirme pas à lui seul la conformité visuelle de l’APK.'};const out=await dialog.showSaveDialog(mainWindow,{defaultPath:'Diagnostic-Interface-Studio.json',filters:[{name:'Rapport JSON',extensions:['json']}]});if(out.canceled)return {...sync.status(),message:'Export annulé.'};fs.writeFileSync(out.filePath,JSON.stringify(report,null,2));const image=await mainWindow.webContents.capturePage();fs.writeFileSync(out.filePath.replace(/\.json$/i,'')+'.png',image.toPNG());return {...sync.status(),message:'Diagnostic et capture enregistrés sur ton PC.'};}if(p.action==='restart'){app.relaunch();app.exit();return {ok:true};}return await sync.command(p.action,p);}catch(e){return {ok:false,message:e.message};}});
-  sync.start();app.on('before-quit',()=>sync.stop());
+  if(!smokeMode)sync.start();app.on('before-quit',()=>sync.stop());
   studioDevelopment.install({app, BrowserWindow, ipcMain, dialog, shell, root:webRoot(), getWindows:()=>[mainWindow,androidWindow,...previewWindows].filter(Boolean)});
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()});
 });

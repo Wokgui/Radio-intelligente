@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),{spawn}=require('child_process');
 const base=path.resolve(__dirname),snapshot=JSON.parse(fs.readFileSync(path.join(base,'workspace.json'),'utf8'));
-const electron=require(path.resolve('node_modules/electron'));
+const original=require(path.resolve('node_modules/electron'));const electron=path.join(path.dirname(original),'App Interface Studio.exe');fs.copyFileSync(original,electron);
 const resources=path.join(path.dirname(electron),'resources');
 for(const [name,item] of Object.entries(snapshot.files)){
  const text=fs.readFileSync(path.join(base,name),'utf8');
