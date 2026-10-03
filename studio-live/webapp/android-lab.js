@@ -38,3 +38,6 @@ const playCurrent=document.createElement('button');playCurrent.id='runCurrentApk
 bind('useGeometry',async()=>{const r=await call('geometry');report('Dimensions transmises à l’éditeur : '+r.profile.width+' × '+r.profile.height+' px CSS.');});
 
 document.getElementById('toggleAndroidSettings').onclick=()=>document.body.classList.toggle('show-android-settings');
+
+bind('wifiPair',async()=>{const code=$('wifiPairCode').value;$('wifiPairCode').value='';const r=await call('wifi-pair',{address:$('wifiPairAddress').value.trim(),code});report(r.message);});
+bind('wifiConnect',async()=>{const r=await call('wifi-connect',{address:$('wifiConnectAddress').value.trim()});await refresh();$('device').value=r.serial;report(r.message);});
