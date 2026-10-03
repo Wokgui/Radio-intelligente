@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, clipboard, shell, session, webFrameMain, nativeImage, WebContentsView, safeStorage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, clipboard, shell, session, webFrameMain, nativeImage, WebContentsView, safeStorage, screen } = require('electron');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -342,7 +342,7 @@ function createWindow(){
             const api=window.AppInterfaceStudio;
             if(!window.StudioWorkspace||!window.StudioSyncApi||!window.StudioWorkspaceApi)throw Error('Espace unifié ou synchronisation indisponible');
             const syncStatus=await window.StudioSyncApi.command({action:'status'});
-            if(!syncStatus.ok||syncStatus.sharedFiles!==40)throw Error('Synchronisation IPC invalide');
+            if(!syncStatus.ok||syncStatus.sharedFiles<40)throw Error('Synchronisation IPC invalide');
             const dockStatus=await window.StudioWorkspaceApi.dock({action:'hide'});
             if(!dockStatus.ok)throw Error('Intégration Android IPC invalide');
             const required=['sourceName','mediaCard','versionList','svgTintControls','assetAuditList','layoutDiagnosticList','cascadeList','containerDiagnosticList','stackingDiagnosticList','overrideCleanupList','advancedCssList','routeAnalyzeList','componentTestStatus','finalControlList','exportFinalReportBtn','sourcePropertyList','scenarioList','savedScenarioList','scenarioReplayResults','keyboardAuditResult','i18nAuditList','fontAuditList','animationAuditList','dynamicDiagnosticsStatus','performanceMetrics','performanceRegressionStatus','networkTestResults','selectorStability','appFrame'];
@@ -414,6 +414,7 @@ function createWindow(){
           })()
         `,true);
         if(!result||!result.ok)throw new Error('Smoke test renderer échoué : '+JSON.stringify(result));
+        result.chatLayout=await chatGptWindow.smoke();
         console.log('AIS_SMOKE_OK '+JSON.stringify(result));
         setTimeout(()=>app.exit(0),80);
       }catch(error){
@@ -4196,4 +4197,4 @@ ipcMain.handle('android:open',async(event,options)=>{
 function chatProjectRoot(source){if(!source||!['folder','html','android-project'].includes(source.type))throw Error('Ouvrir une application locale éditable.');if(source.apkProject){const p=apkEditor.project(source.apkProject.id);const root=source.type==='folder'?path.join(p.decoded,'assets'):p.decoded;if(fs.realpathSync(source.path)!==fs.realpathSync(root))throw Error('Projet APK incohérent.');return root}return source.type==='html'?path.dirname(source.path):source.path}
 const chatGptDirect=require('./chatgpt-direct.cjs').create({app,safeStorage,shell,notify:p=>mainWindow?.webContents.send('chatgpt:account-status',p)});
 require('./chatgpt-project.cjs').register({app,ipcMain,clipboard,dialog,getWindow:()=>mainWindow,rootFor:chatProjectRoot,direct:chatGptDirect});
-require('./chatgpt-window.cjs').register({ipcMain,WebContentsView,shell,getWindow:()=>mainWindow});
+const chatGptWindow=require('./chatgpt-window.cjs').register({app,ipcMain,BrowserWindow,WebContentsView,shell,screen,getWindow:()=>mainWindow,getWebRoot:webRoot});

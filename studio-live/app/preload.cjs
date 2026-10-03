@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('AppInterfaceStudio', {
   openAndroidLab: options => ipcRenderer.invoke('android:open',options||{}),
   onChatGptAccount: fn=>{ipcRenderer.on('chatgpt:account-status',(_e,p)=>fn(p))},
   chatGptProject: (action,payload)=>ipcRenderer.invoke('chatgpt:project',{action,payload}),
+  onChatGptFloat: fn=>ipcRenderer.on('chatgpt:float-state',(_e,p)=>fn(p)),
   chatGptView: payload=>ipcRenderer.invoke('chatgpt:view',payload),
   onChatGptStatus: fn=>{ipcRenderer.on('chatgpt:web-status',(_e,p)=>fn(p))},
   openUrl: value => ipcRenderer.invoke('source:open-url', value),
