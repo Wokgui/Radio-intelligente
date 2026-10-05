@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -43,6 +43,11 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: radio-android-debug-signing-v1
+
       - name: Bundle web app inside APK
         shell: bash
         run: |
@@ -57,6 +62,7 @@ jobs:
           cp cloud-backup.js "$ASSETS/"
           cp visual-editor.css visual-editor.js visual-elements.js visual-elements.json "$ASSETS/"
           cp vendor/supabase/supabase.js "$ASSETS/vendor/supabase/"
+          cp android-window-profile.json "$ASSETS/"
           cp manifest.webmanifest sw.js "$ASSETS/"
           cp cover-default.png icon-192.png icon-512.png icon-maskable-192.png apple-touch-icon.png favicon-32.png "$ASSETS/"
           cp silence.wav "$ASSETS/"
@@ -85,3 +91,10 @@ jobs:
           path: Radio-intelligente-v111-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish APK for Interface Studio refresh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "apk-${{ github.run_number }}" Radio-intelligente-v111-debug.apk --target "${{ github.sha }}" --title "Radio intelligente · build ${{ github.run_number }}" --notes "APK compilé pour actualisation dans Interface Studio." --latest
