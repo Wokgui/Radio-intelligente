@@ -19,8 +19,13 @@ on:
       - 'vendor/**'
       - 'manifest.webmanifest'
       - 'sw.js'
+      - 'android-window-profile.json'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
+
+concurrency:
+  group: radio-android-publish
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -43,10 +48,29 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: signing-cache
         with:
           path: ~/.android/debug.keystore
           key: radio-android-debug-signing-v1
+
+      # Never let Gradle silently generate a new identity for an existing app.
+      # The secret must contain the ORIGINAL debug.keystore, not a newly created key.
+      - name: Restore persistent Android signing identity
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ -n "$SIGNING_KEYSTORE_BASE64" ]; then
+            printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+          fi
+          if [ ! -s "$HOME/.android/debug.keystore" ]; then
+            echo "::error::Original Android signing key missing. Restore ANDROID_DEBUG_KEYSTORE_BASE64 with the existing debug.keystore. Refusing to generate an incompatible update."
+            exit 1
+          fi
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey > /dev/null
 
       - name: Bundle web app inside APK
         shell: bash
