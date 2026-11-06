@@ -1,12 +1,13 @@
 {
   "name": "app-interface-studio",
-  "version": "5.0.0",
+  "version": "6.63.0",
   "private": true,
-  "description": "Éditeur visuel universel Windows avec édition source directe, Android natif, auto-layout, flow, matrice de tests et réparation assistée",
+  "description": "Éditeur visuel universel Windows avec rapport final HTML/JSON autonome, analyse multi-routes, Container Queries complexes, diagnostics i18n/polices/animations, nettoyage CSS sûr, scénarios persistants et tests de performance/réseau",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check ../visual-editor.js && node scripts/check-responsive.cjs",
+    "smoke": "node scripts/run-smoke.cjs",
     "dist:win": "npm run icon && electron-builder --win portable",
     "icon": "node scripts/make-icon.cjs"
   },
