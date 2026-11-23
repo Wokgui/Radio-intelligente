@@ -269,7 +269,7 @@
     }
     if(!document.querySelector('script[data-music-player]')){
       const script=document.createElement('script');
-      script.src='/music-player.js?v=17';
+      script.src='/music-player.js?v=18';
       script.dataset.musicPlayer='1';
       document.head.appendChild(script);
     }
@@ -284,7 +284,7 @@
 
   function loadCore(){
     const core=document.createElement('script');
-    core.src='/radio-v51-core.js?v=1';
+    core.src='/radio-v51-core.js?v=2';
     core.onload=finishInstall;
     core.onerror=finishInstall;
     document.head.appendChild(core);

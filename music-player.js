@@ -547,7 +547,10 @@
     if($('musicRepeat')){
       $('musicRepeat').classList.toggle('on',state.repeat!=='off');
       const label=$('musicRepeat').querySelector('.txt');
-      if(label)label.textContent=state.repeat==='one'?'Répéter ce titre':state.repeat==='all'?'Répéter la file':'Répétition désactivée';
+      const repeatLabel=state.repeat==='one'?'Répéter ce titre':state.repeat==='all'?'Répéter la file':'Répéter : non';
+      if(label)label.textContent=repeatLabel;
+      $('musicRepeat').title=repeatLabel;
+      $('musicRepeat').setAttribute('aria-label',repeatLabel);
     }
   }
 
@@ -642,6 +645,10 @@
     if(activeMode!=='music')return;
     const audio=$('musicAudio');
     if(!audio)return;
+    if(audio.ended&&state.repeat==='off'&&order.length&&forcePlay!==false){
+      loadTrack(order[0],{autoplay:true,resume:0});
+      return;
+    }
     if(!currentId){
       if(!tracks.length){openLibrary();return}
       const first=sortTracks(tracks)[0];

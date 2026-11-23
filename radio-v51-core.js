@@ -1,5 +1,4 @@
 (function(){
-  const NOTUBE_BASE='https://notube.lol/fr/youtube-app-394';
   const historyPageUndo=[];
   const historyPageRedo=[];
 
@@ -45,17 +44,17 @@
     const raw=String(value||'').trim();
     if(/^[A-Za-z0-9_-]{11}$/.test(raw))return raw;
     try{
-      const url=new URL(raw);
-      const host=url.hostname.replace(/^www\./,'').toLowerCase();
-      if(host==='youtu.be')return url.pathname.split('/').filter(Boolean)[0]||'';
-      if(host==='youtube.com'||host.endsWith('.youtube.com')){
-        if(url.pathname==='/watch')return url.searchParams.get('v')||'';
-        const parts=url.pathname.split('/').filter(Boolean);
-        if(['shorts','embed','live'].includes(parts[0]))return parts[1]||'';
+      const url=new URL(raw.startsWith('//')?'https:'+raw:/^https?:/i.test(raw)?raw:'https://'+raw);
+      const host=url.hostname.toLowerCase().replace(/^www\./,'');
+      const parts=url.pathname.split('/').filter(Boolean);
+      let id='';
+      if(host==='youtu.be')id=parts[0];
+      if(host==='youtube.com'||host.endsWith('.youtube.com')||host==='youtube-nocookie.com'){
+        if(url.pathname==='/watch')id=url.searchParams.get('v');
+        else if(['shorts','embed','live','v'].includes(parts[0]))id=parts[1];
       }
-    }catch{}
-    const match=raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/))([A-Za-z0-9_-]{11})/i);
-    return match?match[1]:'';
+      return /^[A-Za-z0-9_-]{11}$/.test(id||'')?id:'';
+    }catch{return ''}
   }
 
   function canonicalUrl(value){
@@ -64,24 +63,75 @@
   }
 
   function trackYoutubeUrl(track){
-    return canonicalUrl(track?.youtubeUrl||track?.externalUrl||'');
+    return canonicalUrl(track?.youtubeUrl)||canonicalUrl(track?.externalUrl);
   }
 
   function trackSearchQuery(track){
     return ((track?.artist||'')+' '+(track?.title||'')).trim();
   }
 
-  function resolvedTarget(track,target){
-    const direct=trackYoutubeUrl(track);
-    if(direct)return target==='download'?noTubeUrl(direct):direct;
-    return '/api/youtube-search?redirect=1&target='+encodeURIComponent(target)+'&q='+encodeURIComponent(trackSearchQuery(track));
+  function youtubeLink(track){
+    return trackYoutubeUrl(track)||'https://www.youtube.com/results?search_query='+encodeURIComponent(trackSearchQuery(track));
   }
 
-  function youtubeEmbedTarget(track){
-    const direct=trackYoutubeUrl(track);
-    const id=videoId(direct);
-    if(id)return 'https://www.youtube-nocookie.com/embed/'+id+'?controls=1&playsinline=1&rel=0';
-    return '/api/youtube-search?redirect=1&target=embed&q='+encodeURIComponent(trackSearchQuery(track));
+  function rememberKept(){
+    try{localStorage.setItem('radio-return-kept',String(Date.now()+60*60*1000))}catch{}
+  }
+
+  function restoreKept(){
+    try{
+      const until=Number(localStorage.getItem('radio-return-kept')||0);
+      localStorage.removeItem('radio-return-kept');
+      if(until<=Date.now())return;
+      const page=document.getElementById('settingsPage');
+      if(!page?.classList.contains('history-only')||tab!=='kept'){
+        document.querySelector('.stats .stat')?.click();
+      }
+    }catch{}
+  }
+
+  window.addEventListener('pageshow',restoreKept);
+  window.addEventListener('popstate',restoreKept);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)restoreKept()});
+
+  function addKeptPlayer(row,track,youtube){
+    const panel=document.createElement('div');
+    panel.className='youtube-kept-controls';
+    const play=document.createElement('button');
+    play.type='button';
+    play.className='row-link';
+    play.textContent='Lire ici';
+    const status=document.createElement('p');
+    status.setAttribute('role','status');
+    panel.append(play,status);
+    row.appendChild(panel);
+    play.onclick=()=>{
+      const existing=document.querySelector('#hist .youtube-full-player');
+      if(existing){
+        const previous=existing.closest('.youtube-kept-controls');
+        existing.remove();
+        const previousButton=previous.querySelector('button');
+        previousButton.textContent='Lire ici';
+        previous.querySelector('[role="status"]').textContent='';
+        if(previous===panel)return;
+      }
+      const id=videoId(trackYoutubeUrl(track));
+      if(!id){
+        status.textContent='Ce morceau n’a pas de lien direct. Utilise le bouton YouTube.';
+        return;
+      }
+      youtube.href=canonicalUrl(id);
+      const player=document.createElement('iframe');
+      player.className='youtube-full-player';
+      player.src='https://www.youtube-nocookie.com/embed/'+id+'?controls=1&playsinline=1&rel=0';
+      player.title='Lecteur YouTube pour '+track.title;
+      player.referrerPolicy='origin';
+      player.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
+      player.allowFullscreen=true;
+      panel.insertBefore(player,status);
+      status.textContent='Si la vidéo est bloquée ici, utilise le bouton YouTube.';
+      play.textContent='Fermer le lecteur';
+    };
   }
 
   function firefoxUrl(value){
@@ -93,11 +143,6 @@
       return 'intent://'+url.host+url.pathname+url.search+url.hash+
         '#Intent;scheme='+url.protocol.slice(0,-1)+';package=org.mozilla.firefox;S.browser_fallback_url='+encodeURIComponent(url.href)+';end';
     }catch{return raw}
-  }
-
-  function noTubeUrl(value){
-    const id=videoId(value);
-    return id?NOTUBE_BASE+'?v='+encodeURIComponent(id):NOTUBE_BASE;
   }
 
   function findTrack(date,key){
@@ -172,17 +217,12 @@
     confirm.textContent='Ajout…';
     setError('');
     try{
-      let metadata={};
-      try{
-        const response=await fetch('https://noembed.com/embed?url='+encodeURIComponent(url),{headers:{Accept:'application/json'}});
-        if(response.ok)metadata=await response.json();
-      }catch{}
       const track={
         id:'yt'+id,
-        artist:metadata.author_name||'YouTube',
-        title:metadata.title||'Morceau YouTube',
+        artist:'YouTube',
+        title:'Morceau YouTube · '+id,
         album:'YouTube',
-        cover:metadata.thumbnail_url||'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg',
+        cover:'/cover-default.png',
         preview:'',
         category:'youtube',
         source:'youtube-manual',
@@ -213,35 +253,45 @@
       const deleteButton=row.querySelector('.row-delete');
       const track=deleteButton&&findTrack(deleteButton.dataset.date,deleteButton.dataset.key);
       const actions=row.querySelector('.row-actions');
-      if(!track||!actions)return;
+      if(!track||!actions||row.dataset.youtubeReady)return;
+      row.dataset.youtubeReady='1';
       const youtube=actions.children[0];
       if(youtube?.tagName==='A'){
-        youtube.href=firefoxUrl(resolvedTarget(track,'youtube'));
-        youtube.title='Ouvrir directement la vidéo la plus pertinente';
-      }
-      const current=actions.children[1];
-      const download=document.createElement('button');
-      download.type='button';
-      download.className='row-link row-download';
-      download.textContent='Télécharger';
-      download.onclick=()=>window.open(resolvedTarget(track,'download'),'_blank','noopener');
-      current?.replaceWith(download);
-      if(!row.querySelector('.youtube-full-player')){
-        const player=document.createElement('iframe');
-        player.className='youtube-full-player';
-        player.src=youtubeEmbedTarget(track);
-        player.title='Lecteur YouTube complet pour '+track.title;
-        player.loading='lazy';
-        player.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        player.setAttribute('allowfullscreen','');
-        row.appendChild(player);
+        youtube.href=youtubeLink(track);
+        if(location.hostname==='app.local')youtube.removeAttribute('target');
+        youtube.title='Ouvrir dans YouTube';
+        youtube.addEventListener('click',rememberKept);
+        addKeptPlayer(row,track,youtube);
       }
     });
+  }
+
+  function installTravelMode(settings){
+    if(!settings||document.getElementById('radioTravelMode'))return;
+    const button=document.createElement('button');
+    button.type='button';
+    button.id='radioTravelMode';
+    const setMode=enabled=>{
+      document.body.classList.toggle('radio-travel-mode',enabled);
+      button.setAttribute('aria-pressed',String(enabled));
+      button.textContent='Mode voiture / vélo : '+(enabled?'activé':'désactivé');
+    };
+    let enabled=false;
+    try{enabled=localStorage.getItem('radio-travel-mode')==='1'}catch{}
+    setMode(enabled);
+    button.onclick=()=>{
+      const next=!document.body.classList.contains('radio-travel-mode');
+      setMode(next);
+      try{localStorage.setItem('radio-travel-mode',next?'1':'0')}catch{}
+    };
+    settings.querySelector('.settings-head')?.after(button);
   }
 
   function install(){
     const settings=document.getElementById('settingsPage');
     const settingsHead=settings?.querySelector('.settings-head');
+    installTravelMode(settings);
+    restoreKept();
     if(settings&&settingsHead&&!document.getElementById('radioHistoryActions')){
       const actions=document.createElement('div');
       actions.id='radioHistoryActions';

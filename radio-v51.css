@@ -257,3 +257,19 @@ body.settings-open #settingsPage{
   background:none!important;
   filter:none!important;
 }
+
+#radioTravelMode{display:block;width:min(calc(100% - 28px),520px);margin:8px auto;padding:12px;min-height:48px;border:1px solid #d8cbe4;border-radius:14px;background:#fff;color:#43324d;font-weight:800}
+#radioTravelMode[aria-pressed="true"]{background:#ede0ff}
+#settingsPage.history-only #radioTravelMode{display:none}
+#settingsPage.history-only>.radio-history-card #hist .row .youtube-kept-controls{grid-column:1/-1;grid-row:5;min-width:0;margin-top:8px;position:relative;z-index:1}
+.youtube-kept-controls button{width:100%;min-height:44px}
+.youtube-kept-controls [role="status"]{margin:6px 0 0;font-size:.8rem}
+.youtube-kept-controls [role="status"]:empty{display:none}
+.youtube-kept-controls .youtube-full-player{display:block;min-height:200px}
+html body.radio-travel-mode #mainPage #play,
+html body.radio-travel-mode #mainPage #back,
+html body.radio-travel-mode #mainPage #no,
+html body.radio-travel-mode #mainPage #yes{min-height:70px!important;min-width:64px!important;font-size:1.25rem!important}
+html body.radio-travel-mode.music-mode #musicMainPlay,
+html body.radio-travel-mode.music-mode #musicMiniPrev,
+html body.radio-travel-mode.music-mode #musicMiniNext{min-height:62px!important;min-width:58px!important}
