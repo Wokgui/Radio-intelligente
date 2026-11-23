@@ -118,7 +118,7 @@ jobs:
           gh release download apk-34 --pattern 'Radio-intelligente-v111-debug.apk' --output "$RUNNER_TEMP/radio-published.apk"
           signer=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           signer_fingerprint() {
-            "$signer" verify --print-certs "$1" | awk '/^Signer #[0-9]+ certificate SHA-256 digest:/ {print $NF}'
+            "$signer" verify --print-certs "$1" | sed -nE 's/^(Signer|V[0-9.]+ Signer)[^:]*:?[[:space:]]+certificate SHA-256 digest:[[:space:]]*([0-9A-Fa-f]{64})[[:space:]]*$/\2/p' | tr '[:upper:]' '[:lower:]' | sort -u
           }
           previous=$(signer_fingerprint "$RUNNER_TEMP/radio-published.apk")
           current=$(signer_fingerprint Radio-intelligente-v112-debug.apk)
